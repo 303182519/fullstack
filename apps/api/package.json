@@ -2,7 +2,7 @@
   "name": "@fedstack/api",
   "version": "0.1.0",
   "private": true,
-  "description": "这是企业级 Monorepo 底座的 API端口",
+  "description": "基于 NestJS + Prisma 构建的企业级 API 服务，提供给前端应用调用",
   "scripts": {
   },
   "dependencies": {
