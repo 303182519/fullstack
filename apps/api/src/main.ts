@@ -1,10 +1,15 @@
 import { Logger, ValidationPipe } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { NestFactory } from '@nestjs/core'
+import { Logger as PinoLogger } from 'nestjs-pino'
 import { AppModule } from './app.module.js'
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule)
+  // bufferLogs：启动早期日志先缓存，等 useLogger 桥接后再统一输出，避免丢失启动日志
+  const app = await NestFactory.create(AppModule, { bufferLogs: true })
+
+  // 使用 Pino Logger
+  app.useLogger(app.get(PinoLogger))
 
   // 全局校验管道：自动剥离未声明字段、类型转换、拒绝非法入参
   app.useGlobalPipes(
