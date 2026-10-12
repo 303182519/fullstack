@@ -16,6 +16,8 @@ export function node(options = {}) {
         'ts/consistent-type-definitions': 'off',
         // 后端允许 console（推荐改用 NestJS Logger）
         'no-console': 'off',
+        // DI 依赖 emitDecoratorMetadata 的运行时令牌，自动改成 import type 会破坏注入
+        'ts/consistent-type-imports': 'off',
       },
     },
     ignores: [

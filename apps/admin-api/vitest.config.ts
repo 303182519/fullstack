@@ -1,4 +1,4 @@
-import { defineConfig } from 'vitest/config';
+import { defineConfig } from 'vitest/config'
 
 export default defineConfig({
   // Resolves the path aliases declared in tsconfig.json, including the ones
@@ -9,4 +9,4 @@ export default defineConfig({
     root: './',
     include: ['**/*.spec.ts'],
   },
-});
+})

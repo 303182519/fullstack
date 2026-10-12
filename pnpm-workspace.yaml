@@ -1,18 +1,21 @@
-# 禁用降级依赖
-trustPolicy: no-downgrade
-# 启用 shell 模拟，避免在 Windows 上使用 PowerShell 时的错误
-shellEmulator: true
-# `pnpm prune` 安装时清理锁文件 prune 的时候，不要重新审查 exclude 里面的包。
-minimumReleaseAgeExcludePrune: true
 # 所有第三方包，发布至少1天才能装
 minimumReleaseAge: 1440
+# `pnpm prune` 安装时清理锁文件 prune 的时候，不要重新审查 exclude 里面的包。
+minimumReleaseAgeExcludePrune: true
 # 白名单立即安装
 minimumReleaseAgeExclude:
   - typescript
   - eslint
 
+# 禁用降级依赖
+trustPolicy: no-downgrade
+# trustPolicy 白名单：semver@6.3.1 发布于 provenance 普及之前，属合法旧包，
+# eslint-plugin-react-hooks v7 经 @babel/core 间接依赖它
+trustPolicyExclude:
+  - semver@6.3.1
 
-
+# 启用 shell 模拟，避免在 Windows 上使用 PowerShell 时的错误
+shellEmulator: true
 
 packages:
   - 'apps/*'
@@ -23,8 +26,28 @@ packages:
 catalog:
   '@antfu/eslint-config': ^9.5.0
   '@eslint-react/eslint-plugin': ^5.6.0
-  eslint: ^9.12.0
+  '@nestjs/cli': ^12.0.0
+  '@nestjs/common': ^12.0.1
+  '@nestjs/config': ^12.0.1
+  '@nestjs/core': ^12.0.1
+  '@nestjs/platform-express': ^12.0.1
+  '@nestjs/schematics': ^12.0.0
+  '@nestjs/testing': ^12.0.1
+  '@types/express': ^5.0.0
+  '@types/node': ^24.0.0
+  '@types/supertest': ^7.0.0
+  '@vitest/coverage-v8': ^4.1.2
+  class-transformer: ^0.5.1
+  class-validator: ^0.15.0
+  eslint: ^10.4.0
   eslint-plugin-format: ^2.0.0
-  eslint-plugin-react-hooks: ^5.0.0
+  eslint-plugin-react-hooks: ^7.1.1
   eslint-plugin-react-refresh: ^0.5.0
-  typescript: ^5.6.0
+  reflect-metadata: ^0.2.2
+  rxjs: ^7.8.1
+  source-map-support: ^0.5.21
+  supertest: ^7.0.0
+  turbo: ^2.11.7
+  typescript: ^6.0.2
+  vite: ^8.0.0
+  vitest: ^4.1.2

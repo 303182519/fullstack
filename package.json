@@ -9,11 +9,17 @@
     "node": ">=20.19.0"
   },
   "scripts": {
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix"
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "clean": "turbo run clean",
+    "lint": "eslint . && turbo run lint",
+    "lint:fix": "eslint . --fix && turbo run lint -- --fix"
   },
   "devDependencies": {
     "@fedstack/eslint-config": "workspace:*",
-    "eslint": "catalog:"
+    "eslint": "catalog:",
+    "turbo": "catalog:"
   }
 }
