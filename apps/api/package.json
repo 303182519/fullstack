@@ -1,5 +1,5 @@
 {
-  "name": "@fedstack/admin-api",
+  "name": "@fedstack/api",
   "version": "0.1.0",
   "private": true,
   "description": "这是企业级 Monorepo 底座的 API端口",
