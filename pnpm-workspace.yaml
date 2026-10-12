@@ -1,6 +1,18 @@
-minimumReleaseAgeExcludePrune: true
+# 禁用降级依赖
 trustPolicy: no-downgrade
+# 启用 shell 模拟，避免在 Windows 上使用 PowerShell 时的错误
 shellEmulator: true
+# `pnpm prune` 安装时清理锁文件 prune 的时候，不要重新审查 exclude 里面的包。
+minimumReleaseAgeExcludePrune: true
+# 所有第三方包，发布至少1天才能装
+minimumReleaseAge: 1440
+# 白名单立即安装
+minimumReleaseAgeExclude:
+  - typescript
+  - eslint
+
+
+
 
 packages:
   - 'apps/*'
