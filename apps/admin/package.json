@@ -1,0 +1,13 @@
+{
+  "name": "@fedstack/admin",
+  "type": "module",
+  "version": "0.1.0",
+  "private": true,
+  "description": "这是企业级 Monorepo 底座的管理端",
+  "scripts": {
+  },
+  "dependencies": {
+  },
+  "devDependencies": {
+  }
+}

@@ -1,0 +1,26 @@
+node_modules
+dist
+coverage
+.turbo
+.rsbuild
+.log
+.pnpm-store/
+playwright-report/
+test-results/
+website/doc_build/
+
+# 根环境和服务端环境可能包含数据库密码或密钥，默认全部忽略
+.env
+.env.*
+!.env.example
+!.env.e2e.example
+
+# Admin 是浏览器应用，三套环境只包含会进入前端产物的公开构建配置
+!apps/admin/.env.development
+!apps/admin/.env.test
+!apps/admin/.env.production
+
+# Prisma 生成产物
+packages/database/generated/prisma/
+
+*.log

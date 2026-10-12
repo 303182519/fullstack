@@ -1,3 +1,18 @@
+minimumReleaseAgeExcludePrune: true
+trustPolicy: no-downgrade
+shellEmulator: true
+
 packages:
   - 'apps/*'
   - 'packages/*'
+
+# 统一依赖版本：catalog 作为单一真相源，所有包通过 "catalog:" 引用，
+# 避免 Monorepo 内多版本漂移。升级依赖只需改这一处。
+catalog:
+  '@antfu/eslint-config': ^9.5.0
+  '@eslint-react/eslint-plugin': ^5.6.0
+  eslint: ^9.12.0
+  eslint-plugin-format: ^2.0.0
+  eslint-plugin-react-hooks: ^5.0.0
+  eslint-plugin-react-refresh: ^0.5.0
+  typescript: ^5.6.0

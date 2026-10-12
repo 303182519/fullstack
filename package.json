@@ -1,0 +1,19 @@
+{
+  "name": "fedstack",
+  "type": "module",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@10.34.0",
+  "description": "企业级 Monorepo 底座",
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
+  },
+  "devDependencies": {
+    "@fedstack/eslint-config": "workspace:*",
+    "eslint": "catalog:"
+  }
+}

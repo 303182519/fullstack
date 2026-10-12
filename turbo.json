@@ -2,9 +2,9 @@
   "$schema": "https://turbo.build/schema.json",
   "ui": "stream",
   "globalDependencies": [
-    "tsconfig.base.json", 
+    "tsconfig.base.json",
     "pnpm-lock.yaml",
-		".env.example",
+    ".env.example"
   ],
   "tasks": {
     "dev": {
@@ -28,6 +28,11 @@
       "outputs": []
     },
     "lint": {
+      "inputs": [
+        "src/**",
+        "*.{js,ts,jsx,tsx,json,md,yaml,yml}",
+        "eslint.config.*"
+      ],
       "outputs": []
     },
     "clean": {
