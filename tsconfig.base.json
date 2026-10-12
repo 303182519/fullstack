@@ -2,12 +2,27 @@
   "$schema": "https://json.schemastore.org/tsconfig",
   "//": "Monorepo 共享 TS 基座：各 app/package 继承后按需覆盖 module/moduleResolution 等",
   "compilerOptions": {
+    // 是否启用增量编译。
+    // "true" 表示启用增量编译。
+    // "false" 表示禁用增量编译。
     "incremental": true,
+    // 指定最终生成 JavaScript 的版本。
     "target": "ES2023",
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
+    // 指定模块系统。
+    // "commonjs" 表示使用 CommonJS 模块系统。
+    // "nodenext" 表示使用 Node.js 模块系统。
+    // "es2022" 表示使用 ES2022 模块系统。
+    // "es2023" 表示使用 ES2023 模块系统。
     "module": "nodenext",
+    // 指定模块解析策略。
+    // "node16" 表示使用 Node.js 16 的模块解析策略。
+    // "nodenext" 表示使用 Node.js 20 的模块解析策略。
     "moduleResolution": "nodenext",
+    // 是否解析 package.json 中的 exports 字段。
+    // "true" 表示解析 exports 字段。
+    // "false" 表示不解析 exports 字段。
     "resolvePackageJsonExports": true,
     "strict": true,
     "strictPropertyInitialization": false,
@@ -16,9 +31,18 @@
     "declaration": true,
     "removeComments": true,
     "sourceMap": true,
+    // 是否允许使用 synthetic default imports。
+    // "true" 表示允许使用 synthetic default imports。
+    // "false" 表示不允许使用 synthetic default imports。
     "allowSyntheticDefaultImports": true,
+    // 是否允许使用 ES module interop。
+    // "true" 表示允许使用 ES module interop。
+    // "false" 表示不允许使用 ES module interop。
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
+    // 是否将每个文件编译为独立的模块。
+    // "true" 表示将每个文件编译为独立的模块。
+    // "false" 表示将所有文件编译为单个模块。
     "isolatedModules": true,
     "skipLibCheck": true
   }
