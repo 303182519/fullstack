@@ -5,7 +5,7 @@
     // 是否启用增量编译。
     // "true" 表示启用增量编译。
     // "false" 表示禁用增量编译。
-    "incremental": true,
+    // "incremental": true,
     // 指定最终生成 JavaScript 的版本。
     "target": "ES2023",
     "emitDecoratorMetadata": true,

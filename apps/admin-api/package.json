@@ -36,7 +36,8 @@
     "rxjs": "catalog:",
     "es-toolkit": "catalog:",
     "joi": "catalog:",
-    "@nestjs/swagger": "catalog:"
+    "@nestjs/swagger": "catalog:",
+    "pino-roll": "catalog:"
   },
   "devDependencies": {
     "@fedstack/eslint-config": "workspace:*",
@@ -52,6 +53,7 @@
     "supertest": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "pino-pretty": "catalog:"
   }
 }

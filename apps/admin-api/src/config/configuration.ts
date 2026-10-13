@@ -4,7 +4,6 @@ import { merge } from 'es-toolkit';
 import {
   AppConfig,
   AppConfigForced,
-  LoggerConfig,
 } from './configuration.interface.js';
 
 /**

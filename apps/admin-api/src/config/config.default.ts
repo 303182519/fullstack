@@ -30,7 +30,6 @@ export const defaultConfig = registerAs('default', (): AppConfig => ({
   logger: {
     level: process.env.LOG_LEVEL || 'info',
     output: process.env.LOG_OUTPUT || 'console',
-    includeContext: process.env.LOG_INCLUDE_CONTEXT || true,
     slowRequestThreshold: process.env.LOG_SLOW_REQUEST_THRESHOLD || 500,
     logDir: process.env.LOG_DIR || 'logs',
     maxFileSize: process.env.LOG_MAX_FILE_SIZE || 10,

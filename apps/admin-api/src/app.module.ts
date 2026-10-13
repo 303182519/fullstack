@@ -1,14 +1,13 @@
 import { Module } from '@nestjs/common'
 import { AppConfigModule } from '@/config/config.module.js';
-import { LoggerModule } from 'nestjs-pino'
+import { LoggerModule } from '@/shared/logger/logger.module.js';
 import { AppController } from './app.controller.js'
 import { AppService } from './app.service.js'
 
 @Module({
   imports: [
     AppConfigModule,
-    // 全局日志模块：pino 结构化日志，自动记录每个 HTTP 请求
-    LoggerModule.forRoot(),
+    LoggerModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -15,7 +15,6 @@ declare global {
       LOG_LEVEL: LoggerConfig['level'];
       LOG_OUTPUT: LoggerConfig['output'];
       LOG_SLOW_REQUEST_THRESHOLD: number;
-      LOG_INCLUDE_CONTEXT: boolean;
       LOG_DIR: string;
       LOG_MAX_FILE_SIZE: number;
       LOG_MAX_FILES: number;

@@ -21,7 +21,6 @@ export const validationSchema = Joi.object({
     .valid('trace', 'debug', 'info', 'warn', 'error', 'fatal', 'silent')
     .default('info'),
   LOG_JSON_FORMAT: Joi.boolean().default(true),
-  LOG_INCLUDE_CONTEXT: Joi.boolean().default(true),
   LOG_SLOW_REQUEST_THRESHOLD: Joi.number().integer().min(100).default(500),
   LOG_OUTPUT: Joi.string().valid('console', 'file').default('console'),
   LOG_DIR: Joi.string().default('logs'),
