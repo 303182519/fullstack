@@ -55,3 +55,4 @@ catalog:
   vite: ^8.0.0
   vitest: ^4.1.2
   es-toolkit: ^1.52.0
+  joi: ^18.2.9

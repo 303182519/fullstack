@@ -34,7 +34,8 @@
     "pino-http": "catalog:",
     "reflect-metadata": "catalog:",
     "rxjs": "catalog:",
-    "es-toolkit": "catalog:"
+    "es-toolkit": "catalog:",
+    "joi": "catalog:"
   },
   "devDependencies": {
     "@fedstack/eslint-config": "workspace:*",
