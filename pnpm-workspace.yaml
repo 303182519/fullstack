@@ -59,3 +59,5 @@ catalog:
   es-toolkit: ^1.52.0
   joi: ^18.2.9
   '@nestjs/swagger': ^12.0.2
+  cookie-parser: ^1.4.5
+  '@types/cookie-parser': ^1.4.5

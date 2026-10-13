@@ -27,33 +27,35 @@
     "@nestjs/config": "catalog:",
     "@nestjs/core": "catalog:",
     "@nestjs/platform-express": "catalog:",
+    "@nestjs/swagger": "catalog:",
     "class-transformer": "catalog:",
     "class-validator": "catalog:",
+    "cookie-parser": "catalog:",
+    "es-toolkit": "catalog:",
+    "joi": "catalog:",
     "nestjs-pino": "catalog:",
     "pino": "catalog:",
     "pino-http": "catalog:",
+    "pino-roll": "catalog:",
     "reflect-metadata": "catalog:",
-    "rxjs": "catalog:",
-    "es-toolkit": "catalog:",
-    "joi": "catalog:",
-    "@nestjs/swagger": "catalog:",
-    "pino-roll": "catalog:"
+    "rxjs": "catalog:"
   },
   "devDependencies": {
     "@fedstack/eslint-config": "workspace:*",
     "@nestjs/cli": "catalog:",
     "@nestjs/schematics": "catalog:",
     "@nestjs/testing": "catalog:",
+    "@types/cookie-parser": "catalog:",
     "@types/express": "catalog:",
     "@types/node": "catalog:",
     "@types/supertest": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "eslint": "catalog:",
+    "pino-pretty": "catalog:",
     "source-map-support": "catalog:",
     "supertest": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
-    "vitest": "catalog:",
-    "pino-pretty": "catalog:"
+    "vitest": "catalog:"
   }
 }

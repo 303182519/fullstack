@@ -36,6 +36,9 @@ catalogs:
     '@nestjs/testing':
       specifier: ^12.0.1
       version: 12.1.2
+    '@types/cookie-parser':
+      specifier: ^1.4.5
+      version: 1.4.10
     '@types/express':
       specifier: ^5.0.0
       version: 5.0.6
@@ -54,6 +57,9 @@ catalogs:
     class-validator:
       specifier: ^0.15.0
       version: 0.15.1
+    cookie-parser:
+      specifier: ^1.4.5
+      version: 1.4.7
     es-toolkit:
       specifier: ^1.52.0
       version: 1.52.0
@@ -151,6 +157,9 @@ importers:
       class-validator:
         specifier: 'catalog:'
         version: 0.15.1
+      cookie-parser:
+        specifier: 'catalog:'
+        version: 1.4.7
       es-toolkit:
         specifier: 'catalog:'
         version: 1.52.0
@@ -188,6 +197,9 @@ importers:
       '@nestjs/testing':
         specifier: 'catalog:'
         version: 12.1.2(@nestjs/common@12.1.2(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@12.1.2)(@nestjs/platform-express@12.1.2)
+      '@types/cookie-parser':
+        specifier: 'catalog:'
+        version: 1.4.10(@types/express@5.0.6)
       '@types/express':
         specifier: 'catalog:'
         version: 5.0.6
@@ -1343,6 +1355,11 @@ packages:
   '@types/connect@3.4.38':
     resolution: {integrity: sha512-K6uROf1LD88uDQqJCktA4yzL1YYAK6NgfsI0v/mTgyPKWsX1CnJ0XPSDhViejru1GcRkLWb8RlzFYJRqGUbaug==}
 
+  '@types/cookie-parser@1.4.10':
+    resolution: {integrity: sha512-B4xqkqfZ8Wek+rCOeRxsjMS9OgvzebEzzLYw7NHYuvzb7IdxOkI0ZHGgeEBX4PUM7QGVvNSK60T3OvWj3YfBRg==}
+    peerDependencies:
+      '@types/express': '*'
+
   '@types/cookiejar@2.1.5':
     resolution: {integrity: sha512-he+DHOWReW0nghN24E1WUqM0efK4kI9oTqDm6XmK8ZPe2djZ90BSNdGnIyCLzCPw7/pogPlGbzI2wHGGmi4O/Q==}
 
@@ -1810,6 +1827,13 @@ packages:
 
   convert-source-map@2.0.0:
     resolution: {integrity: sha512-Kvp459HrV2FEJ1CAsi1Ku+MY3kasH19TFykTz2xWmMeq6bk2NU3XXvfJ+Q61m0xktWwt+1HSYf3JZsTms3aRJg==}
+
+  cookie-parser@1.4.7:
+    resolution: {integrity: sha512-nGUvgXnotP3BsjiLX2ypbQnWoGUPIIfHQNZkkC668ntrzGWEZVW70HDEB1qnNGMicPje6EttlIgzo51YSwNQGw==}
+    engines: {node: '>= 0.8.0'}
+
+  cookie-signature@1.0.6:
+    resolution: {integrity: sha512-QADzlaHc8icV8I7vbaJXJwod9HWYp8uCqf1xa4OfNu1T7JVxQIrUgOWtHdNDtPiywmFbiS12VjotIXLrKM3orQ==}
 
   cookie-signature@1.2.2:
     resolution: {integrity: sha512-D76uU73ulSXrD1UXF4KE2TMxVVwhsnCgfAyTg9k8P6KGZjlXKrOLe4dJQKI3Bxi5wjesZoFXJWElNWBjPZMbhg==}
@@ -4723,6 +4747,10 @@ snapshots:
     dependencies:
       '@types/node': 24.19.2
 
+  '@types/cookie-parser@1.4.10(@types/express@5.0.6)':
+    dependencies:
+      '@types/express': 5.0.6
+
   '@types/cookiejar@2.1.5': {}
 
   '@types/debug@4.1.13':
@@ -4906,7 +4934,7 @@ snapshots:
       obug: 2.2.1
       std-env: 4.3.0
       tinyrainbow: 3.2.0
-      vitest: 4.1.11(@types/node@24.19.2)(@vitest/coverage-v8@4.1.11)(vite@8.3.4(@types/node@24.19.2)(yaml@2.9.1))
+      vitest: 4.1.11(@types/node@26.6.5)(@vitest/coverage-v8@4.1.11)(vite@8.3.4(@types/node@26.6.5)(yaml@2.9.1))
 
   '@vitest/eslint-plugin@1.6.27(@typescript-eslint/eslint-plugin@8.71.1(@typescript-eslint/parser@8.71.1(eslint@10.12.0)(typescript@6.0.3))(eslint@10.12.0)(typescript@6.0.3))(eslint@10.12.0)(typescript@6.0.3)(vitest@4.1.11)':
     dependencies:
@@ -4944,7 +4972,6 @@ snapshots:
       magic-string: 0.30.21
     optionalDependencies:
       vite: 8.3.4(@types/node@26.6.5)(yaml@2.9.1)
-    optional: true
 
   '@vitest/pretty-format@4.1.11':
     dependencies:
@@ -5227,6 +5254,13 @@ snapshots:
   convert-hrtime@5.0.0: {}
 
   convert-source-map@2.0.0: {}
+
+  cookie-parser@1.4.7:
+    dependencies:
+      cookie: 0.7.2
+      cookie-signature: 1.0.6
+
+  cookie-signature@1.0.6: {}
 
   cookie-signature@1.2.2: {}
 
@@ -7397,7 +7431,6 @@ snapshots:
       '@types/node': 26.6.5
       fsevents: 2.3.3
       yaml: 2.9.1
-    optional: true
 
   vitest@4.1.11(@types/node@24.19.2)(@vitest/coverage-v8@4.1.11)(vite@8.3.4(@types/node@24.19.2)(yaml@2.9.1)):
     dependencies:
@@ -7454,7 +7487,6 @@ snapshots:
       '@vitest/coverage-v8': 4.1.11(vitest@4.1.11)
     transitivePeerDependencies:
       - msw
-    optional: true
 
   vue-eslint-parser@10.4.1(eslint@10.12.0):
     dependencies:

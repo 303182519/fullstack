@@ -1,7 +1,7 @@
-import { AsyncLocalStorage } from 'async_hooks';
+import { AsyncLocalStorage } from 'node:async_hooks'
 
 // 缓存命中状态：X-Cache 响应头的取值
-export type CacheState = 'HIT' | 'MISS' | 'BYPASS';
+export type CacheState = 'HIT' | 'MISS' | 'BYPASS'
 
 /**
  * 请求级上下文（CLS / Continuation-Local Storage）。
@@ -22,36 +22,39 @@ export type CacheState = 'HIT' | 'MISS' | 'BYPASS';
  * 只是存储后端从 Express 的 req 换成了 Node 的 ALS（因为这里写状态的是 service，而 service 看不到 req）。
  */
 interface RequestContext {
-  cache?: CacheState;
-  cacheKey?: string;
+  cache?: CacheState
+  cacheKey?: string
   // 请求级 requestId。和 cache 一样存在 CLS 里——这样「看不到 req 的深层代码」
   // （service / 定时任务回调）也能凭 CLS 把日志关联到当前请求。pino 的 mixin 正是读它。
-  requestId?: string;
+  requestId?: string
   // 请求级业务码。异常过滤器在拒绝/失败请求时写入，同样由 pino 的 mixin 注入日志——
   // 这样「响应结束的那条访问日志」就能带上业务码，4xx 不必再单独打一条日志。
-  bizCode?: string;
+  bizCode?: string
 }
 
-export const requestContextStorage = new AsyncLocalStorage<RequestContext>();
+export const requestContextStorage = new AsyncLocalStorage<RequestContext>()
 
 /** 读当前请求的上下文（没有上下文时返回空对象，调用方可安全读字段）。 */
 export function getRequestContext(): RequestContext {
-  return requestContextStorage.getStore() ?? {};
+  return requestContextStorage.getStore() ?? {}
 }
 
 /** service 用：把这次读的缓存命中状态写进当前请求的上下文。 */
 export function setCacheState(state: CacheState, key?: string): void {
-  const store = requestContextStorage.getStore();
-  if (!store) return; // 没有请求上下文（比如单元测试直接调 service）——直接忽略，不影响业务
-  store.cache = state;
-  if (key) store.cacheKey = key;
+  const store = requestContextStorage.getStore()
+  if (!store)
+    return // 没有请求上下文（比如单元测试直接调 service）——直接忽略，不影响业务
+  store.cache = state
+  if (key)
+    store.cacheKey = key
 }
 
 /** 把当前请求的 requestId 写进 CLS（由 RequestIdMiddleware 调用）。 */
 export function setRequestId(requestId: string): void {
-  const store = requestContextStorage.getStore();
-  if (!store) return; // 没有请求上下文——忽略（和 setCacheState 同样的降级哲学）
-  store.requestId = requestId;
+  const store = requestContextStorage.getStore()
+  if (!store)
+    return // 没有请求上下文——忽略（和 setCacheState 同样的降级哲学）
+  store.requestId = requestId
 }
 
 /**
@@ -62,7 +65,8 @@ export function setRequestId(requestId: string): void {
  * ——否则同一请求会同时出现「异常过滤器 warn」与「访问日志 warn」两条重复记录。
  */
 export function setBizCode(bizCode: string): void {
-  const store = requestContextStorage.getStore();
-  if (!store) return; // 没有请求上下文——忽略（和 setRequestId 同样的降级哲学）
-  store.bizCode = bizCode;
+  const store = requestContextStorage.getStore()
+  if (!store)
+    return // 没有请求上下文——忽略（和 setRequestId 同样的降级哲学）
+  store.bizCode = bizCode
 }
