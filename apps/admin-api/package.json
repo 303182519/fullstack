@@ -35,7 +35,8 @@
     "reflect-metadata": "catalog:",
     "rxjs": "catalog:",
     "es-toolkit": "catalog:",
-    "joi": "catalog:"
+    "joi": "catalog:",
+    "@nestjs/swagger": "catalog:"
   },
   "devDependencies": {
     "@fedstack/eslint-config": "workspace:*",

@@ -7,6 +7,9 @@ import { AppModule } from './app.module.js'
 import { getAppConfig } from '@/config/configuration.js';
 import { IsDev } from '@/common/constants/environment.js';
 import { initSnowflake } from '@/shared/utils/snowflake.js';
+import { useSwagger } from '@/shared/utils/swagger.js';
+
+
 
 async function bootstrap() {
   // bufferLogs：启动早期日志先缓存，等 useLogger 桥接后再统一输出，避免丢失启动日志
@@ -48,6 +51,8 @@ async function bootstrap() {
     type: VersioningType.URI,
   });
 
+  // 开启 Swagger 文档
+  useSwagger(app);
 
 
 
