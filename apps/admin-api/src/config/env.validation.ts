@@ -16,4 +16,15 @@ export const validationSchema = Joi.object({
   WORKER_ID: Joi.number().integer().min(0).max(31).default(0),
   DATACENTER_ID: Joi.number().integer().min(0).max(31).default(0),
 
+  // Pino Logger (日志)
+  LOG_LEVEL: Joi.string()
+    .valid('trace', 'debug', 'info', 'warn', 'error', 'fatal', 'silent')
+    .default('info'),
+  LOG_JSON_FORMAT: Joi.boolean().default(true),
+  LOG_INCLUDE_CONTEXT: Joi.boolean().default(true),
+  LOG_SLOW_REQUEST_THRESHOLD: Joi.number().integer().min(100).default(500),
+  LOG_OUTPUT: Joi.string().valid('console', 'file').default('console'),
+  LOG_DIR: Joi.string().default('logs'),
+  LOG_MAX_FILE_SIZE: Joi.number().integer().min(1).default(10),
+  LOG_MAX_FILES: Joi.number().integer().min(0).default(7),
 })
