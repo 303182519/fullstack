@@ -18,6 +18,10 @@
     "reference-langchain": {
       "type": "http",
       "url": "https://reference.langchain.com/mcp"
+    },
+    "Prisma-Remote": {
+      "type": "http",
+      "url": "https://mcp.prisma.io/mcp"
     }
   }
 }
