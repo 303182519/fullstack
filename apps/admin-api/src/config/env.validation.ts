@@ -1,10 +1,10 @@
-import * as Joi from 'joi';
+import Joi from 'joi';
 
 export const validationSchema = Joi.object({
   // Server
-  PORT: Joi.number().port(),
+  PORT: Joi.number().port().default(3001),
 
-  // Swagger
+   // Swagger
   SWAGGER_OPEN: Joi.boolean().default(true),
 
   // JWT

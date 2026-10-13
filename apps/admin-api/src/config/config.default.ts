@@ -4,7 +4,7 @@ import { AppConfig } from './configuration.interface.js';
 
 export const defaultConfig = registerAs('default', (): AppConfig => ({
   server: {
-    port: process.env.PORT || 3000,
+    port: process.env.PORT || 3001,
     apiPrefix: 'api',
     // 服务超时时间，单位：秒
     timeout: 10,

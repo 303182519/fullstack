@@ -1,9 +1,12 @@
-import { Logger, ValidationPipe } from '@nestjs/common'
+import { Logger, VersioningType } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { NestFactory } from '@nestjs/core'
 import { NestExpressApplication } from '@nestjs/platform-express'
 import { Logger as PinoLogger } from 'nestjs-pino'
 import { AppModule } from './app.module.js'
+import { getAppConfig } from '@/config/configuration.js';
+import { IsDev } from '@/common/constants/environment.js';
+import { initSnowflake } from '@/shared/utils/snowflake.js';
 
 async function bootstrap() {
   // bufferLogs：启动早期日志先缓存，等 useLogger 桥接后再统一输出，避免丢失启动日志
@@ -11,8 +14,25 @@ async function bootstrap() {
     bufferLogs: true,
   })
 
+  if (IsDev) {
+    // 本地开发环境开启跨域，生产环境关闭，原因：生产环境需要在Nginx后开启跨域，Nginx会自动处理跨域问题
+    app.enableCors({
+      origin: ['http://localhost:3003'],
+      methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+      allowedHeaders: ['Content-Type', 'Authorization'],
+      credentials: true, // 允许携带cookie凭证
+    });
+  }
+
   // 使用 Pino Logger
   app.useLogger(app.get(PinoLogger))
+
+  // 获取配置
+  const appConfig = getAppConfig(app);
+  const { server, swagger, snowflake } = appConfig;
+
+  // 初始化雪花Id
+  initSnowflake(BigInt(snowflake.workerId), BigInt(snowflake.datacenterId));
 
   // 下面的配置根据实际情况选择开启, 只有确定请求一定经过你可控的代理（Nginx / 负载均衡），才打开这个配置。
   // 没有代理，直接对外：trust proxy: false（默认）
@@ -21,14 +41,16 @@ async function bootstrap() {
   // 2. 跨机器部署 Nginx (192.168.200.128) → Nest
   // app.set('trust proxy', ['192.168.200.128']); // 信任来自Nginx的请求
 
-  // 全局校验管道：自动剥离未声明字段、类型转换、拒绝非法入参
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true,
-      transform: true,
-      forbidNonWhitelisted: true,
-    }),
-  )
+  // 设置api前缀
+  app.setGlobalPrefix(server.apiPrefix);
+  // 开启http请求版本控制
+  app.enableVersioning({
+    type: VersioningType.URI,
+  });
+
+
+
+
   // 优雅关闭：配合生命周期钩子释放数据库连接等资源
   app.enableShutdownHooks()
 
@@ -36,7 +58,15 @@ async function bootstrap() {
   const port = app.get(ConfigService).get<number>('PORT', 3001)
   await app.listen(port)
 
-  new Logger('Bootstrap').log(`Admin API 服务已启动: http://localhost:${port}`)
+
+  const serverUrl = `http://127.0.0.1:${server.port}`;
+
+  const logger = new Logger('Bootstrap');
+  // 不再手工拼接 ANSI 颜色码：日志已统一走 pino，生产环境是 JSON（颜色码会变成噪声），
+  // 开发环境的着色由 pino-pretty 负责。
+  logger.log(`NODE_ENV: ${process.env.NODE_ENV}`);
+  logger.log(`Application is running on: ${serverUrl}`);
+  logger.log(`Swagger is running on: ${serverUrl}/${swagger.path}`);
 }
 
 void bootstrap()
