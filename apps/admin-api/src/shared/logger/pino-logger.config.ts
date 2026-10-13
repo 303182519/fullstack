@@ -22,6 +22,27 @@ function isHealthProbe(url: string | undefined): boolean {
   return HEALTH_PATHS.has(pathname);
 }
 
+
+/**
+ * 是否流式响应（SSE）。
+ *
+ * 为什么必须单独判定：SSE 的 `responseTime` 是「连接生命周期时长」而不是「服务端处理耗时」——
+ * 客户端按设计长期挂着连接（直到任务进入终态或主动断开），因此每次结束都必然超过
+ * `LOG_SLOW_REQUEST_THRESHOLD` 而被标 `[SLOW]`，把真正的慢请求彻底淹没
+ * （踩坑案例：`GET /api/jobs/:id/events` 正常断开也报 200 + `[SLOW]`）。
+ *
+ * 按响应头判定而不是硬编码路径：新增 SSE 端点只要正常设置 `Content-Type: text/event-stream`
+ * 即自动生效；`res.getHeader` 在响应结束（finish / close）时仍可读到已发送的头。
+ */
+function isEventStreamResponse(res: ServerResponse): boolean {
+  const contentType = res.getHeader('content-type');
+  if (contentType === undefined) return false;
+  const value = Array.isArray(contentType)
+    ? contentType.join(';')
+    : String(contentType);
+  return value.toLowerCase().includes('text/event-stream');
+}
+
 interface NormalizedRequest {
   method?: string;
   url?: string;
@@ -118,6 +139,7 @@ export function createPinoConfig(
 				ignore: (req: IncomingMessage): boolean => isHealthProbe(req.url),
       },
 			transport: { targets },
+			// 自定义属性键名
 			customAttributeKeys: {
 				req: 'request',
 				res: 'response',
@@ -150,6 +172,41 @@ export function createPinoConfig(
 				// pino-http 只会把 errKey（按 customAttributeKeys 为 'error'）写进 serializers，
 				// 不会占用 'err' 键，因此这里注册 'err' 与访问日志的 'error' 互不干扰。
 				err: stdSerializers.err,
+			},
+			// 5xx=error、4xx=warn、其余=info。
+			// 注意：customLogLevel 会同时被「请求到达」和「响应结束」两个时点调用，
+			// 这里之所以能只按响应结束时序判断，正是因为上面没有开启「请求到达」日志。
+			// 若将来要重新引入到达日志，必须重新区分两个时点，否则到达日志会被判成 warn。
+			customLogLevel: (
+				_req: IncomingMessage,
+				res: ServerResponse,
+				error?: Error,
+			) => {
+				if (error || res.statusCode >= 500) return 'error';
+				if (res.statusCode >= 400) return 'warn';
+				// 响应未正常结束 = 连接被客户端中断 / 超时，升到 warn 便于排查
+				if (!res.writableEnded) return 'warn';
+				return 'info';
+			},
+			customSuccessMessage: (
+				req: IncomingMessage,
+				res: ServerResponse,
+				responseTime: number,
+			) => {
+				// 流式响应（SSE）不参与慢请求判定：它的 responseTime 是连接时长而非处理耗时，
+				// 否则每次正常断开都会产出 [SLOW]，把慢请求告警淹没（见 isEventStreamResponse）。
+				const slow =
+					!isEventStreamResponse(res) &&
+					responseTime > loggerConfig.slowRequestThreshold;
+				const suffix = slow ? ' [SLOW]' : '';
+				return `HTTP ${req.method} ${sanitizeUrl(req.url ?? '')} ${res.statusCode} - ${responseTime}ms${suffix}`;
+			},
+			customErrorMessage: (
+				req: IncomingMessage,
+				res: ServerResponse,
+				error: Error,
+			) => {
+				return `HTTP ${req.method} ${sanitizeUrl(req.url ?? '')} ${res.statusCode} - ERROR: ${error.message}`;
 			},
 			mixin: ()=> {
 				const { requestId, bizCode } = getRequestContext();
