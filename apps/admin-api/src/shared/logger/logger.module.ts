@@ -1,9 +1,11 @@
-import type { Params } from 'nestjs-pino'
-import { Global, Module } from '@nestjs/common'
-import { ConfigService } from '@nestjs/config'
-import { LoggerModule as PinoLoggerModule } from 'nestjs-pino'
+import type { Params } from 'nestjs-pino';
+import type { AppClsStore } from '@/common/context/cls-store.js';
+import { Global, Module } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { ClsService } from 'nestjs-cls';
+import { LoggerModule as PinoLoggerModule } from 'nestjs-pino';
 
-import { createPinoConfig } from './pino-logger.config.js'
+import { createPinoConfig } from './pino-logger.config.js';
 
 /**
  * 企业级 Pino 日志模块
@@ -20,9 +22,9 @@ import { createPinoConfig } from './pino-logger.config.js'
 @Module({
   imports: [
     PinoLoggerModule.forRootAsync({
-      inject: [ConfigService],
-      useFactory: (configService: ConfigService): Params => {
-        return createPinoConfig(configService)
+      inject: [ConfigService, ClsService],
+      useFactory: (configService: ConfigService, cls: ClsService<AppClsStore>): Params => {
+        return createPinoConfig(configService, cls);
       },
     }),
   ],

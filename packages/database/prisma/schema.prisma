@@ -14,3 +14,14 @@ generator client {
 datasource db {
   provider = "mysql"
 }
+
+model User {
+  id        BigInt    @id // 不要写 @default(autoincrement())：主键由代码层雪花算法生成
+  createdAt DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt DateTime? @map("deleted_at") @db.DateTime(3) // 软删除：null=未删除，有值=删除时间
+
+  email    String? @unique @db.VarChar(255) // 可空：OAuth 用户（如微信）可能无邮箱；非 NULL 值仍互斥，邮箱注册防重不变
+  username String  @unique @db.VarChar(100)
+  password String? @db.VarChar(255) // 可空：OAuth 用户可能无密码；有值时存哈希
+}
