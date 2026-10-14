@@ -16,7 +16,7 @@
       "env": ["APP_ENV", "API_BASE_URL"],
       "outputs": ["dist/**"]
     },
-    "@repo/database#build": {
+    "@fedstack/database#build": {
       "dependsOn": ["^build"],
       "outputs": ["dist/**", "generated/prisma/**"]
     },
