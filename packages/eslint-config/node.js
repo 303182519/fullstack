@@ -10,6 +10,10 @@ export function node(options = {}) {
     astro: false,
     formatters: true,
     stylistic: { indent: 2, quotes: 'single', semi: true, endOfLine: 'lf' },
+    rules: {
+      // 后端允许直接使用全局 process（process.env 等），不强制 import from 'node:process'
+      'node/prefer-global/process': 'off',
+    },
     overrides: {
       typescript: {
         // NestJS 大量使用 class 形式定义 DTO / Controller / Provider

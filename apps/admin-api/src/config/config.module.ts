@@ -1,6 +1,6 @@
-import { IsProduction } from '@/common/constants/environment.js';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { IsProduction } from '@/common/constants/environment.js';
 import { defaultConfig } from './config.default.js';
 import { validationSchema } from './env.validation.js';
 import { developmentConfig } from './env/config.development.js';

@@ -1,8 +1,7 @@
 import { registerAs } from '@nestjs/config';
-import { 
-  AppConfig, 
+import {
+  AppConfig,
 } from './configuration.interface.js';
-
 
 export const defaultConfig = registerAs('default', (): AppConfig => ({
   server: {
