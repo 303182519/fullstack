@@ -28,6 +28,8 @@ export const validationSchema = Joi.object({
     .default('info'),
   LOG_JSON_FORMAT: Joi.boolean().default(true),
   LOG_SLOW_REQUEST_THRESHOLD: Joi.number().integer().min(100).default(500),
+  // 慢查询阈值（毫秒）：单条 SQL 耗时达到该值即打印 [SLOW_QUERY] 日志
+  LOG_SLOW_QUERY_THRESHOLD: Joi.number().integer().min(1).default(500),
   LOG_OUTPUT: Joi.string().valid('console', 'file').default('console'),
   LOG_DIR: Joi.string().default('logs'),
   LOG_MAX_FILE_SIZE: Joi.number().integer().min(1).default(10),

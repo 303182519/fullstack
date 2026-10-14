@@ -36,6 +36,9 @@ export const defaultConfig = registerAs('default', (): AppConfig => ({
     level: process.env.LOG_LEVEL || 'info',
     output: process.env.LOG_OUTPUT || 'console',
     slowRequestThreshold: process.env.LOG_SLOW_REQUEST_THRESHOLD || 500,
+    // 与 slowRequestThreshold 分开：单条 SQL 的耗时口径不同于整个 HTTP 请求。
+    // 经 Joi 校验回写后 process.env 中的数值会变成字符串，此处强制转 number。
+    slowQueryThreshold: Number(process.env.LOG_SLOW_QUERY_THRESHOLD) || 500,
     logDir: process.env.LOG_DIR || 'logs',
     maxFileSize: process.env.LOG_MAX_FILE_SIZE || 10,
     maxFiles: process.env.LOG_MAX_FILES || 7,

@@ -60,6 +60,12 @@ export interface LoggerConfig {
    * 慢请求告警请在采集侧按 `[SLOW]` / `responseTime` 字段配置，不要复用 warn 级别。
    */
   slowRequestThreshold?: number;
+  /**
+   * 慢查询阈值（毫秒）：单条数据库查询耗时达到此值时，PrismaService 打印 `[SLOW_QUERY]` 日志。
+   * 注意：与 `slowRequestThreshold` 独立配置——一条 SQL 的耗时口径与整个 HTTP 请求不同，
+   * 复用同一阈值会互相干扰。
+   */
+  slowQueryThreshold?: number;
   /** 日志输出目标：console = 控制台，file = 文件 */
   output?: 'console' | 'file';
   /** 日志文件目录（仅在 file 模式下生效） */
