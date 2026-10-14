@@ -1,7 +1,6 @@
-import type { ClsService } from 'nestjs-cls';
 import type { Params } from 'nestjs-pino';
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import type { AppClsStore } from '@/common/context/cls-store.js';
+import type { RequestContextService } from '@/common/context/request-context.service.js';
 import { ConfigService } from '@nestjs/config';
 import { stdSerializers } from 'pino';
 import { resolveRequestId } from '@/common/request-id.js';
@@ -56,7 +55,7 @@ interface NormalizedRequest {
  */
 export function createPinoConfig(
   configService: ConfigService,
-  cls: ClsService<AppClsStore>,
+  requestContext: RequestContextService,
 ): Params {
   const loggerConfig = getConfig(configService).logger || {};
   const wantConsole = loggerConfig.output === 'console';
@@ -214,18 +213,17 @@ export function createPinoConfig(
         return `HTTP ${req.method} ${sanitizeUrl(req.url ?? '')} ${res.statusCode} - ERROR: ${error.message}`;
       },
       mixin: () => {
-        // 请求级字段（requestId / bizCode）现在统一存放在 nestjs-cls 的 CLS store 里
-        // （ADR-005 迁移后不再有独立的 request-context.ts）。mixin 在无请求上下文时
-        // （启动日志、定时任务等）也必须安全：先判 isActive，避免读到未建立的上下文。
+        // 请求级字段（requestId / bizCode）统一经 RequestContextService 门面读取：
+        // 门面是全应用访问 CLS 的唯一入口（见其类注释），logger 不该绕过它直接读
+        // ClsService 或 store 的原始 key。门面的读方法在无请求上下文时返回 undefined
+        // 且不会抛（get 走可选链），因此启动日志 / 定时任务等场景无需再做 isActive 判断。
         const props: Record<string, string> = {};
-        if (cls.isActive()) {
-          const requestId = cls.getId();
-          if (requestId)
-            props.requestId = requestId;
-          const bizCode = cls.get('bizCode');
-          if (bizCode)
-            props.bizCode = bizCode;
-        }
+        const requestId = requestContext.getRequestId();
+        if (requestId)
+          props.requestId = requestId;
+        const bizCode = requestContext.getBizCode();
+        if (bizCode)
+          props.bizCode = bizCode;
         return props;
       },
     },

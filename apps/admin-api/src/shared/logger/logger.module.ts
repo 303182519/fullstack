@@ -1,9 +1,8 @@
 import type { Params } from 'nestjs-pino';
-import type { AppClsStore } from '@/common/context/cls-store.js';
 import { Global, Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { ClsService } from 'nestjs-cls';
 import { LoggerModule as PinoLoggerModule } from 'nestjs-pino';
+import { RequestContextService } from '@/common/context/request-context.service.js';
 
 import { createPinoConfig } from './pino-logger.config.js';
 
@@ -22,9 +21,9 @@ import { createPinoConfig } from './pino-logger.config.js';
 @Module({
   imports: [
     PinoLoggerModule.forRootAsync({
-      inject: [ConfigService, ClsService],
-      useFactory: (configService: ConfigService, cls: ClsService<AppClsStore>): Params => {
-        return createPinoConfig(configService, cls);
+      inject: [ConfigService, RequestContextService],
+      useFactory: (configService: ConfigService, requestContext: RequestContextService): Params => {
+        return createPinoConfig(configService, requestContext);
       },
     }),
   ],
