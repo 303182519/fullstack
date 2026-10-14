@@ -56,6 +56,5 @@
       "args": []
     }
   },
-  "terminal.integrated.defaultProfile.windows": "Git Bash",
-  "prisma.pinToPrisma6": true
+  "terminal.integrated.defaultProfile.windows": "Git Bash"
 }

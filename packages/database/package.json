@@ -1,0 +1,33 @@
+{
+  "name": "@fedstack/database",
+  "type": "module",
+  "version": "0.0.1",
+  "private": true,
+  "description": "企业级共享持久化层：Prisma schema、迁移与 Prisma Client",
+  "license": "UNLICENSED",
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "import": "./dist/src/index.js"
+    }
+  },
+  "scripts": {
+    "build": "prisma generate && tsc -p tsconfig.json",
+    "typecheck": "prisma generate && tsc --noEmit -p tsconfig.json",
+    "db:generate": "prisma generate",
+    "db:migrate:dev": "prisma migrate dev",
+    "db:migrate:deploy": "prisma migrate deploy",
+    "db:status": "prisma migrate status",
+    "db:studio": "prisma studio",
+    "clean": "node -e \"fs.rmSync('dist', { recursive: true, force: true }); fs.rmSync('generated', { recursive: true, force: true })\""
+  },
+  "dependencies": {
+    "@prisma/adapter-mariadb": "catalog:",
+    "@prisma/client": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "prisma": "catalog:",
+    "typescript": "catalog:"
+  }
+}

@@ -1,8 +1,9 @@
-import { Module } from '@nestjs/common'
-import { ConfigModule } from '@nestjs/config'
-import { LoggerModule } from 'nestjs-pino'
-import { AppController } from './app.controller.js'
-import { AppService } from './app.service.js'
+import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
+import { LoggerModule } from 'nestjs-pino';
+import { AppController } from './app.controller.js';
+import { AppService } from './app.service.js';
+import { PrismaModule } from './shared/database/prisma.module.js';
 
 @Module({
   imports: [
@@ -10,6 +11,7 @@ import { AppService } from './app.service.js'
     ConfigModule.forRoot({ isGlobal: true }),
     // 全局日志模块：pino 结构化日志，自动记录每个 HTTP 请求
     LoggerModule.forRoot(),
+    PrismaModule,
   ],
   controllers: [AppController],
   providers: [AppService],

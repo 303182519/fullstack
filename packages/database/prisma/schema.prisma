@@ -1,0 +1,16 @@
+// 共享持久化层的单一 schema 真相源。
+//
+// 约定：
+// - 数据源 url 不在 schema 中声明，统一由 prisma7.config.ts 从环境变量注入（Prisma 7 约定）。
+// - 生成产物输出到包根 generated/prisma（已被根 .gitignore 忽略），再由本包编译进 dist。
+// - 数据模型在此集中定义，两个服务（api / admin-api）共用；业务查询不得写入本包。
+// - 迁移历史（prisma/migrations）是线性的，只能由本包生成与执行，服务进程禁止触发迁移。
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}

@@ -16,6 +16,12 @@ export const validationSchema = Joi.object({
   WORKER_ID: Joi.number().integer().min(0).max(31).default(0),
   DATACENTER_ID: Joi.number().integer().min(0).max(31).default(0),
 
+  // Database (MySQL)
+  // 连接串格式：mysql://USER:PASSWORD@HOST:PORT/DATABASE
+  DATABASE_URL: Joi.string().required(),
+  // 单进程连接池上限：两个服务各自持有一个连接池，两者之和需明显小于 MySQL max_connections
+  DB_CONNECTION_LIMIT: Joi.number().integer().min(1).default(10),
+
   // Pino Logger (日志)
   LOG_LEVEL: Joi.string()
     .valid('trace', 'debug', 'info', 'warn', 'error', 'fatal', 'silent')
