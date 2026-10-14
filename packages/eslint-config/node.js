@@ -9,7 +9,7 @@ export function node(options = {}) {
     unocss: false,
     astro: false,
     formatters: true,
-    stylistic: { indent: 2, quotes: 'single', semi: false },
+    stylistic: { indent: 2, quotes: 'single', semi: true, endOfLine: 'lf' },
     overrides: {
       typescript: {
         // NestJS 大量使用 class 形式定义 DTO / Controller / Provider

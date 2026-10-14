@@ -10,7 +10,7 @@ export function react(options = {}) {
     unocss: false,
     astro: false,
     formatters: true,
-    stylistic: { indent: 2, quotes: 'single', semi: false },
+    stylistic: { indent: 2, quotes: 'single', semi: true, endOfLine: 'lf' },
     ignores: [
       '**/dist/**',
       '**/node_modules/**',

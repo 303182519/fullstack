@@ -9,7 +9,7 @@ export function base(options = {}) {
     unocss: false,
     astro: false,
     formatters: { css: true, html: true, markdown: true, yaml: true },
-    stylistic: { indent: 2, quotes: 'single', semi: false },
+    stylistic: { indent: 2, quotes: 'single', semi: true, endOfLine: 'lf' },
     ignores: [
       '**/dist/**',
       '**/node_modules/**',
