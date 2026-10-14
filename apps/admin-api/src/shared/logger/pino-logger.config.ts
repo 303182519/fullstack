@@ -213,14 +213,17 @@ export function createPinoConfig(
         return `HTTP ${req.method} ${sanitizeUrl(req.url ?? '')} ${res.statusCode} - ERROR: ${error.message}`;
       },
       mixin: () => {
-        // 请求级字段（requestId / bizCode）统一经 RequestContextService 门面读取：
+        // 请求级字段统一经 RequestContextService 门面读取：
         // 门面是全应用访问 CLS 的唯一入口（见其类注释），logger 不该绕过它直接读
         // ClsService 或 store 的原始 key。门面的读方法在无请求上下文时返回 undefined
         // 且不会抛（get 走可选链），因此启动日志 / 定时任务等场景无需再做 isActive 判断。
+        //
+        // 这里不再补 requestId：它已由 pino-http 的 quietReqLogger child 作为 logger
+        // bindings 绑定（见上面 customAttributeKeys.reqId），HTTP 请求内的日志（含
+        // nestjs-pino 按 storage 解析的 req.log / res.log）都自带该字段。此处再返回一次
+        // 会让同一条日志输出两个同名 JSON key：值虽然相同，但 JSON.parse 只保留后者，
+        // 且会违反「顶层只出现 requestId」的字段契约。
         const props: Record<string, string> = {};
-        const requestId = requestContext.getRequestId();
-        if (requestId)
-          props.requestId = requestId;
         const bizCode = requestContext.getBizCode();
         if (bizCode)
           props.bizCode = bizCode;
