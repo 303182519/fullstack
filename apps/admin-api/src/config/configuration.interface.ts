@@ -29,13 +29,23 @@ export interface JwtConfig {
   refreshExpiresIn?: number;
 }
 
+export interface DatabaseConfig {
+  /** MySQL 连接串，形如 mysql://USER:PASSWORD@HOST:PORT/DATABASE */
+  url?: string;
+  /**
+   * 单进程连接池上限。
+   *
+   * 注意：api 与 admin-api 各自持有一个连接池，两者上限之和需明显小于 MySQL max_connections。
+   */
+  connectionLimit?: number;
+}
+
 export interface SnowflakeConfig {
   /** 工作节点 ID，范围 0-31 */
   workerId: number;
   /** 数据中心 ID，范围 0-31 */
   datacenterId: number;
 }
-
 
 export interface LoggerConfig {
   /** 日志级别：trace < debug < info < warn < error < fatal */
@@ -60,15 +70,15 @@ export interface LoggerConfig {
   maxFiles?: number;
 }
 
-
-
 export interface AppConfig {
-   /** HTTP 服务配置 */
+  /** HTTP 服务配置 */
   server?: ServerConfig;
   /** Swagger 文档配置 */
   swagger?: SwaggerConfig;
-   /** JWT 鉴权配置 */
+  /** JWT 鉴权配置 */
   jwt?: JwtConfig;
+  /** 数据库（MySQL）配置 */
+  database?: DatabaseConfig;
   /** 雪花 ID 配置 */
   snowflake?: SnowflakeConfig;
   /** 日志配置 */

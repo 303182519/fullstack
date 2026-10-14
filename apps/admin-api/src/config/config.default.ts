@@ -22,6 +22,12 @@ export const defaultConfig = registerAs('default', (): AppConfig => ({
     accessExpiresIn: process.env.JWT_ACCESS_EXPIRES_IN || 900, // 15 分钟
     refreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || 604800, // 7 天
   },
+  database: {
+    // 既被运行时读取，也是 Prisma CLI（migrate/generate）执行迁移所必需的变量
+    url: process.env.DATABASE_URL,
+    // 经 Joi 校验回写后 process.env 中的数值会变成字符串，此处强制转 number
+    connectionLimit: Number(process.env.DB_CONNECTION_LIMIT) || 10,
+  },
   snowflake: {
     workerId: process.env.WORKER_ID || 0,
     datacenterId: process.env.DATACENTER_ID || 0,
