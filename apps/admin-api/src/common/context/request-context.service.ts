@@ -4,7 +4,7 @@ import { Injectable } from '@nestjs/common';
 import { ClsService } from 'nestjs-cls';
 
 /**
- * 请求上下文门面（ADR-005）。
+ * 请求上下文门面。
  *
  * 这是全应用访问请求上下文（CLS）的**唯一入口**：业务代码 / 拦截器 / 过滤器都应注入本门面，
  * 而不是直接依赖 nestjs-cls 的 `ClsService` 字符串 key，避免上下文 key 在 30+ 处散落。
