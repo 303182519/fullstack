@@ -83,7 +83,6 @@ function fallbackBizCode(status: HttpStatus): string {
 
 /**
  * 从 X-Request-Id 请求头中提取链路 ID
- * ClsMiddleware（ADR-005）在 setup 里保证每个请求都会携带该头（上游未带时自动生成）
  */
 function resolveRequestId(headers: Request['headers']): string | undefined {
   const value = headers['x-request-id'];
@@ -182,7 +181,6 @@ export class GlobalExceptionsFilter implements ExceptionFilter {
       responseBody.bizCode = fallbackBizCode(responseBody.code);
     }
 
-    // 每个请求只保留「响应结束的那条访问日志」作为权威记录（ADR-002）。
     // HTTP 维度（request.method / request.url / response.statusCode / responseTime）
     // 只由访问日志承载，异常过滤器不再重复输出，避免同一维度出现两套字段路径。
     // 这里只把业务码交给 CLS，由 pino 的 mixin 注入到那条访问日志的顶层 `bizCode` 上——
