@@ -74,7 +74,7 @@ export class RequestContextService {
    * 读当前请求的 requestId；无上下文时返回 undefined。
    *
    * requestId 不再单独存进 store 的字符串 key：它由 ClsMiddleware 的
-   * `generateId` + `idGenerator` 生成并存入 CLS_ID，统一用 `cls.getId()` 读取（ADR-005）。
+   * `generateId` + `idGenerator` 生成并存入 CLS_ID，统一用 `cls.getId()`
    */
   getRequestId(): string | undefined {
     return this.cls.isActive() ? this.cls.getId() : undefined;

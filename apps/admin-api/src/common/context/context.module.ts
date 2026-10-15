@@ -9,7 +9,7 @@ import { resolveRequestId } from '../request-id.js';
 import { RequestContextService } from './request-context.service.js';
 
 /**
- * 请求上下文基础设施模块（ADR-005）。
+ * 请求上下文基础设施模块。
  *
  * 职责：
  * - 以 nestjs-cls 的 `ClsMiddleware`（`mount: true`）替换原手写 RequestContextMiddleware，
@@ -17,7 +17,7 @@ import { RequestContextService } from './request-context.service.js';
  *   ExceptionFilter 全链路可用（本仓库在 Guard 里按用户限流、在 ExceptionFilter 里写 bizCode）；
  * - 通过 `@Global()` 暴露门面 RequestContextService，供全应用注入。
  *
- * requestId 落点（ADR-005「方案 B」）：启用 nestjs-cls 自带 id 生成（`generateId`），
+ * 启用 nestjs-cls 自带 id 生成（`generateId`），
  * `idGenerator` 直接复用 `resolveRequestId()`，并在 `setup` 里把同一个 id 写回
  * `req.id` / 请求头 / 响应头三个落点。这样 id 的生成与 pino-http 的 `genReqId` 共用同一解析
  * 函数，两侧必然落在同一个值上——属性上等价于原来的 RequestIdMiddleware，故不再需要它。

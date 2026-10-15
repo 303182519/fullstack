@@ -3,8 +3,6 @@ import type { ClsStore } from 'nestjs-cls';
 
 /**
  * 缓存命中状态：X-Cache 响应头的取值。
- *
- * 原先是 request-context.ts 的独立导出，随上下文基础设施迁移（ADR-005）收拢到此处。
  */
 export type CacheState = 'HIT' | 'MISS' | 'BYPASS';
 
@@ -15,7 +13,7 @@ export type CacheState = 'HIT' | 'MISS' | 'BYPASS';
  * requestId / bizCode）与用户上下文（User）。迁移后统一为 nestjs-cls 的单一 store，
  * 两类状态共存于同一个请求上下文，故合并声明在此。
  * 例外：requestId 不在此 store 里另设字符串 key —— 它由 ClsMiddleware 的
- * generateId/idGenerator 存入 CLS_ID，统一经 `ClsService.getId()` 读取（见 ADR-005）。
+ * generateId/idGenerator 存入 CLS_ID，统一经 `ClsService.getId()`
  */
 export interface AppClsStore extends ClsStore {
   /**
