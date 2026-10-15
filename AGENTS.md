@@ -398,3 +398,17 @@ AI 代理**禁止输出内部思考推理链路**。
 | 功能推理排查流程（协议） | `.rules/protocols/feature.md`                     | 功能推理排查流程相关规范 |
 | 重构推理协议（协议）     | `.rules/protocols/refactor.md`                    | 重构推理协议相关规范     |
 | 架构决策记录模版         | `docs/architecture/decisions/ADR-000-template.md` | 架构决策记录模版规范     |
+
+## Agent skills
+
+### Issue tracker
+
+Issues 与 specs 以本地 Markdown 文件存放在 `.scratch/` 下。See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+使用默认五个 triage role 字符串（`needs-triage` / `needs-info` / `ready-for-agent` / `ready-for-human` / `wontfix`），记录在 issue 文件的 `Status:` 行。See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context 布局：根目录 `GLOSSARY.md` + `docs/architecture/decisions/` 下的 ADRs。See `docs/agents/domain.md`.
