@@ -7,6 +7,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
+import { sanitizeUrl } from '../../shared/logger/log-sanitizer.js';
 import { IsProduction } from '../constants/environment.js';
 import { RequestContextService } from '../context/request-context.service.js';
 import { BaseException } from '../exceptions/base.exception.js';
@@ -82,14 +83,6 @@ function fallbackBizCode(status: HttpStatus): string {
 }
 
 /**
- * 从 X-Request-Id 请求头中提取链路 ID
- */
-function resolveRequestId(headers: Request['headers']): string | undefined {
-  const value = headers['x-request-id'];
-  return Array.isArray(value) ? value[0] : value;
-}
-
-/**
  * 全局异常过滤器
  * 处理所有未捕获的异常，并将其转换为统一的响应格式
  */
@@ -104,13 +97,37 @@ export class GlobalExceptionsFilter implements ExceptionFilter {
     const response = ctx.getResponse<Response>();
     const request = ctx.getRequest<Request>();
 
+    // requestId 统一经 RequestContextService 门面读取（门面是全应用访问 CLS 的唯一入口），
+    // 无请求上下文时返回 undefined；不再自行解析 x-request-id 请求头。
+    const requestId = this.requestContext.getRequestId();
+
+    // 响应头已发出（如 SSE 流式响应中途出错，或业务用 @Res() 自行写出响应后再抛错）：
+    // 此时再调用 status().json() 会抛 ERR_HTTP_HEADERS_SENT，把一次可恢复错误升级为请求级崩溃。
+    // 该分支只记录异常并结束响应，不再改写已发出的头部。
+    if (response.headersSent) {
+      this.logger.error(
+        {
+          requestId,
+          path: sanitizeUrl(request.url),
+          // 传原始异常对象：logger.module 的 serializers 已注册 stdSerializers.err，
+          // `{ err }` 会输出 { type, message, stack }
+          ...(exception instanceof Error ? { err: exception } : {}),
+        },
+        '响应已开始发送，异常无法写入统一响应体',
+      );
+      if (!response.writableEnded) {
+        response.end();
+      }
+      return;
+    }
+
     const responseBody: StandardResponse<null> = {
       code: HttpStatus.INTERNAL_SERVER_ERROR,
       message: '服务器繁忙，请稍后重试',
       data: null,
       bizCode: BizCode.INTERNAL_ERROR,
-      path: request.url,
-      requestId: resolveRequestId(request.headers),
+      path: sanitizeUrl(request.url),
+      requestId,
     };
 
     // 请求体 JSON 语法错误：返回友好提示，避免把 V8 解析细节（如 "Expected ... in JSON at position N"）直接暴露给客户端

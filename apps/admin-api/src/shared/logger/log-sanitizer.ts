@@ -7,15 +7,16 @@
  */
 
 /** 需要脱敏的查询参数键（大小写不敏感） */
-const SENSITIVE_QUERY_KEYS =
-  /^(?:pass(?:word|wd)?|pwd|secret|token|access_?token|refresh_?token|id_?token|api_?key|auth(?:orization)?|code|ticket|signature|sig|credential)$/i;
+const SENSITIVE_QUERY_KEYS
+  = /^(?:pass(?:word|wd)?|pwd|secret|token|access_?token|refresh_?token|id_?token|api_?key|auth(?:orization)?|code|ticket|signature|sig|credential)$/i;
 
 const REDACTED = '[REDACTED]';
 
 function decodeKey(rawKey: string): string {
   try {
     return decodeURIComponent(rawKey);
-  } catch {
+  }
+  catch {
     // 非法编码时退化为原始串，避免因脱敏本身抛错影响日志
     return rawKey;
   }
@@ -29,10 +30,12 @@ function decodeKey(rawKey: string): string {
  * // => '/auth/github/callback?code=[REDACTED]&ticket=[REDACTED]'
  */
 export function sanitizeUrl(url: string): string {
-  if (!url) return url;
+  if (!url)
+    return url;
 
   const queryIndex = url.indexOf('?');
-  if (queryIndex === -1) return url;
+  if (queryIndex === -1)
+    return url;
 
   const prefix = url.slice(0, queryIndex);
   const rest = url.slice(queryIndex + 1);
@@ -44,9 +47,11 @@ export function sanitizeUrl(url: string): string {
   const sanitized = query
     .split('&')
     .map((pair) => {
-      if (!pair) return pair;
+      if (!pair)
+        return pair;
       const eqIndex = pair.indexOf('=');
-      if (eqIndex === -1) return pair;
+      if (eqIndex === -1)
+        return pair;
       const rawKey = pair.slice(0, eqIndex);
       return SENSITIVE_QUERY_KEYS.test(decodeKey(rawKey))
         ? `${rawKey}=${REDACTED}`

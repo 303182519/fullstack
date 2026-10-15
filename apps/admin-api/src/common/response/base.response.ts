@@ -9,7 +9,7 @@ import { HttpStatus } from '@nestjs/common';
 export const BizCode = {
   /** 用户端通用错误（4xx 兜底） */
   CLIENT_ERROR: 'A0001',
-  /** 请求体 JSON 语法错误 */
+  /** 请求参数校验失败 / 请求体 JSON 语法错误 */
   BAD_REQUEST: 'A0400',
   /** 系统内部错误（5xx 兜底） */
   INTERNAL_ERROR: 'B0001',

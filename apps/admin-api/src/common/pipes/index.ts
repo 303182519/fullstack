@@ -2,6 +2,8 @@ import type { ValidationError } from 'class-validator';
 
 import { BadRequestException, ValidationPipe } from '@nestjs/common';
 
+import { BizCode } from '../response/base.response.js';
+
 interface FieldError {
   field: string;
   messages: string[];
@@ -52,7 +54,7 @@ export function globalPipes() {
     transformOptions: { enableImplicitConversion: true },
     exceptionFactory: errors =>
       new BadRequestException({
-        code: 'VALIDATION_ERROR',
+        code: BizCode.BAD_REQUEST,
         message: '请求参数校验失败',
         errors: flattenErrors(errors),
       }),
