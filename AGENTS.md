@@ -2,7 +2,7 @@
 
 This file provides guidance to AI coding agents (Codex / Claude Code 等) when working with code in this repository.
 
-***
+---
 
 ## 工程准则
 
@@ -165,6 +165,7 @@ API 行为、数据库结构、环境变量、生产环境配置、测试结果�
                  MySQL
 
 ```
+
 ## 10. 状态归属
 
 状态归属是架构边界。默认归属规则：
@@ -384,31 +385,16 @@ AI 代理**禁止输出内部思考推理链路**。
 - 保护用户已有的代码修改
 - 生产代码必须面向失败做设计，而不只面向正常流程
 
-
 ## 规范索引
 
 具体编码规范按技术栈拆分在以下目录：
 
-| 规范          | 文件                      | 说明                         |
-| ------------- | ------------------------- | ---------------------------- |
-| 后端工程规范      | `.rules/backend/AGENTS.md` | 后端工程相关规范 |
-| 数据库工程规范      | `.rules/database/AGENTS.md` | 后端数据库工程相关规范 |
-| 前端工程规范      | `.rules/frontend/AGENTS.md` | 前端工程相关规范 |
-| Bug 推理排查流程（协议）      | `.rules/protocols/bug.md` | Bug 推理排查流程相关规范 |
-| 功能推理排查流程（协议）      | `.rules/protocols/feature.md` | 功能推理排查流程相关规范 |
-| 重构推理协议（协议）      | `.rules/protocols/refactor.md` | 重构推理协议相关规范 |
-| 架构决策记录模版      | `docs/architecture/decisions/ADR-000-template.md` | 架构决策记录模版规范 |
-
-## Agent skills
-
-### Issue tracker
-
-Issues 与 specs 存放在 GitHub Issues（用 `gh` CLI 操作）。See `docs/agents/issue-tracker.md`.
-
-### Triage labels
-
-沿用默认 canonical label 词表（`needs-triage` / `needs-info` / `ready-for-agent` / `ready-for-human` / `wontfix`）。See `docs/agents/triage-labels.md`.
-
-### Domain docs
-
-Single-context 布局：repo 根目录 `GLOSSARY.md` + ADR 目录 `docs/architecture/decisions/`。See `docs/agents/domain.md`.
+| 规范                     | 文件                                              | 说明                     |
+| ------------------------ | ------------------------------------------------- | ------------------------ |
+| 后端工程规范             | `.rules/backend/AGENTS.md`                        | 后端工程相关规范         |
+| 数据库工程规范           | `.rules/database/AGENTS.md`                       | 后端数据库工程相关规范   |
+| 前端工程规范             | `.rules/frontend/AGENTS.md`                       | 前端工程相关规范         |
+| Bug 推理排查流程（协议） | `.rules/protocols/bug.md`                         | Bug 推理排查流程相关规范 |
+| 功能推理排查流程（协议） | `.rules/protocols/feature.md`                     | 功能推理排查流程相关规范 |
+| 重构推理协议（协议）     | `.rules/protocols/refactor.md`                    | 重构推理协议相关规范     |
+| 架构决策记录模版         | `docs/architecture/decisions/ADR-000-template.md` | 架构决策记录模版规范     |
