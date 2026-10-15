@@ -3,11 +3,17 @@ import {
   Module,
   NestModule,
 } from '@nestjs/common';
+import { APP_FILTER, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
 import cookieParser from 'cookie-parser';
+import { globalPipes } from './pipes/index.js';
 
 @Module({
   providers: [
-
+    // 全局 ValidationPipe：注意 main.ts 不要再 useGlobalPipes，否则会跑两遍
+    {
+      provide: APP_PIPE,
+      useFactory: globalPipes,
+    },
   ],
 })
 export class CommonModule implements NestModule {
