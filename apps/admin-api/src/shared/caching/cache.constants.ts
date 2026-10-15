@@ -18,9 +18,6 @@ export { hashCacheToken };
  * 直连 client 的服务由 KeyPrefixer 加，两者同源）。
  */
 export const CacheKeys = {
-  // token 是敏感值，sha256 摘要后再进 key
-  AUTH_REFRESH_TOKEN: (token: string) =>
-    `auth:refreshToken:hash=${hashCacheToken(token)}`,
 
   // 登录失败计数器：邮箱归一化（trim + 小写），避免大小写差异算成两个账号
   AUTH_LOGIN_FAIL: (email: string) =>
