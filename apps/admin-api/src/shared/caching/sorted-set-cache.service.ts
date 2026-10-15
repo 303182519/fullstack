@@ -22,9 +22,9 @@ import { withRedis } from './redis-fallback.js';
  *   3. 所有操作经 withRedis() 统一降级：Redis 不可用时返回 fallback，不抛错
  *
  * 降级行为：Redis 为 null 或运行期故障时，
- *   - 写操作（zincrby / zrem / del）静默 no-op
+ *   - 写操作（zincrby / zrem）静默 no-op
  *   - 读操作（zrevrangeWithScores）返回 []
- *   调用方据此回退到 DB 旁路（如 PostsService.trending 回退到 ORDER BY view_count）。
+ *   调用方据此回退到 DB 旁路。
  */
 @Injectable()
 export class SortedSetCacheService {
@@ -43,7 +43,7 @@ export class SortedSetCacheService {
    * @returns 加分后的新 score；Redis 不可用时返回 0
    *
    * @example
-   * await sortedSet.zincrby(CacheKeys.TRENDING_POSTS, 1, '12345'); // 文章 12345 浏览 +1
+   * await sortedSet.zincrby('hot:posts', 1, '12345'); // id=12345 的内容热度 +1
    */
   async zincrby(
     key: string,
@@ -65,7 +65,7 @@ export class SortedSetCacheService {
    * @returns 实际移除的成员数；Redis 不可用时返回 0
    *
    * @example
-   * await sortedSet.zrem(CacheKeys.TRENDING_POSTS, '12345'); // 文章被删，清榜
+   * await sortedSet.zrem('hot:posts', '12345'); // 内容被删，清榜
    */
   async zrem(key: string, member: string): Promise<number> {
     const redisKey = this.prefixer.prefix(key);
@@ -87,7 +87,7 @@ export class SortedSetCacheService {
    *
    * @example
    * // 取 Top 10
-   * const top = await sortedSet.zrevrangeWithScores(CacheKeys.TRENDING_POSTS, 0, 9);
+   * const top = await sortedSet.zrevrangeWithScores('hot:posts', 0, 9);
    */
   async zrevrangeWithScores(
     key: string,
@@ -107,24 +107,6 @@ export class SortedSetCacheService {
       },
       [],
       'SortedSetCacheService.zrevrangeWithScores',
-    );
-  }
-
-  /**
-   * 删除整个 ZSET key。
-   *
-   * @example
-   * await sortedSet.del(CacheKeys.TRENDING_POSTS); // 仅测试用：清空榜单
-   */
-  async del(key: string): Promise<void> {
-    const redisKey = this.prefixer.prefix(key);
-    await withRedis(
-      this.redis,
-      async (r) => {
-        await r.del(redisKey);
-      },
-      undefined,
-      'SortedSetCacheService.del',
     );
   }
 }

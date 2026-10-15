@@ -73,7 +73,9 @@ export class HashCacheService {
    *
    * @param key Hash key（多 key 批量操作时带 Hash Tag，如 `{user:123}:profile`；单 key 无需 tag，如 `build:job:12345`）
    * @param mapping field-value 映射，value 支持 string / number
-   * @param expire TTL 秒数，传入后通过 HSETEX 一次写入+设过期（Redis 6.2+）
+   * @param expire TTL 秒数。传入后通过 MULTI/EXEC 原子提交 HSET + EXPIRE
+   *   （不用 HSETEX：该命令要求 Redis 8.0+，低版本服务端会报 unknown command，
+   *   而写操作被降级静默吞掉等于数据丢失）
    *
    * @example
    * // 只写数据
@@ -98,9 +100,8 @@ export class HashCacheService {
       this.redis,
       async (r) => {
         if (expire !== undefined) {
-          await r.hSetEx(redisKey, mapping, {
-            expiration: { type: 'EX', value: expire },
-          });
+          // HSET + EXPIRE 经 MULTI/EXEC 一次提交，原子且兼容所有 Redis 版本
+          await r.multi().hSet(redisKey, mapping).expire(redisKey, expire).exec();
         }
         else {
           await r.hSet(redisKey, mapping);

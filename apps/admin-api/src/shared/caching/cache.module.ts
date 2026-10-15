@@ -17,7 +17,7 @@ import { getConfig } from '@/config/configuration.js';
 import { CacheHealthIndicator } from './cache.health.js';
 import { KeyPrefixer } from './cache.prefixer.js';
 import { CacheService } from './cache.service.js';
-import { REDIS_CLIENT } from './cache.tokens.js';
+import { REDIS_CLIENT, REDIS_STORE } from './cache.tokens.js';
 import { HashCacheService } from './hash-cache.service.js';
 import { LoginAttemptService } from './login-attempt.service.js';
 import { RedisLockService } from './redis-lock.service.js';
@@ -53,9 +53,11 @@ function buildRedisUrl(redis: {
         const ttl = redis.defaultTtl * 1000;
 
         if (!url) {
-          // 未配置 Redis，使用 Keyv 默认内存 store
+          // 未配置 Redis，使用 Keyv 默认内存 store。
+          // useKeyPrefix: false —— 进程内 Map 无需命名空间隔离，
+          // 且保持与 Redis 模式一致的「前缀只由 KeyvRedis 负责」口径
           return {
-            stores: [new Keyv({ namespace: redis.keyPrefix })],
+            stores: [new Keyv({ namespace: redis.keyPrefix, useKeyPrefix: false })],
             ttl,
           };
         }
@@ -69,8 +71,9 @@ function buildRedisUrl(redis: {
         });
 
         // 断连期间命令立即 reject，而不是挂进 offline queue 无限等重连——
-        // 否则一个 get 能把请求挂住几十秒，业务层的 withRedis 降级也来不及生效
-        // （URL 直连必为单机 client，不会是 cluster，故可断言）
+        // 否则一个 get 能把请求挂住几十秒，业务层的 withRedis 降级也来不及生效。
+        // 注意：当前 URL 直连只产生单机 client；若将来接入集群（createCluster），
+        // cluster 的 options 结构不同，此处的单机断言需要同步改造。
         const redisClient = keyvRedis.client as RedisClientType;
         if (redisClient.options) {
           redisClient.options.disableOfflineQueue = true;
@@ -116,17 +119,24 @@ function buildRedisUrl(redis: {
   ],
   providers: [
     {
-      provide: REDIS_CLIENT,
+      // KeyvRedis store 实例（内存模式为 null）。namespace / separator 的单一真相源：
+      // KeyPrefixer、CacheService.invalidatePattern 都从这里派生前缀口径。
+      provide: REDIS_STORE,
       inject: [CACHE_MANAGER],
       useFactory: (cache: Cache) => {
         for (const keyv of cache.stores) {
           const store = keyv.store;
           if (store instanceof KeyvRedis)
-            return store.client;
+            return store as KeyvRedis<unknown>;
         }
 
         return null;
       },
+    },
+    {
+      provide: REDIS_CLIENT,
+      inject: [REDIS_STORE],
+      useFactory: (store: KeyvRedis<unknown> | null) => store?.client ?? null,
     },
     CacheService,
     HashCacheService,
@@ -182,7 +192,7 @@ implements OnApplicationBootstrap, OnModuleDestroy {
     }
 
     // @nestjs/cache-manager 的 onModuleDestroy 会先于本模块执行，
-    // 通过 cacheManager.store.disconnect() 关闭底层 ioredis client。
+    // 通过遍历 stores 断开底层 @redis/client（node-redis）连接。
     // 因此到达这里时 isOpen 通常已为 false，属于正常行为。
     if (this.redisClient.isOpen) {
       try {

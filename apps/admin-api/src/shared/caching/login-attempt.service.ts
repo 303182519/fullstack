@@ -1,10 +1,19 @@
 import type { RedisClientType } from '@keyv/redis';
 import { Inject, Injectable } from '@nestjs/common';
-import { AUTH_LOCKOUT } from '@/common/constants/auth.js';
 import { CacheKeys } from './cache.constants.js';
 import { KeyPrefixer } from './cache.prefixer.js';
 import { REDIS_CLIENT } from './cache.tokens.js';
 import { withRedis } from './redis-fallback.js';
+
+/**
+ * 账号级登录锁定策略（本服务自有，不依赖应用层常量）。
+ * 连续失败 maxAttempts 次后锁定，窗口与锁定时长同为 lockMinutes，
+ * 到期计数器自动归零解锁。策略调整入口集中在这里。
+ */
+const LOGIN_LOCKOUT = {
+  maxAttempts: 5,
+  lockMinutes: 15,
+} as const;
 
 // 账号级登录锁定。和限流（@Throttler，**按 IP**）正交——
 //   限流挡「同一来源 IP 的洪泛」，锁定挡「针对同一账号的密码爆破」。
@@ -34,8 +43,8 @@ export class LoginAttemptService {
     @Inject(REDIS_CLIENT) private readonly redis: RedisClientType | null,
     private readonly prefixer: KeyPrefixer,
   ) {
-    this.maxAttempts = AUTH_LOCKOUT.maxAttempts;
-    this.windowSec = AUTH_LOCKOUT.lockMinutes * 60;
+    this.maxAttempts = LOGIN_LOCKOUT.maxAttempts;
+    this.windowSec = LOGIN_LOCKOUT.lockMinutes * 60;
   }
 
   /**
