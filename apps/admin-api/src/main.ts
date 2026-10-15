@@ -1,21 +1,19 @@
-import { Logger, VersioningType } from '@nestjs/common'
-import { ConfigService } from '@nestjs/config'
-import { NestFactory } from '@nestjs/core'
-import { NestExpressApplication } from '@nestjs/platform-express'
-import { Logger as PinoLogger } from 'nestjs-pino'
-import { AppModule } from './app.module.js'
-import { getAppConfig } from '@/config/configuration.js';
+import { Logger, VersioningType } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { NestFactory } from '@nestjs/core';
+import { NestExpressApplication } from '@nestjs/platform-express';
+import { Logger as PinoLogger } from 'nestjs-pino';
 import { IsDev } from '@/common/constants/environment.js';
+import { getAppConfig } from '@/config/configuration.js';
 import { initSnowflake } from '@/shared/utils/snowflake.js';
 import { useSwagger } from '@/shared/utils/swagger.js';
-
-
+import { AppModule } from './app.module.js';
 
 async function bootstrap() {
   // bufferLogs：启动早期日志先缓存，等 useLogger 桥接后再统一输出，避免丢失启动日志
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     bufferLogs: true,
-  })
+  });
 
   if (IsDev) {
     // 本地开发环境开启跨域，生产环境关闭，原因：生产环境需要在Nginx后开启跨域，Nginx会自动处理跨域问题
@@ -28,7 +26,7 @@ async function bootstrap() {
   }
 
   // 使用 Pino Logger
-  app.useLogger(app.get(PinoLogger))
+  app.useLogger(app.get(PinoLogger));
 
   // 获取配置
   const appConfig = getAppConfig(app);
@@ -44,8 +42,9 @@ async function bootstrap() {
   // 2. 跨机器部署 Nginx (192.168.200.128) → Nest
   // app.set('trust proxy', ['192.168.200.128']); // 信任来自Nginx的请求
 
-  // 设置api前缀
-  app.setGlobalPrefix(server.apiPrefix);
+  // 设置api前缀；健康探针（@fedstack/health）不进业务前缀：
+  // 探针是基础设施契约（编排骨架 + 网关 ACL 消费），不属于版本化业务 API（见 ADR-004）
+  app.setGlobalPrefix(server.apiPrefix, { exclude: ['health', 'health/ready'] });
   // 开启http请求版本控制
   app.enableVersioning({
     type: VersioningType.URI,
@@ -54,15 +53,12 @@ async function bootstrap() {
   // 开启 Swagger 文档
   useSwagger(app);
 
-
-
   // 优雅关闭：配合生命周期钩子释放数据库连接等资源
-  app.enableShutdownHooks()
+  app.enableShutdownHooks();
 
   // 与 api 服务区分默认端口，支持同机并行启动
-  const port = app.get(ConfigService).get<number>('PORT', 3001)
-  await app.listen(port)
-
+  const port = app.get(ConfigService).get<number>('PORT', 3001);
+  await app.listen(port);
 
   const serverUrl = `http://127.0.0.1:${server.port}`;
 
@@ -74,4 +70,4 @@ async function bootstrap() {
   logger.log(`Swagger is running on: ${serverUrl}/${swagger.path}`);
 }
 
-void bootstrap()
+void bootstrap();

@@ -121,6 +121,18 @@ export class GlobalExceptionsFilter implements ExceptionFilter {
       return;
     }
 
+    // 健康探针保留 terminus 原始响应契约：编排层与 kubectl describe 依赖各 indicator
+    // 明细（哪个依赖不可用）定位故障，统一响应包装会抹掉 details。仅放行 HttpException
+    // （就绪检查失败即 terminus 抛出的 503 HttpException），未知异常仍走统一格式与 5xx 日志。
+    if (
+      request.method === 'GET'
+      && (request.path === '/health' || request.path === '/health/ready')
+      && exception instanceof HttpException
+    ) {
+      response.status(exception.getStatus()).json(exception.getResponse());
+      return;
+    }
+
     const responseBody: StandardResponse<null> = {
       code: HttpStatus.INTERNAL_SERVER_ERROR,
       message: '服务器繁忙，请稍后重试',

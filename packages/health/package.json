@@ -1,0 +1,43 @@
+{
+  "name": "@fedstack/health",
+  "type": "module",
+  "version": "0.0.1",
+  "private": true,
+  "description": "企业级共享健康检查底座：terminus 双探针骨架 + Redis 三态指标，就绪检查项由各 app 显式装配",
+  "license": "UNLICENSED",
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "import": "./dist/src/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "clean": "node -e \"fs.rmSync('dist', { recursive: true, force: true })\""
+  },
+  "peerDependencies": {
+    "@nestjs/common": "^12.0.0",
+    "@nestjs/terminus": "^12.1.0",
+    "reflect-metadata": "^0.2.0",
+    "rxjs": "^7.0.0"
+  },
+  "dependencies": {
+    "@fedstack/redis": "workspace:*"
+  },
+  "devDependencies": {
+    "@fedstack/eslint-config": "workspace:*",
+    "@nestjs/common": "catalog:",
+    "@nestjs/terminus": "catalog:",
+    "@nestjs/testing": "catalog:",
+    "@types/node": "catalog:",
+    "eslint": "catalog:",
+    "reflect-metadata": "catalog:",
+    "rxjs": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

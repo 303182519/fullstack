@@ -6,6 +6,7 @@
 // - REDIS_STORE / REDIS_MODULE_OPTIONS 为模块内部令牌，刻意不导出。
 
 export { CacheHealthIndicator } from './cache.health.js';
+export type { CacheHealthStatus } from './cache.health.js';
 export { KeyPrefixer } from './cache.prefixer.js';
 export { CacheService } from './cache.service.js';
 export { REDIS_CLIENT } from './cache.tokens.js';

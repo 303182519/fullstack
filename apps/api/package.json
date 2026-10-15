@@ -24,10 +24,12 @@
   },
   "dependencies": {
     "@fedstack/database": "workspace:*",
+    "@fedstack/health": "workspace:*",
     "@nestjs/common": "catalog:",
     "@nestjs/config": "catalog:",
     "@nestjs/core": "catalog:",
     "@nestjs/platform-express": "catalog:",
+    "@nestjs/terminus": "catalog:",
     "class-transformer": "catalog:",
     "class-validator": "catalog:",
     "nestjs-pino": "catalog:",

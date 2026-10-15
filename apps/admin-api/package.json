@@ -24,6 +24,7 @@
   },
   "dependencies": {
     "@fedstack/database": "workspace:*",
+    "@fedstack/health": "workspace:*",
     "@fedstack/redis": "workspace:*",
     "@keyv/redis": "catalog:",
     "@nestjs-cls/transactional": "catalog:",

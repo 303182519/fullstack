@@ -110,6 +110,8 @@ export class RedisCacheModule implements OnApplicationBootstrap, OnModuleDestroy
       ],
       exports: [
         CacheService,
+        // 导出给 @fedstack/health 的就绪探针复用三态口径（模块为 global，导出后即可跨模块注入）
+        CacheHealthIndicator,
         HashCacheService,
         KeyPrefixer,
         RedisLockService,
