@@ -1,0 +1,211 @@
+import {
+  ArgumentsHost,
+  Catch,
+  ExceptionFilter,
+  HttpException,
+  HttpStatus,
+  Logger,
+} from '@nestjs/common';
+import { Request, Response } from 'express';
+import { IsProduction } from '../constants/environment.js';
+import { RequestContextService } from '../context/request-context.service.js';
+import { BaseException } from '../exceptions/base.exception.js';
+import { BizCode, StandardResponse } from '../response/base.response.js';
+
+/**
+ * 将日志系统与异常过滤器结合，将异常信息记录到日志系统中
+ * 制作成接口，以便在 UI 中展示
+ * 接口权限控制仅限 developer Role 使用
+ */
+
+/**
+ * 匹配 JSON 解析错误信息
+ * 覆盖多种 V8 / body-parser 可能抛出的 SyntaxError 文案格式：
+ * 1. 老版本："Unexpected token x in JSON at position N"
+ * 2. 新版本："Unexpected token 'x', ... is not valid JSON"
+ * 3. 输入不完整："Unexpected end of JSON input"
+ * 4. 期望字符："Expected ':' after property name in JSON at position N"
+ */
+const JSON_PARSE_ERROR_REGEX
+  = /in JSON at position|end of JSON input|is not valid JSON|Unexpected token/i;
+
+/**
+ * 判断异常是否为请求体 JSON 解析错误
+ *
+ * body-parser 解析失败时抛出的异常可能是以下几种形态：
+ * 1. http-errors 的 BadRequest（带 type: 'entity.parse.failed'）
+ * 2. 被 NestJS 包装后的 HttpException（response.message 含解析错误信息）
+ * 3. 原生 SyntaxError（message 含 "in JSON at position" 等）
+ */
+function isJsonParseError(exception: unknown): boolean {
+  if (!(exception instanceof Error))
+    return false;
+
+  // body-parser 标识
+  if ((exception as { type?: string }).type === 'entity.parse.failed') {
+    return true;
+  }
+
+  // 检查异常自身的 message（覆盖原生 SyntaxError / http-errors）
+  if (JSON_PARSE_ERROR_REGEX.test(exception.message)) {
+    return true;
+  }
+
+  // 检查 HttpException 包装后的 response.message
+  if (exception instanceof HttpException) {
+    const exceptionResponse = exception.getResponse();
+    if (typeof exceptionResponse === 'object' && exceptionResponse !== null) {
+      const msg = (exceptionResponse as { message?: unknown }).message;
+      if (typeof msg === 'string' && JSON_PARSE_ERROR_REGEX.test(msg)) {
+        return true;
+      }
+      if (
+        Array.isArray(msg)
+        && msg.some(m => typeof m === 'string' && JSON_PARSE_ERROR_REGEX.test(m))
+      ) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+/**
+ * 无业务错误码可提供时，按 HTTP 状态归类兜底 bizCode
+ * 避免将 exception.name（如 TypeError）等实现细节透出给客户端
+ */
+function fallbackBizCode(status: HttpStatus): string {
+  return status >= HttpStatus.INTERNAL_SERVER_ERROR
+    ? BizCode.INTERNAL_ERROR
+    : BizCode.CLIENT_ERROR;
+}
+
+/**
+ * 从 X-Request-Id 请求头中提取链路 ID
+ * ClsMiddleware（ADR-005）在 setup 里保证每个请求都会携带该头（上游未带时自动生成）
+ */
+function resolveRequestId(headers: Request['headers']): string | undefined {
+  const value = headers['x-request-id'];
+  return Array.isArray(value) ? value[0] : value;
+}
+
+/**
+ * 全局异常过滤器
+ * 处理所有未捕获的异常，并将其转换为统一的响应格式
+ */
+@Catch()
+export class GlobalExceptionsFilter implements ExceptionFilter {
+  private readonly logger = new Logger(GlobalExceptionsFilter.name);
+
+  constructor(private readonly requestContext: RequestContextService) {}
+
+  catch(exception: unknown, host: ArgumentsHost) {
+    const ctx = host.switchToHttp();
+    const response = ctx.getResponse<Response>();
+    const request = ctx.getRequest<Request>();
+
+    const responseBody: StandardResponse<null> = {
+      code: HttpStatus.INTERNAL_SERVER_ERROR,
+      message: '服务器繁忙，请稍后重试',
+      data: null,
+      bizCode: BizCode.INTERNAL_ERROR,
+      path: request.url,
+      requestId: resolveRequestId(request.headers),
+    };
+
+    // 请求体 JSON 语法错误：返回友好提示，避免把 V8 解析细节（如 "Expected ... in JSON at position N"）直接暴露给客户端
+    if (isJsonParseError(exception)) {
+      responseBody.code = HttpStatus.BAD_REQUEST;
+      responseBody.message = '请求JSON格式错误，请检查请求体语法';
+      responseBody.bizCode = BizCode.BAD_REQUEST;
+    }
+    else if (exception instanceof BaseException) {
+      const exceptionResponse = exception.getResponse() as {
+        message: string | string[];
+        code?: string;
+      };
+
+      responseBody.code = exception.getStatus();
+      responseBody.message = Array.isArray(exceptionResponse.message)
+        ? exceptionResponse.message.join(', ')
+        : exceptionResponse.message;
+      // 业务异常应携带业务错误码（MMSNN 规范），未携带时按 HTTP 状态归类兜底
+      responseBody.bizCode
+        = exceptionResponse.code || fallbackBizCode(responseBody.code);
+    }
+    else if (exception instanceof HttpException) {
+      const exceptionResponse = exception.getResponse();
+      responseBody.code = exception.getStatus();
+
+      if (typeof exceptionResponse === 'object' && exceptionResponse !== null) {
+        const exceptionObj = exceptionResponse as {
+          message?: string | string[];
+          code?: string;
+          errors?: unknown;
+        };
+        // 优先使用自定义异常中传入的 data（如校验错误的 field+message 数组）
+        if (exceptionObj.errors !== undefined) {
+          responseBody.errors = exceptionObj.errors;
+        }
+        if (exceptionObj.message !== undefined) {
+          responseBody.message = Array.isArray(exceptionObj.message)
+            ? exceptionObj.message.join(', ')
+            : exceptionObj.message;
+        }
+        responseBody.bizCode
+          = exceptionObj.code || fallbackBizCode(responseBody.code);
+      }
+      else {
+        responseBody.bizCode = fallbackBizCode(responseBody.code);
+      }
+    }
+    else if (exception instanceof Error) {
+      // body-parser / http-errors 抛出的错误（如 entity.too.large、unsupported charset）
+      // 不是 HttpException，但携带了合法的 status / statusCode（4xx）
+      // 必须优先使用，否则这些客户端错误会全部落到 500，污染 5xx 告警
+      const httpStatus
+        = (exception as { status?: number }).status
+          ?? (exception as { statusCode?: number }).statusCode;
+      // 仅接受合法的 4xx 客户端错误状态码（400-499）；
+      // 5xx 不应来自 body-parser，回退到 500 兜底
+      if (
+        typeof httpStatus === 'number'
+        && httpStatus >= 400
+        && httpStatus < 500
+      ) {
+        responseBody.code = httpStatus;
+      }
+      if (!IsProduction) {
+        responseBody.message = exception.message;
+      }
+      responseBody.bizCode = fallbackBizCode(responseBody.code);
+    }
+
+    // 每个请求只保留「响应结束的那条访问日志」作为权威记录（ADR-002）。
+    // HTTP 维度（request.method / request.url / response.statusCode / responseTime）
+    // 只由访问日志承载，异常过滤器不再重复输出，避免同一维度出现两套字段路径。
+    // 这里只把业务码交给 CLS，由 pino 的 mixin 注入到那条访问日志的顶层 `bizCode` 上——
+    // 4xx（预期内的客户端问题，如 token 过期）因此不再产生第二条 warn 日志。
+    if (responseBody.bizCode) {
+      this.requestContext.setBizCode(responseBody.bizCode);
+    }
+
+    // 只有 5xx / 未预期异常才额外记一条 error 日志：被本过滤器捕获的异常对象不会流经
+    // pino-http，堆栈只能在这里保留。该日志不重复 HTTP 维度，靠顶层 requestId 与访问日志关联。
+    if (responseBody.code >= HttpStatus.INTERNAL_SERVER_ERROR) {
+      this.logger.error(
+        {
+          bizCode: responseBody.bizCode,
+          requestId: responseBody.requestId,
+          // 传原始异常对象：logger.module 的 serializers 已注册 stdSerializers.err，
+          // `{ err }` 会输出 { type, message, stack }
+          ...(exception instanceof Error ? { err: exception } : {}),
+        },
+        'HTTP 请求处理失败',
+      );
+    }
+
+    response.status(responseBody.code).json(responseBody);
+  }
+}

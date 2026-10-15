@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { APP_FILTER, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
 import cookieParser from 'cookie-parser';
+import { GlobalExceptionsFilter } from './filters/global-exception.filter.js';
 import { ResponseInterceptor } from './interceptors/response.interceptor.js';
 import { globalPipes } from './pipes/index.js';
 
@@ -20,6 +21,7 @@ import { globalPipes } from './pipes/index.js';
       provide: APP_PIPE,
       useFactory: globalPipes,
     },
+    { provide: APP_FILTER, useClass: GlobalExceptionsFilter },
   ],
 })
 export class CommonModule implements NestModule {
