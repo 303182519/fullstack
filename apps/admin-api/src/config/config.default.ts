@@ -43,4 +43,14 @@ export const defaultConfig = registerAs('default', (): AppConfig => ({
     maxFileSize: process.env.LOG_MAX_FILE_SIZE || 10,
     maxFiles: process.env.LOG_MAX_FILES || 7,
   },
+  redis: {
+    url: process.env.REDIS_URL,
+    host: process.env.REDIS_HOST,
+    port: Number(process.env.REDIS_PORT) || 6379,
+    password: process.env.REDIS_PASSWORD,
+    db: Number(process.env.REDIS_DB) || 0,
+    // 缓存默认 TTL，单位：秒（0 表示不过期）
+    defaultTtl: Number(process.env.REDIS_DEFAULT_TTL) || 300,
+    keyPrefix: process.env.REDIS_KEY_PREFIX || 'my-first-nest',
+  },
 }));

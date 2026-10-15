@@ -1,0 +1,202 @@
+import type { RedisClientType } from '@keyv/redis';
+import type { Cache } from 'cache-manager';
+import KeyvRedis from '@keyv/redis';
+import { CACHE_MANAGER, CacheModule } from '@nestjs/cache-manager';
+import {
+  Global,
+  Inject,
+  Logger,
+  Module,
+  OnApplicationBootstrap,
+  OnModuleDestroy,
+} from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { Keyv } from 'keyv';
+import { AppConfigModule } from '@/config/config.module.js';
+import { getConfig } from '@/config/configuration.js';
+import { CacheHealthIndicator } from './cache.health.js';
+import { KeyPrefixer } from './cache.prefixer.js';
+import { CacheService } from './cache.service.js';
+import { REDIS_CLIENT } from './cache.tokens.js';
+import { HashCacheService } from './hash-cache.service.js';
+import { LoginAttemptService } from './login-attempt.service.js';
+import { RedisLockService } from './redis-lock.service.js';
+import { SortedSetCacheService } from './sorted-set-cache.service.js';
+
+function buildRedisUrl(redis: {
+  url?: string;
+  host?: string;
+  port?: number;
+  password?: string;
+  db?: number;
+}): string | undefined {
+  if (redis.url)
+    return redis.url;
+  if (!redis.host)
+    return undefined;
+  const auth = redis.password ? `:${encodeURIComponent(redis.password)}@` : '';
+  const db = typeof redis.db === 'number' ? `/${redis.db}` : '';
+  return `redis://${auth}${redis.host}:${redis.port ?? 6379}${db}`;
+}
+
+@Global()
+@Module({
+  imports: [
+    CacheModule.registerAsync({
+      isGlobal: true,
+      imports: [AppConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => {
+        const { redis } = getConfig(configService);
+        const url = buildRedisUrl(redis);
+        // 默认缓存过期时间：毫秒，60秒
+        const ttl = redis.defaultTtl * 1000;
+
+        if (!url) {
+          // 未配置 Redis，使用 Keyv 默认内存 store
+          return {
+            stores: [new Keyv({ namespace: redis.keyPrefix })],
+            ttl,
+          };
+        }
+        const keyvRedis = new KeyvRedis(url, {
+          // 让 KeyvRedis 单独承担命名空间职责，避免与 Keyv 的 useKeyPrefix 形成双重前缀
+          namespace: redis.keyPrefix,
+          // 用 ':' 替代默认 '::'：更短、与业务 key 风格一致、运维更易读
+          keyPrefixSeparator: ':',
+          // 默认 true 会在连接失败时抛错；本期降级策略由 OnApplicationBootstrap 处理
+          throwOnConnectError: false,
+        });
+
+        // 断连期间命令立即 reject，而不是挂进 offline queue 无限等重连——
+        // 否则一个 get 能把请求挂住几十秒，业务层的 withRedis 降级也来不及生效
+        // （URL 直连必为单机 client，不会是 cluster，故可断言）
+        const redisClient = keyvRedis.client as RedisClientType;
+        if (redisClient.options) {
+          redisClient.options.disableOfflineQueue = true;
+        }
+
+        // KeyvRedis.initClient 会把底层 client 的 error 转发到自己身上；
+        // 无人监听 adapter 的 error 事件时 EventEmitter 默认 throw，
+        // 会升级成 uncaughtException 拖崩进程。这里仅日志吞错。
+        keyvRedis.on('error', (err: unknown) => {
+          Logger.warn(
+            `Redis client error: ${err instanceof Error ? err.message : String(err)}`,
+            'RedisCacheModule',
+          );
+        });
+
+        // 底层 @redis/client 自身也会独立 emit 'error'（如 SocketClosedUnexpectedly），
+        // KeyvRedis adapter 的 error 监听无法兜住所有场景；
+        // 必须在原始 client 上也挂 error handler，否则 EventEmitter 默认 throw 会拖崩进程
+        redisClient.on('error', (err: unknown) => {
+          Logger.warn(
+            `Redis underlying client error: ${err instanceof Error ? err.message : String(err)}`,
+            'RedisCacheModule',
+          );
+        });
+
+        return {
+          // Keyv 构造时会强制把 store.namespace 覆盖成自己的 namespace（默认 'keyv'），
+          // 所以必须显式传 namespace，否则 KeyvRedis 的 namespace 会被冲成 'keyv'
+          // useKeyPrefix: false —— 关闭 Keyv 的二次前缀化，前缀完全由 KeyvRedis 负责
+          // 这样落盘 key = `${namespace}${separator}${key}` = `my-first-nest:posts:list:xxx`
+          // 与 cache.service 的 formatKey(namespace+separator) 完全一致
+          stores: [
+            new Keyv({
+              store: keyvRedis,
+              namespace: redis.keyPrefix,
+              useKeyPrefix: false,
+            }),
+          ],
+          ttl,
+        };
+      },
+    }),
+  ],
+  providers: [
+    {
+      provide: REDIS_CLIENT,
+      inject: [CACHE_MANAGER],
+      useFactory: (cache: Cache) => {
+        for (const keyv of cache.stores) {
+          const store = keyv.store;
+          if (store instanceof KeyvRedis)
+            return store.client;
+        }
+
+        return null;
+      },
+    },
+    CacheService,
+    HashCacheService,
+    CacheHealthIndicator,
+    KeyPrefixer,
+    LoginAttemptService,
+    RedisLockService,
+    SortedSetCacheService,
+  ],
+  exports: [
+    CacheService,
+    HashCacheService,
+    KeyPrefixer,
+    LoginAttemptService,
+    RedisLockService,
+    SortedSetCacheService,
+    REDIS_CLIENT,
+  ],
+})
+export class RedisCacheModule
+implements OnApplicationBootstrap, OnModuleDestroy {
+  private readonly logger = new Logger(RedisCacheModule.name);
+
+  constructor(
+    private readonly configService: ConfigService,
+    @Inject(CACHE_MANAGER) private readonly cache: Cache,
+    private readonly health: CacheHealthIndicator,
+    @Inject(REDIS_CLIENT) private readonly redisClient: RedisClientType | null,
+  ) {}
+
+  async onApplicationBootstrap(): Promise<void> {
+    const { redis } = getConfig(this.configService);
+    const url = buildRedisUrl(redis);
+
+    if (!url) {
+      this.logger.warn('Redis 未配置，缓存模块使用内存 store');
+      return;
+    }
+
+    const healthy = await this.health.ping();
+    if (healthy) {
+      this.logger.log(`Redis 连接正常 (prefix=${redis.keyPrefix})`);
+      return;
+    }
+
+    this.logger.error('Redis 已配置但不可达，启动终止');
+    throw new Error('Redis is configured but not reachable');
+  }
+
+  async onModuleDestroy(): Promise<void> {
+    if (!this.redisClient) {
+      return;
+    }
+
+    // @nestjs/cache-manager 的 onModuleDestroy 会先于本模块执行，
+    // 通过 cacheManager.store.disconnect() 关闭底层 ioredis client。
+    // 因此到达这里时 isOpen 通常已为 false，属于正常行为。
+    if (this.redisClient.isOpen) {
+      try {
+        await this.redisClient.quit();
+        this.logger.log('Redis 连接已优雅关闭');
+      }
+      catch (err) {
+        this.logger.warn(
+          `Redis 关闭异常: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
+    }
+    else {
+      this.logger.log('Redis 连接已关闭 (由 cache-manager 生命周期管理)');
+    }
+  }
+}

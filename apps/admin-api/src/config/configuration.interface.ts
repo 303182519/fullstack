@@ -76,6 +76,16 @@ export interface LoggerConfig {
   maxFiles?: number;
 }
 
+export interface RedisConfig {
+  url?: string;
+  host?: string;
+  port?: number;
+  password?: string;
+  db?: number;
+  defaultTtl?: number;
+  keyPrefix?: string;
+}
+
 export interface AppConfig {
   /** HTTP 服务配置 */
   server?: ServerConfig;
@@ -89,6 +99,8 @@ export interface AppConfig {
   snowflake?: SnowflakeConfig;
   /** 日志配置 */
   logger?: LoggerConfig;
+  /** Redis 配置 */
+  redis?: RedisConfig;
 }
 
 export type AppConfigForced = {

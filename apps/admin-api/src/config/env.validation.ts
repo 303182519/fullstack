@@ -4,7 +4,7 @@ export const validationSchema = Joi.object({
   // Server
   PORT: Joi.number().port().default(3001),
 
-   // Swagger
+  // Swagger
   SWAGGER_OPEN: Joi.boolean().default(true),
 
   // JWT
@@ -34,4 +34,13 @@ export const validationSchema = Joi.object({
   LOG_DIR: Joi.string().default('logs'),
   LOG_MAX_FILE_SIZE: Joi.number().integer().min(1).default(10),
   LOG_MAX_FILES: Joi.number().integer().min(0).default(7),
-})
+
+  // Redis (可选；未配置时缓存模块降级为内存 store)
+  REDIS_URL: Joi.string().uri({ scheme: ['redis', 'rediss'] }),
+  REDIS_HOST: Joi.string(),
+  REDIS_PORT: Joi.number().port().default(6379),
+  REDIS_PASSWORD: Joi.string().allow(''),
+  REDIS_DB: Joi.number().integer().min(0).max(15).default(0),
+  REDIS_DEFAULT_TTL: Joi.number().integer().min(0).default(300),
+  REDIS_KEY_PREFIX: Joi.string().default('my-first-nest'),
+}).oxor('REDIS_URL', 'REDIS_HOST'); // Redis 连接二选一,也可都不提供
