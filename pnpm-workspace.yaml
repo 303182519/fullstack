@@ -34,6 +34,8 @@ catalog:
   '@nestjs/schematics': ^12.0.0
   '@nestjs/swagger': ^12.0.2
   '@nestjs/testing': ^12.0.1
+  '@nestjs-cls/transactional': ^4.0.1
+  '@nestjs-cls/transactional-adapter-prisma': ^2.0.1
   # Prisma 三件套必须同版本锁定。选 7.9.1 而非 7.10.0 的原因：
   # 7.10.0 的 `prisma` CLI 包缺少 npm provenance（client/adapter 有），
   # 会触发本仓库 trustPolicy: no-downgrade 的高风险供应链告警；7.9.1 三件套均具备 provenance。

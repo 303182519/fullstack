@@ -1,6 +1,10 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
+import { ClsPluginTransactional } from '@nestjs-cls/transactional';
+import { TransactionalAdapterPrisma } from '@nestjs-cls/transactional-adapter-prisma';
 import { Global, Module } from '@nestjs/common';
 import { ClsModule, ClsService } from 'nestjs-cls';
+import { PrismaModule } from '@/shared/database/prisma.module.js';
+import { PrismaService } from '@/shared/database/prisma.service.js';
 import { resolveRequestId } from '../request-id.js';
 import { RequestContextService } from './request-context.service.js';
 
@@ -43,6 +47,17 @@ import { RequestContextService } from './request-context.service.js';
           res.setHeader('x-request-id', id);
         },
       },
+      plugins: [
+        // 显式 imports PrismaModule：插件内部模块需要解析 PrismaService 注入令牌。
+        // PrismaModule 本身是 @Global，这里再 import 一次是幂等的（Nest 按模块类去重）。
+        new ClsPluginTransactional({
+          imports: [PrismaModule],
+          adapter: new TransactionalAdapterPrisma<PrismaService>({
+            prismaInjectionToken: PrismaService,
+            sqlFlavor: 'mysql',
+          }),
+        }),
+      ],
     }),
   ],
   providers: [RequestContextService],
