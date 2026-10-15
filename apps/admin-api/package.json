@@ -34,6 +34,7 @@
     "@nestjs/core": "catalog:",
     "@nestjs/platform-express": "catalog:",
     "@nestjs/swagger": "catalog:",
+    "@nestjs/terminus": "catalog:",
     "cache-manager": "catalog:",
     "class-transformer": "catalog:",
     "class-validator": "catalog:",
