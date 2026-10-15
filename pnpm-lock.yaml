@@ -172,6 +172,9 @@ importers:
       '@fedstack/database':
         specifier: workspace:*
         version: link:../../packages/database
+      '@fedstack/redis':
+        specifier: workspace:*
+        version: link:../../packages/redis
       '@keyv/redis':
         specifier: 'catalog:'
         version: 5.1.6(keyv@5.6.0)
@@ -415,6 +418,45 @@ importers:
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
+
+  packages/redis:
+    devDependencies:
+      '@fedstack/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
+      '@keyv/redis':
+        specifier: 'catalog:'
+        version: 5.1.6(keyv@5.6.0)
+      '@nestjs/cache-manager':
+        specifier: 'catalog:'
+        version: 12.0.1(@nestjs/common@12.1.2(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@12.1.2)(cache-manager@7.2.9)(keyv@5.6.0)(rxjs@7.8.2)
+      '@nestjs/common':
+        specifier: 'catalog:'
+        version: 12.1.2(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@types/node':
+        specifier: 'catalog:'
+        version: 24.19.2
+      cache-manager:
+        specifier: 'catalog:'
+        version: 7.2.9
+      eslint:
+        specifier: 'catalog:'
+        version: 10.12.0(jiti@2.7.0)
+      keyv:
+        specifier: 'catalog:'
+        version: 5.6.0
+      reflect-metadata:
+        specifier: 'catalog:'
+        version: 0.2.2
+      rxjs:
+        specifier: 'catalog:'
+        version: 7.8.2
+      typescript:
+        specifier: 'catalog:'
+        version: 6.0.3
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.11(@types/node@24.19.2)(@vitest/coverage-v8@4.1.11)(vite@8.3.4(@types/node@24.19.2)(jiti@2.7.0)(yaml@2.9.1))
 
 packages:
 

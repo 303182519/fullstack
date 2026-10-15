@@ -1,7 +1,7 @@
 import type { RedisClientType } from '@keyv/redis';
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import { withTimeout } from '@/shared/utils/promise.js';
 import { REDIS_CLIENT } from './cache.tokens.js';
+import { withTimeout } from './promise.js';
 
 const PING_TIMEOUT_MS = 1000;
 

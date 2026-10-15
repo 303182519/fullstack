@@ -24,6 +24,7 @@
   },
   "dependencies": {
     "@fedstack/database": "workspace:*",
+    "@fedstack/redis": "workspace:*",
     "@keyv/redis": "catalog:",
     "@nestjs-cls/transactional": "catalog:",
     "@nestjs-cls/transactional-adapter-prisma": "catalog:",

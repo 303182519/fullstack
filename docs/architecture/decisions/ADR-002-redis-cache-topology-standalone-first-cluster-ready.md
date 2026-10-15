@@ -2,8 +2,10 @@
 
 - 状态：已采纳（2026-10-15）
 - 日期：2026-10-15
-- 影响范围：`apps/admin-api/src/shared/caching/`
+- 影响范围：原 `apps/admin-api/src/shared/caching/`，2026-10-15 起经 ADR-003 迁移至 `packages/redis`（业务文件除外）
 - 相关规范：`AGENTS.md`、`.rules/backend/AGENTS.md`；前置文档：`apps/admin-api/src/shared/caching/README.md`
+
+> **2026-10-15 迁移注记（ADR-003）**：本 ADR 中的 `cache.module.ts`、`cache.service.ts`、`hash-cache.service.ts` 等通用基础设施已迁入 `packages/redis/src/`（同名文件），D2 失效扫描、D3 单 key 约束、D4 集群改造点随之收敛到包内；`login-attempt.service.ts` 与 `cache.constants.ts` 作为 admin-api 业务留在原目录。本 ADR 全部决策对包继续有效。
 
 ---
 

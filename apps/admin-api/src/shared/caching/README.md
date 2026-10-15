@@ -2,12 +2,14 @@
 
 依赖包：@nestjs/cache-manager + cache-manager + keyv + @keyv/redis
 
-## 1. 为什么需要缓存
-
-> 这个目录是项目级缓存基础设施。当前实现：[@nestjs/cache-manager](https://docs.nestjs.com/techniques/caching) + [Keyv](https://keyv.org/) + [@keyv/redis](https://github.com/jaredwray/keyv/tree/main)。
+> **架构边界（ADR-003，2026-10-15）**：缓存基础设施（连接工厂、`CacheService`、Hash/ZSet/分布式锁服务、`KeyPrefixer`、`withRedis` 降级、健康检查）已收敛为共享包 **`@fedstack/redis`**（`packages/redis`），供 monorepo 内所有后端 app 复用。
+> 本目录只保留 **admin-api 应用层缓存业务**：`CachingModule`（业务装配）、`LoginAttemptService`（账号级登录锁定策略）、`cache.constants.ts`（业务 key 工厂 `CacheKeys`）。
 > 业务模块只需要注入 `CacheService`，不直接接触底层 Redis 客户端。
 
 ## 1. 为什么需要缓存
+
+> 基础设施当前实现：[@nestjs/cache-manager](https://docs.nestjs.com/techniques/caching) + [Keyv](https://keyv.org/) + [@keyv/redis](https://github.com/jaredwray/keyv/tree/main)（封装于 `@fedstack/redis`）。
+> 业务模块只需要注入 `CacheService`，不直接接触底层 Redis 客户端。
 
 数据库是项目里最常见的"慢"。一次普通查询动辄几十毫秒，复杂联表 / 聚合可能到几百毫秒；同样的查询如果每秒被打几千次，数据库的 CPU 和 IO 都会被压垮。
 
@@ -62,11 +64,11 @@ SET user:123 "{...}" EX 600   # 10 分钟后这个 Key 会自动消失
 多个项目共用一个 Redis 实例时，必须用前缀隔离：
 
 ```
-my-first-nest::users:123     # 项目 A
-ecommerce::users:123          # 项目 B
+admin-api:users:123     # 管理端 API
+api:users:123           # C 端 API
 ```
 
-否则 Key 撞了就互相覆盖。本项目用环境变量 `REDIS_KEY_PREFIX` 配置，默认 `my-first-nest:`。最终落地 Key 形如 `my-first-nest::users:123`（Keyv 用 `::` 拼接 namespace 与 key）。
+否则 Key 撞了就互相覆盖。本项目用环境变量 `REDIS_KEY_PREFIX` 配置，各 app 默认值与 app 同名（如 `admin-api`）；共享包 `@fedstack/redis` 强制 `keyPrefix` 必填（ADR-003）。最终落地 Key 形如 `admin-api:users:123`（KeyvRedis 用 `:` 拼接 namespace 与 key）。
 
 ### 3.4 序列化（Serialization）
 
@@ -139,18 +141,31 @@ Redis Value 本质是字节，但应用层经常需要存对象。所以存对�
 ### 4.1 目录结构
 
 ```
-apps/server/src/shared/caching/
-├── README.md            # 本文档（项目里的单一来源）
-├── cache.module.ts      # @Global RedisCacheModule，注册到 AppModule
-├── cache.service.ts     # 统一封装的 CacheService（业务模块只接触它）
-├── cache.constants.ts   # 集中维护的 Key 命名工厂 CacheKeys
-└── cache.health.ts      # 健康检查 CacheHealthIndicator
+packages/redis/src/                  # @fedstack/redis：共享基础设施（ADR-003）
+├── redis.module.ts                  # RedisCacheModule（forRootAsync 异步模块）
+├── redis.options.ts                 # RedisModuleOptions 契约 + 启动期校验
+├── cache-stores.ts                  # 连接工厂（纯函数，可单测）
+├── cache.service.ts                 # 统一封装的 CacheService（业务模块只接触它）
+├── cache.prefixer.ts                # KeyPrefixer（直连 key 前缀口径）
+├── cache.health.ts                  # 健康检查 CacheHealthIndicator
+├── hash-cache.service.ts            # Hash 薄封装（含 Hash Tag 规范）
+├── sorted-set-cache.service.ts      # ZSet 薄封装
+├── redis-lock.service.ts            # 分布式锁（SET NX EX + Lua 释放）
+├── redis-fallback.ts                # withRedis() 统一降级入口
+└── hash-token.ts                    # hashCacheToken（敏感值摘要）
+
+apps/admin-api/src/shared/caching/   # 本目录：admin-api 应用层缓存业务
+├── README.md                        # 本文档
+├── caching.module.ts                # CachingModule（业务装配）
+├── cache.constants.ts               # 业务 Key 命名工厂 CacheKeys
+└── login-attempt.service.ts         # 账号级登录锁定策略
 ```
 
 设计原则：
 
 - **业务模块只依赖 `CacheService`**，不直接接触 cache-manager / Keyv / 底层 Redis 客户端。
-- 切换底层（比如以后换成 Memcached）只需要改 `CacheModule`，业务无感。
+- 切换底层（比如以后换成 Memcached）只需要改包内连接工厂，业务无感。
+- 各 app 通过 `RedisCacheModule.forRootAsync()` 注入自身配置；包不读环境变量。
 
 ### 4.2 CacheService 的方法一览
 
@@ -182,7 +197,8 @@ export class UsersService {
 
     // 1. 先查缓存
     const cached = await this.cache.get<User>(key);
-    if (cached) return cached;
+    if (cached)
+      return cached;
 
     // 2. 未命中 → 查 DB
     const user = await this.repo.findOneByOrFail({ id });
@@ -245,12 +261,12 @@ export class CatsController {
 
 ### 4.6 Key 命名规范
 
-所有业务 Key 都通过 [`cache.constants.ts`](https://github.com/fengzai6/my-first-nest/blob/main/apps/server/src/shared/caching/cache.constants.ts) 的 `CacheKeys` 工厂生成：
+所有业务 Key 都通过本目录 [`cache.constants.ts`](./cache.constants.ts) 的 `CacheKeys` 工厂生成：
 
 ```ts
 export const CacheKeys = {
-  USER_BY_ID: (id) => `users:${id}`,
-  AUTH_REFRESH_TOKEN: (token) => `auth:refresh:${hashCacheToken(token)}`,
+  USER_BY_ID: id => `users:${id}`,
+  AUTH_REFRESH_TOKEN: token => `auth:refresh:${hashCacheToken(token)}`,
   // ...
 } as const;
 ```
@@ -261,17 +277,17 @@ export const CacheKeys = {
 
 ### 5.1 环境变量一览
 
-完整配置见 [`apps/server/.env.example`](https://github.com/fengzai6/my-first-nest/blob/main/apps/server/.env.example) 的 Redis 段。
+完整配置见本 app 配置层（`apps/admin-api/src/config/`，env 解析 + joi 校验）的 Redis 段。
 
-| 变量                | 默认值           | 说明                                                         |
-| ------------------- | ---------------- | ------------------------------------------------------------ |
-| `REDIS_URL`         | -                | `redis://[:password@]host:port[/db]`；与 `REDIS_HOST` 二选一 |
-| `REDIS_HOST`        | -                | 主机；与 URL 二选一                                          |
-| `REDIS_PORT`        | `6379`           | 端口                                                         |
-| `REDIS_PASSWORD`    | -                | 密码                                                         |
-| `REDIS_DB`          | `0`              | DB 索引 (0-15)                                               |
-| `REDIS_DEFAULT_TTL` | `300`            | 默认 TTL（秒），0 = 不过期                                   |
-| `REDIS_KEY_PREFIX`  | `my-first-nest:` | Key 前缀（Keyv 命名空间）                                    |
+| 变量                | 默认值      | 说明                                                         |
+| ------------------- | ----------- | ------------------------------------------------------------ |
+| `REDIS_URL`         | -           | `redis://[:password@]host:port[/db]`；与 `REDIS_HOST` 二选一 |
+| `REDIS_HOST`        | -           | 主机；与 URL 二选一                                          |
+| `REDIS_PORT`        | `6379`      | 端口                                                         |
+| `REDIS_PASSWORD`    | -           | 密码                                                         |
+| `REDIS_DB`          | `0`         | DB 索引 (0-15)                                               |
+| `REDIS_DEFAULT_TTL` | `300`       | 默认 TTL（秒），0 = 不过期                                   |
+| `REDIS_KEY_PREFIX`  | `admin-api` | Key 前缀（Keyv 命名空间；各 app 默认与 app 同名，ADR-003）   |
 
 **不配置任何 Redis 变量时**：自动降级为进程内内存 store，应用正常启动。适合本地开发或单机测试。
 
@@ -290,7 +306,7 @@ export const CacheKeys = {
 # 项目根目录执行
 docker-compose -f docker/docker-compose.cache.yml up -d
 
-# 在 apps/server/.env 中加
+# 在 apps/admin-api/.env 中加
 REDIS_URL=redis://localhost:6379
 ```
 
@@ -310,8 +326,8 @@ sudo apt install redis-server && sudo systemctl start redis
 redis-cli ping
 # 应该输出 PONG
 
-# 启动应用后，登录一次，看看 Key 有没有写进去
-redis-cli --scan --pattern 'my-first-nest:*'
+# 启动应用后，触发一次缓存读写，看看 Key 有没有写进去
+redis-cli --scan --pattern 'admin-api:*'
 ```
 
 ## 7. 双模式案例：RefreshToken
@@ -321,7 +337,7 @@ redis-cli --scan --pattern 'my-first-nest:*'
 - 配了 Redis → token 存 Redis，TTL 自动清理；
 - 没配 Redis → 落回原来的 `users_refresh_tokens` 表。
 
-[`refresh-token.service.ts`](https://github.com/fengzai6/my-first-nest/blob/main/apps/server/src/modules/auth/refresh-token.service.ts) 关键写法：
+关键写法（auth 模块落地后可在 `src/modules/auth/` 查看实现）：
 
 ```ts
 async create(user: User) {

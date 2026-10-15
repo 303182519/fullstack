@@ -42,5 +42,5 @@ export const validationSchema = Joi.object({
   REDIS_PASSWORD: Joi.string().allow(''),
   REDIS_DB: Joi.number().integer().min(0).max(15).default(0),
   REDIS_DEFAULT_TTL: Joi.number().integer().min(0).default(300),
-  REDIS_KEY_PREFIX: Joi.string().default('my-first-nest'),
+  REDIS_KEY_PREFIX: Joi.string().default('admin-api'),
 }).oxor('REDIS_URL', 'REDIS_HOST'); // Redis 连接二选一,也可都不提供

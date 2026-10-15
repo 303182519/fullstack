@@ -1,9 +1,7 @@
-import type { RedisClientType } from '@keyv/redis';
+import type { RedisClientType } from '@fedstack/redis';
+import { KeyPrefixer, REDIS_CLIENT, withRedis } from '@fedstack/redis';
 import { Inject, Injectable } from '@nestjs/common';
 import { CacheKeys } from './cache.constants.js';
-import { KeyPrefixer } from './cache.prefixer.js';
-import { REDIS_CLIENT } from './cache.tokens.js';
-import { withRedis } from './redis-fallback.js';
 
 /**
  * 账号级登录锁定策略（本服务自有，不依赖应用层常量）。

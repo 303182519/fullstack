@@ -51,6 +51,7 @@ export const defaultConfig = registerAs('default', (): AppConfig => ({
     db: Number(process.env.REDIS_DB) || 0,
     // 缓存默认 TTL，单位：秒（0 表示不过期）
     defaultTtl: Number(process.env.REDIS_DEFAULT_TTL) || 300,
-    keyPrefix: process.env.REDIS_KEY_PREFIX || 'my-first-nest',
+    // 多 app 共享 Redis 实例时前缀是唯一隔离手段（ADR-003），默认与 app 同名
+    keyPrefix: process.env.REDIS_KEY_PREFIX || 'admin-api',
   },
 }));

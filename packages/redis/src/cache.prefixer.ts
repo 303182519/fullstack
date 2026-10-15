@@ -7,7 +7,7 @@ import { REDIS_STORE } from './cache.tokens.js';
  *
  * 缓存目录下存在两条 Redis 落盘路径：
  *   1. 走 cache-manager → Keyv → KeyvRedis（由 KeyvRedis 在 store 层自动加 namespace 前缀）
- *   2. 直接 REDIS_CLIENT 调用（HashCacheService / LoginAttemptService / RedisLockService / SortedSetCacheService）
+ *   2. 直接 REDIS_CLIENT 调用（HashCacheService / RedisLockService / SortedSetCacheService 及消费方业务服务）
  *
  * 第 2 条路径不会自动前缀化，需要由调用方手动 prefix。namespace 与 separator
  * 直接从 KeyvRedis store 实例派生（单一真相源，而非另读一份配置手工对齐），
