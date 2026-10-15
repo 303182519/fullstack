@@ -76,4 +76,5 @@ catalog:
   keyv: ^5.6.0
   '@nestjs/throttler': ^6.7.1
   '@nestjs/terminus': ^12.1.0
+  argon2: ^0.45.1
 
