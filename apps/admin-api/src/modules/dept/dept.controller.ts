@@ -20,6 +20,7 @@ import {
 import { PERMISSIONS } from '@/common/constants/permissions.js';
 import { RequirePermission } from '@/common/decorators/index.js';
 import { ParseSnowflakePipe } from '@/common/pipes/parse-snowflake.pipe.js';
+import { OperLog } from '@/shared/audit/oper-log.decorator.js';
 import { DeptService } from './dept.service.js';
 // DTO 必须「值导入」：ValidationPipe 依赖 design:paramtypes 元数据（见 auth.controller 说明）。
 import {
@@ -51,6 +52,7 @@ export class DeptController {
 
   @Post()
   @RequirePermission(PERMISSIONS.SYSTEM.DEPT.ADD)
+  @OperLog({ module: '部门管理', action: '创建部门' })
   @ApiOperation({ summary: '创建部门' })
   @ApiCreatedResponse({ type: DeptResponseDto })
   async create(@Body() dto: CreateDeptDto): Promise<DeptResponseDto> {
@@ -59,6 +61,7 @@ export class DeptController {
 
   @Put(':id')
   @RequirePermission(PERMISSIONS.SYSTEM.DEPT.EDIT)
+  @OperLog({ module: '部门管理', action: '更新部门' })
   @ApiOperation({ summary: '更新部门（上级变更会级联重算子树路径）' })
   @ApiOkResponse({ type: DeptResponseDto })
   async update(
@@ -70,6 +73,7 @@ export class DeptController {
 
   @Delete(':id')
   @RequirePermission(PERMISSIONS.SYSTEM.DEPT.REMOVE)
+  @OperLog({ module: '部门管理', action: '删除部门' })
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: '删除部门（存在下级或用户时拒绝）' })
   async remove(@Param('id', ParseSnowflakePipe) id: bigint): Promise<null> {

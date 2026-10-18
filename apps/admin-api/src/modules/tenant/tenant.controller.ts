@@ -15,6 +15,7 @@ import {
 } from '@nestjs/swagger';
 import { SuperAdminGuard } from '@/common/guards/index.js';
 import { ParseSnowflakePipe } from '@/common/pipes/parse-snowflake.pipe.js';
+import { OperLog } from '@/shared/audit/oper-log.decorator.js';
 // DTO 必须「值导入」：ValidationPipe 依赖 design:paramtypes 元数据，
 // import type 会把元数据擦成 Object；@ApiOkResponse({ type }) 也需要类引用。
 import {
@@ -58,6 +59,7 @@ export class TenantController {
   }
 
   @Put(':id')
+  @OperLog({ module: '租户管理', action: '更新租户' })
   @ApiOperation({ summary: '更新租户信息（tenantCode 不可变）' })
   @ApiOkResponse({ type: TenantResponseDto })
   async update(

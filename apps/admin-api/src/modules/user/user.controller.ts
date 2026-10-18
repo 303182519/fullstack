@@ -20,6 +20,7 @@ import {
 import { PERMISSIONS } from '@/common/constants/permissions.js';
 import { RequirePermission } from '@/common/decorators/index.js';
 import { ParseSnowflakePipe } from '@/common/pipes/parse-snowflake.pipe.js';
+import { OperLog } from '@/shared/audit/oper-log.decorator.js';
 // DTO 必须「值导入」：ValidationPipe 依赖 design:paramtypes 元数据，
 // import type 会把元数据擦成 Object 导致校验失效；@ApiOkResponse({ type }) 也需要类引用。
 import {
@@ -53,6 +54,7 @@ export class UserController {
 
   @Post()
   @RequirePermission(PERMISSIONS.SYSTEM.USER.ADD)
+  @OperLog({ module: '用户管理', action: '创建用户' })
   @ApiOperation({ summary: '创建用户' })
   @ApiCreatedResponse({ type: UserDetailDto })
   async create(@Body() dto: CreateUserDto): Promise<UserDetailDto> {
@@ -71,6 +73,7 @@ export class UserController {
 
   @Put(':id')
   @RequirePermission(PERMISSIONS.SYSTEM.USER.EDIT)
+  @OperLog({ module: '用户管理', action: '更新用户' })
   @ApiOperation({ summary: '更新用户（含改密与角色重绑定）' })
   @ApiOkResponse({ type: UserDetailDto })
   async update(
@@ -82,6 +85,7 @@ export class UserController {
 
   @Delete(':id')
   @RequirePermission(PERMISSIONS.SYSTEM.USER.REMOVE)
+  @OperLog({ module: '用户管理', action: '删除用户' })
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: '删除用户（软删除，强制下线并解绑角色）' })
   async remove(@Param('id', ParseSnowflakePipe) id: bigint): Promise<null> {

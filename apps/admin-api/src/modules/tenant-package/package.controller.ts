@@ -20,6 +20,7 @@ import {
 } from '@nestjs/swagger';
 import { SuperAdminGuard } from '@/common/guards/index.js';
 import { ParseSnowflakePipe } from '@/common/pipes/parse-snowflake.pipe.js';
+import { OperLog } from '@/shared/audit/oper-log.decorator.js';
 // DTO 必须「值导入」：ValidationPipe 依赖 design:paramtypes 元数据（见 auth.controller 说明）。
 import {
   CreatePackageDto,
@@ -55,6 +56,7 @@ export class PackageController {
   }
 
   @Post()
+  @OperLog({ module: '套餐管理', action: '创建套餐' })
   @ApiOperation({ summary: '创建套餐' })
   @ApiCreatedResponse({ type: PackageResponseDto })
   async create(@Body() dto: CreatePackageDto): Promise<PackageResponseDto> {
@@ -71,6 +73,7 @@ export class PackageController {
   }
 
   @Put(':id')
+  @OperLog({ module: '套餐管理', action: '更新套餐' })
   @ApiOperation({ summary: '更新套餐' })
   @ApiOkResponse({ type: PackageResponseDto })
   async update(
@@ -81,6 +84,7 @@ export class PackageController {
   }
 
   @Delete(':id')
+  @OperLog({ module: '套餐管理', action: '删除套餐' })
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: '删除套餐（软删除；被租户引用时拒绝）' })
   async remove(@Param('id', ParseSnowflakePipe) id: bigint): Promise<null> {
@@ -98,6 +102,7 @@ export class PackageController {
   }
 
   @Post(':id/menus')
+  @OperLog({ module: '套餐管理', action: '绑定套餐菜单' })
   @ApiOperation({ summary: '绑定套餐菜单（全量替换；仅限平台级启用菜单）' })
   @ApiOkResponse({ type: PackageMenusDto })
   async authorizeMenus(

@@ -20,6 +20,7 @@ import {
 } from '@nestjs/swagger';
 import { SuperAdminGuard } from '@/common/guards/index.js';
 import { ParseSnowflakePipe } from '@/common/pipes/parse-snowflake.pipe.js';
+import { OperLog } from '@/shared/audit/oper-log.decorator.js';
 // DTO 必须「值导入」：ValidationPipe 依赖 design:paramtypes 元数据。
 import {
   CreateMenuDto,
@@ -59,6 +60,7 @@ export class MenuController {
 
   @Post()
   @UseGuards(SuperAdminGuard)
+  @OperLog({ module: '菜单管理', action: '创建菜单' })
   @ApiOperation({ summary: '创建菜单（平台级）' })
   @ApiCreatedResponse({ type: MenuResponseDto })
   async create(@Body() dto: CreateMenuDto): Promise<MenuResponseDto> {
@@ -67,6 +69,7 @@ export class MenuController {
 
   @Put(':id')
   @UseGuards(SuperAdminGuard)
+  @OperLog({ module: '菜单管理', action: '更新菜单' })
   @ApiOperation({ summary: '更新菜单（平台级）' })
   @ApiOkResponse({ type: MenuResponseDto })
   async update(
@@ -78,6 +81,7 @@ export class MenuController {
 
   @Delete(':id')
   @UseGuards(SuperAdminGuard)
+  @OperLog({ module: '菜单管理', action: '删除菜单' })
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: '删除菜单（存在子菜单或被引用时拒绝）' })
   async remove(@Param('id', ParseSnowflakePipe) id: bigint): Promise<null> {

@@ -20,6 +20,7 @@ import {
 import { PERMISSIONS } from '@/common/constants/permissions.js';
 import { RequirePermission } from '@/common/decorators/index.js';
 import { ParseSnowflakePipe } from '@/common/pipes/parse-snowflake.pipe.js';
+import { OperLog } from '@/shared/audit/oper-log.decorator.js';
 // DTO 必须「值导入」：ValidationPipe 依赖 design:paramtypes 元数据（见 auth.controller 说明）。
 import {
   CreateRoleDto,
@@ -54,6 +55,7 @@ export class RoleController {
 
   @Post()
   @RequirePermission(PERMISSIONS.SYSTEM.ROLE.ADD)
+  @OperLog({ module: '角色管理', action: '创建角色' })
   @ApiOperation({ summary: '创建角色' })
   @ApiCreatedResponse({ type: RoleResponseDto })
   async create(@Body() dto: CreateRoleDto): Promise<RoleResponseDto> {
@@ -72,6 +74,7 @@ export class RoleController {
 
   @Put(':id')
   @RequirePermission(PERMISSIONS.SYSTEM.ROLE.EDIT)
+  @OperLog({ module: '角色管理', action: '更新角色' })
   @ApiOperation({ summary: '更新角色' })
   @ApiOkResponse({ type: RoleResponseDto })
   async update(
@@ -83,6 +86,7 @@ export class RoleController {
 
   @Delete(':id')
   @RequirePermission(PERMISSIONS.SYSTEM.ROLE.REMOVE)
+  @OperLog({ module: '角色管理', action: '删除角色' })
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: '删除角色（软删除；被占用或内置角色禁止删除）' })
   async remove(@Param('id', ParseSnowflakePipe) id: bigint): Promise<null> {
@@ -102,6 +106,7 @@ export class RoleController {
 
   @Post(':id/menus')
   @RequirePermission(PERMISSIONS.SYSTEM.ROLE.AUTH)
+  @OperLog({ module: '角色管理', action: '授权角色菜单' })
   @ApiOperation({ summary: '授权角色菜单（全量替换；仅限租户可用菜单范围）' })
   @ApiOkResponse({ type: RoleMenusDto })
   async authorizeMenus(
