@@ -466,6 +466,41 @@ model SysLoginLog {
 }
 ```
 
+### 5.3 实施收口（2026-10-18）
+
+P2 已实施完毕，实际交付以本节为准；§5.2 为实施前设计草案，有偏差处以本节为准。
+
+**模块清单**（`apps/admin-api/src/`）：
+
+- `modules/dict/`：字典类型/字典数据 CRUD + 遮蔽合并列表 + `GET /api/dict-data/options/{type}` 消费端点
+- `modules/config/`：参数 CRUD + 遮蔽合并列表 + `GET /api/configs/value/{key}` 按 key 取值
+- `modules/monitor/`：操作日志/登录日志分页查询 + 在线用户列表（`GET /api/online-users`）、踢单（`DELETE /api/online-users/{sessionId}`）、按用户全设备下线（`POST /api/online-users/force-logout`）
+- `shared/audit/`：`@OperLog` 装饰器 + 全局拦截器（敏感字段掩码、result 截断 2KB、响应后异步落库）、登录日志埋点服务（登录成败均记录，msg 存枚举 token）
+- `shared/scope/`：`ScopeResolverService` 作用域注入——租户管理员恒定本租户；平台超管默认平台级，可带 `?tenantId=` 代管
+- `packages/database/prisma/seed.ts`：35 节点菜单树 + 每存量租户内置 `admin` 角色（`isSystem=true`）全量绑定菜单，幂等 upsert
+
+**与设计稿 §5.2 的偏差**：
+
+| 项          | 设计稿                                     | 实际实现                                                                        | 依据                                               |
+| ----------- | ------------------------------------------ | ------------------------------------------------------------------------------- | -------------------------------------------------- |
+| SysDictData | 无租户维度                                 | 加 `tenantId`（null=平台级），唯一键 `(tenantId, dictType, dictValue)`          | 租户自定义字典数据需要隔离（本期决策第 3 项）       |
+| SysConfig   | `configType` 字段                          | 移除，新增 `isSystem`（内置参数禁删、key 不可改）                               | 类型信息无消费场景；防误删内置参数                 |
+| SysOperLog  | `url` / `costTime`，tenantId/userId 可空   | `path` / `costMs`；tenantId/userId/username 必填（username 为主体名快照）        | 审计写路径只发生在已认证主体；快照保证用户删除后日志可读 |
+| SysLoginLog | `userAgent`                                | `device`（会话设备标识）；`msg` 收敛为枚举 token                                | 与会话/强制下线语义对齐；展示文案由前端映射        |
+| 在线用户    | 设计稿未列端点                             | 三端点（列表/踢单/全设备下线），会话遍历用 SCAN 键空间                          | 本期决策第 7 项                                    |
+
+**关键机制**：
+
+- 字典/参数数据值走 cache-aside + 写时失效；**遮蔽判定不缓存**（防平台级写入失效不精确，见 ADR-009 D4）。
+- 平台级唯一性：MySQL 唯一索引对 NULL 不生效，由服务层查重 + 软删行复活 + `P2002` 兜底（见 ADR-009 D3）。
+- 遮蔽语义：租户存在未删除定义（与 status 无关）即整体遮蔽平台级，不合并；管理列表对平台行带 `shadowed` 标记（见 ADR-009 D2）。
+- P0 user/role 端点补齐 `@RequirePermission`；存量 P0/P1 全部写端点挂 `@OperLog`（auth login/logout 有意不挂）。
+
+完整决策记录：`docs/architecture/decisions/ADR-009-shadowing-and-audit.md`
+
+契约快照：`docs/plans/contracts/phase-2.json`
+
+
 ---
 
 ## 6. P3 扩展能力
