@@ -16,6 +16,9 @@ export default defineConfig({
   schema: 'prisma/schema.prisma',
   migrations: {
     path: 'prisma/migrations',
+    // `prisma db seed` 执行的命令。seed 编译进 dist（pnpm build 产物），先构建再播种；
+    // DATABASE_URL 由调用方环境提供（与迁移一致）。
+    seed: 'node dist/src/seed.js',
   },
   datasource: {
     url: process.env.DATABASE_URL ?? '',

@@ -250,6 +250,124 @@ model SysTenantPackageMenu {
 }
 
 // ==========================================
+// P2 系统管理
+// 字典类型 / 字典数据 / 参数配置 / 操作日志 / 登录日志
+// ==========================================
+
+/// 字典类型。tenantId 为空表示平台级定义，非空表示租户自定义定义。
+/// 遮蔽语义（ADR-009）：租户对某 dictType 建立了自己的定义后，
+/// 该类型的租户可见数据**整体**取自租户级条目，平台级数据不再合并。
+model SysDictType {
+  id        BigInt    @id
+  createdAt DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt DateTime? @map("deleted_at") @db.DateTime(3)
+
+  tenantId BigInt? @map("tenant_id") // null = 平台级定义
+
+  dictName String     @map("dict_name") @db.VarChar(100)
+  dictType String     @map("dict_type") @db.VarChar(100) // 类型键，如 "sys_user_gender"
+  remark   String?    @map("remark") @db.VarChar(500)
+  status   DictStatus @default(ACTIVE) @map("status")
+
+  // 同上：平台级（tenantId=NULL）唯一性由服务层校验兜底。
+  @@unique([tenantId, dictType], name: "uniq_tenant_dict_type")
+  @@index([dictType])
+  @@map("sys_dict_type")
+}
+
+/// 字典数据。按 dictType 字符串归组（不与字典类型建外键，遮蔽合并时二者同域即可对上）。
+model SysDictData {
+  id        BigInt    @id
+  createdAt DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt DateTime? @map("deleted_at") @db.DateTime(3)
+
+  tenantId BigInt? @map("tenant_id") // null = 平台级数据
+
+  dictType   String     @map("dict_type") @db.VarChar(100)
+  dictLabel  String     @map("dict_label") @db.VarChar(100) // 显示名
+  dictValue  String     @map("dict_value") @db.VarChar(100) // 存储值
+  sort       Int        @default(0) @map("sort")
+  remark     String?    @map("remark") @db.VarChar(500)
+  status     DictStatus @default(ACTIVE) @map("status")
+
+  // 同上：平台级（tenantId=NULL）唯一性由服务层校验兜底。
+  @@unique([tenantId, dictType, dictValue], name: "uniq_tenant_dict_value")
+  @@index([dictType])
+  @@map("sys_dict_data")
+}
+
+/// 参数配置。键值型运行参数（如「注册开关」「初始密码」）。
+/// 遮蔽语义与字典一致（ADR-009）：租户建立同 key 定义后整体遮蔽平台级。
+model SysConfig {
+  id        BigInt    @id
+  createdAt DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt DateTime? @map("deleted_at") @db.DateTime(3)
+
+  tenantId BigInt? @map("tenant_id") // null = 平台级参数
+
+  configName  String  @map("config_name") @db.VarChar(100)
+  configKey   String  @map("config_key") @db.VarChar(100) // 参数键，如 "sys.account.captchaEnabled"
+  configValue String  @map("config_value") @db.VarChar(500)
+  isSystem    Boolean @default(false) @map("is_system") // 内置参数：不允许删除、不允许改 key（值可改）
+  remark      String? @map("remark") @db.VarChar(500)
+
+  // 同上：平台级（tenantId=NULL）唯一性由服务层校验兜底。
+  @@unique([tenantId, configKey], name: "uniq_tenant_config_key")
+  @@map("sys_config")
+}
+
+/// 操作日志。只增表：无 updated_at / deleted_at（审计流水不修改不删除，对通用审计列的有意偏差，见 ADR-009）。
+/// params 为掩码后的请求参数；result 截断至 2KB（超出存 `{ __truncated__, preview }`）。
+model SysOperLog {
+  id        BigInt   @id
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+
+  tenantId BigInt @map("tenant_id")
+  userId   BigInt @map("user_id")
+  username String @map("username") @db.VarChar(100) // 主体名快照（用户删除后日志仍可读）
+
+  module  String @map("module") @db.VarChar(50) // 业务模块名，如「用户管理」
+  action  String @map("action") @db.VarChar(50) // 动作名，如「创建用户」
+  method  String @map("method") @db.VarChar(10) // HTTP 方法
+  path    String @map("path") @db.VarChar(200) // 请求路径
+  ip      String? @map("ip") @db.VarChar(50)
+
+  params   Json?         @map("params") // 请求参数（敏感字段已掩码）
+  result   Json?         @map("result") // 响应结果（截断）
+  status   OperLogStatus @map("status")
+  errorMsg String?       @map("error_msg") @db.VarChar(2000) // 失败原因摘要
+  costMs   Int           @map("cost_ms") // 耗时毫秒
+
+  @@index([tenantId, createdAt])
+  @@index([createdAt])
+  @@index([userId])
+  @@map("sys_oper_log")
+}
+
+/// 登录日志。只增表：无 updated_at / deleted_at（同 ADR-009 偏差说明）。
+/// msg 存机器可读枚举 token（如 SUCCESS / INVALID_CREDENTIALS），展示文案由前端映射。
+model SysLoginLog {
+  id        BigInt   @id
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+
+  tenantId BigInt  @map("tenant_id") // 租户解析失败时记 0（占位，见 LoginMsg.TENANT_UNAVAILABLE）
+  userId   BigInt? @map("user_id") // 登录成功才有关联用户
+  username String  @map("username") @db.VarChar(100)
+  ip       String? @map("ip") @db.VarChar(50)
+  device   String? @map("device") @db.VarChar(50)
+  status   LoginLogStatus @map("status")
+  msg      String  @map("msg") @db.VarChar(100) // 枚举 token，见 admin-api LoginMsg
+
+  @@index([tenantId, createdAt])
+  @@index([createdAt])
+  @@index([username])
+  @@map("sys_login_log")
+}
+
+// ==========================================
 // 枚举
 // ==========================================
 
@@ -300,4 +418,19 @@ enum DeptStatus {
 enum PackageStatus {
   ACTIVE   @map("active")
   DISABLED @map("disabled")
+}
+
+enum DictStatus {
+  ACTIVE   @map("active")
+  DISABLED @map("disabled")
+}
+
+enum OperLogStatus {
+  SUCCESS @map("success")
+  FAILURE @map("failure")
+}
+
+enum LoginLogStatus {
+  SUCCESS @map("success")
+  FAILURE @map("failure")
 }
