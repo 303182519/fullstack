@@ -1,10 +1,16 @@
 // 共享持久化层的单一 schema 真相源。
 //
 // 约定：
-// - 数据源 url 不在 schema 中声明，统一由 prisma7.config.ts 从环境变量注入（Prisma 7 约定）。
+// - 数据源 url 不在 schema 中声明，统一由 prisma.config.ts 从环境变量注入（Prisma 7 约定）。
 // - 生成产物输出到包根 generated/prisma（已被根 .gitignore 忽略），再由本包编译进 dist。
 // - 数据模型在此集中定义，两个服务（api / admin-api）共用；业务查询不得写入本包。
 // - 迁移历史（prisma/migrations）是线性的，只能由本包生成与执行，服务进程禁止触发迁移。
+//
+// 命名规范（见迁移路线图 docs/plans/nest-admin-soybean-migration.md §3.2）：
+// - model 用 PascalCase，经 @@map 落表为 sys_* snake_case；
+// - 字段用 camelCase，经 @map 落列为 snake_case；
+// - 主键统一 BigInt 雪花 ID，由代码层生成（不写 @default）；
+// - 统一审计列 created_at / updated_at / deleted_at（soft delete：null=未删除）。
 
 generator client {
   provider = "prisma-client"
@@ -15,13 +21,283 @@ datasource db {
   provider = "mysql"
 }
 
-model User {
-  id        BigInt    @id // 不要写 @default(autoincrement())：主键由代码层雪花算法生成
+// ==========================================
+// P0 认证基座
+// 租户 / 用户 / 角色 / 用户角色关联
+// ==========================================
+
+/// 租户。多租户 SaaS 的顶层隔离边界：业务数据经 tenantId 行级隔离（共享表，见 ADR-005）。
+model SysTenant {
+  id        BigInt    @id
   createdAt DateTime  @default(now()) @map("created_at") @db.DateTime(3)
   updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.DateTime(3)
-  deletedAt DateTime? @map("deleted_at") @db.DateTime(3) // 软删除：null=未删除，有值=删除时间
+  deletedAt DateTime? @map("deleted_at") @db.DateTime(3)
 
-  email    String? @unique @db.VarChar(255) // 可空：OAuth 用户（如微信）可能无邮箱；非 NULL 值仍互斥，邮箱注册防重不变
-  username String  @unique @db.VarChar(100)
-  password String? @db.VarChar(255) // 可空：OAuth 用户可能无密码；有值时存哈希
+  // 基础信息
+  tenantCode   String  @unique @map("tenant_code") @db.VarChar(50) // 租户编码（登录入口使用）
+  tenantName   String  @map("tenant_name") @db.VarChar(100) // 租户名称
+  domain       String? @map("domain") @db.VarChar(255) // 租户专属域名
+  logo         String? @map("logo") @db.VarChar(500) // LOGO URL
+  contactName  String? @map("contact_name") @db.VarChar(50) // 联系人
+  contactPhone String? @map("contact_phone") @db.VarChar(20) // 联系电话
+
+  // 状态与生命周期
+  status     TenantStatus @default(ACTIVE) @map("status")
+  expireTime DateTime?    @map("expire_time") @db.DateTime(3) // 过期时间（null=永久有效）
+  packageId  BigInt?      @map("package_id") // 关联套餐，P1 建表；P0 仅预留字段
+
+  // 配额（P0 只落字段，管理逻辑 P3 实现）
+  userLimit    Int    @default(100) @map("user_limit")
+  storageLimit BigInt @default(1073741824) @map("storage_limit") // 字节
+
+  // 关联套餐（P1 建表并建立外键；null=未绑定套餐，视为平台全部菜单可用，见 ADR-008 D4）
+  package SysTenantPackage? @relation(fields: [packageId], references: [id])
+
+  users SysUser[]
+  roles SysRole[]
+
+  @@map("sys_tenant")
+}
+
+/// 用户。租户内账号，邮箱/用户名在租户内唯一（跨租户可重名）。
+model SysUser {
+  id        BigInt    @id
+  createdAt DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt DateTime? @map("deleted_at") @db.DateTime(3)
+
+  // 租户归属
+  tenantId BigInt @map("tenant_id")
+
+  // 登录凭证
+  username String  @map("username") @db.VarChar(100)
+  password String? @map("password") @db.VarChar(255) // argon2id 哈希；OAuth 用户可空
+  email    String? @map("email") @db.VarChar(255)
+  phone    String? @map("phone") @db.VarChar(20)
+
+  // 基础资料
+  nickname String? @map("nickname") @db.VarChar(50)
+  avatar   String? @map("avatar") @db.VarChar(500)
+  gender   Gender? @map("gender")
+  remark   String? @map("remark") @db.VarChar(500)
+
+  // 状态
+  status  UserStatus @default(ACTIVE) @map("status")
+  isSuper Boolean    @default(false) @map("is_super") // 是否超级管理员（跨租户，仅供平台运维）
+
+  // 密码策略：最近 N 次密码哈希（JSON 数组），禁止重复使用
+  passwordHistory Json? @map("password_history")
+
+  // 所属部门（P1 引入，数据权限「本部门及以下」依赖它，见 ADR-008 D2）
+  deptId BigInt? @map("dept_id")
+
+  tenant    SysTenant     @relation(fields: [tenantId], references: [id])
+  dept      SysDept?      @relation(fields: [deptId], references: [id])
+  userRoles SysUserRole[]
+
+  @@unique([tenantId, username], name: "uniq_tenant_username")
+  @@unique([tenantId, email], name: "uniq_tenant_email")
+  @@index([tenantId, deptId])
+  @@map("sys_user")
+}
+
+/// 角色。RBAC 的功能权限载体，并携带数据权限档位（dataScope）。
+model SysRole {
+  id        BigInt    @id
+  createdAt DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt DateTime? @map("deleted_at") @db.DateTime(3)
+
+  tenantId BigInt @map("tenant_id")
+
+  roleName    String    @map("role_name") @db.VarChar(50)
+  roleCode    String    @map("role_code") @db.VarChar(50) // 如 "admin"、"dept_manager"
+  description String?   @map("description") @db.VarChar(200)
+  dataScope   DataScope @default(DEPT_AND_CHILD) @map("data_scope")
+
+  status   RoleStatus @default(ACTIVE) @map("status")
+  isSystem Boolean    @default(false) @map("is_system") // 系统内置角色，不可删除/改码
+
+  tenant    SysTenant     @relation(fields: [tenantId], references: [id])
+  userRoles SysUserRole[]
+  roleMenus SysRoleMenu[]
+
+  @@unique([tenantId, roleCode], name: "uniq_tenant_role_code")
+  @@map("sys_role")
+}
+
+/// 用户-角色关联。纯关联表，无 updated_at / deleted_at（重绑定时删旧插新）。
+model SysUserRole {
+  id        BigInt   @id
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+
+  userId BigInt @map("user_id")
+  roleId BigInt @map("role_id")
+
+  user SysUser @relation(fields: [userId], references: [id])
+  role SysRole @relation(fields: [roleId], references: [id])
+
+  @@unique([userId, roleId], name: "uniq_user_role")
+  @@map("sys_user_role")
+}
+
+// ==========================================
+// P1 权限与组织
+// 菜单 / 部门 / 角色-菜单 / 租户套餐 / 套餐-菜单
+// ==========================================
+
+/// 菜单。三级结构（目录 → 菜单 → 按钮），按钮级 permCode 控制 API 访问（见 ADR-008 D1）。
+/// tenantId 为空表示平台级菜单（所有租户共享的 system 功能），非空表示租户自定义菜单。
+model SysMenu {
+  id        BigInt    @id
+  createdAt DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt DateTime? @map("deleted_at") @db.DateTime(3)
+
+  tenantId BigInt? @map("tenant_id") // null = 平台级菜单
+
+  parentId BigInt? @map("parent_id") // 父菜单，null = 根节点
+
+  menuType  MenuType   @map("menu_type")
+  menuName  String     @map("menu_name") @db.VarChar(50)
+  routeName String?    @map("route_name") @db.VarChar(100) // 前端路由 name
+  routePath String?    @map("route_path") @db.VarChar(200) // 前端路由 path
+  component String?    @map("component") @db.VarChar(200) // 前端组件路径
+  permCode  String?    @map("perm_code") @db.VarChar(100) // 权限编码，如 "system:user:add"；仅 BUTTON 必有
+  icon      String?    @map("icon") @db.VarChar(100)
+  sort      Int        @default(0) @map("sort")
+  visible   Boolean    @default(true) @map("visible")
+  status    MenuStatus @default(ACTIVE) @map("status")
+
+  roleMenus    SysRoleMenu[]
+  packageMenus SysTenantPackageMenu[]
+
+  @@index([tenantId, parentId])
+  @@index([permCode])
+  @@map("sys_menu")
+}
+
+/// 部门。物化路径 path（如 "/1/3/5/"）表示从根到自身的完整祖先链，支撑「本部门及以下」数据权限（ADR-008 D2）。
+model SysDept {
+  id        BigInt    @id
+  createdAt DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt DateTime? @map("deleted_at") @db.DateTime(3)
+
+  tenantId BigInt @map("tenant_id")
+
+  parentId BigInt? @map("parent_id") // null = 根部门
+  deptName String  @map("dept_name") @db.VarChar(50)
+  leader   String? @map("leader") @db.VarChar(50)
+  phone    String? @map("phone") @db.VarChar(20)
+  path     String  @map("path") @db.VarChar(500) // 物化路径，如 "/1/3/5/"
+  sort     Int     @default(0) @map("sort")
+  status   DeptStatus @default(ACTIVE) @map("status")
+
+  users SysUser[]
+
+  @@index([tenantId, parentId])
+  @@index([tenantId, path(191)])
+  @@map("sys_dept")
+}
+
+/// 角色-菜单关联。纯关联表，无 updated_at / deleted_at（重新授权时删旧插新）。
+model SysRoleMenu {
+  id        BigInt   @id
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+
+  roleId BigInt @map("role_id")
+  menuId BigInt @map("menu_id")
+
+  role SysRole @relation(fields: [roleId], references: [id])
+  menu SysMenu @relation(fields: [menuId], references: [id])
+
+  @@unique([roleId, menuId], name: "uniq_role_menu")
+  @@map("sys_role_menu")
+}
+
+/// 租户套餐。平台级数据，绑定一组菜单决定租户可用功能范围（见迁移路线图 §4.3）。
+model SysTenantPackage {
+  id        BigInt    @id
+  createdAt DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt DateTime? @map("deleted_at") @db.DateTime(3)
+
+  packageName String        @map("package_name") @db.VarChar(50)
+  packageCode String        @unique @map("package_code") @db.VarChar(50)
+  description String?       @map("description") @db.VarChar(200)
+  status      PackageStatus @default(ACTIVE) @map("status")
+
+  menus   SysTenantPackageMenu[]
+  tenants SysTenant[]
+
+  @@map("sys_tenant_package")
+}
+
+/// 套餐-菜单关联。纯关联表，无 updated_at / deleted_at。
+model SysTenantPackageMenu {
+  id        BigInt   @id
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+
+  packageId BigInt @map("package_id")
+  menuId    BigInt @map("menu_id")
+
+  package SysTenantPackage @relation(fields: [packageId], references: [id])
+  menu    SysMenu          @relation(fields: [menuId], references: [id])
+
+  @@unique([packageId, menuId], name: "uniq_package_menu")
+  @@map("sys_tenant_package_menu")
+}
+
+// ==========================================
+// 枚举
+// ==========================================
+
+enum TenantStatus {
+  ACTIVE   @map("active")
+  DISABLED @map("disabled")
+  EXPIRED  @map("expired")
+}
+
+enum UserStatus {
+  ACTIVE   @map("active")
+  DISABLED @map("disabled")
+  LOCKED   @map("locked") // 登录锁定（当前锁定态由 Redis 承载，此值为持久化的账号级封禁标记）
+}
+
+enum Gender {
+  MALE    @map("male")
+  FEMALE  @map("female")
+  UNKNOWN @map("unknown")
+}
+
+enum RoleStatus {
+  ACTIVE   @map("active")
+  DISABLED @map("disabled")
+}
+
+enum DataScope {
+  ALL            @map("all") // 全部数据
+  DEPT_AND_CHILD @map("dept_and_child") // 本部门及以下
+}
+
+enum MenuType {
+  DIRECTORY @map("directory") // 目录（纯分组，无路由）
+  MENU      @map("menu") // 菜单（页面，有路由）
+  BUTTON    @map("button") // 按钮（操作点，对应具体 API）
+}
+
+enum MenuStatus {
+  ACTIVE   @map("active")
+  DISABLED @map("disabled")
+}
+
+enum DeptStatus {
+  ACTIVE   @map("active")
+  DISABLED @map("disabled")
+}
+
+enum PackageStatus {
+  ACTIVE   @map("active")
+  DISABLED @map("disabled")
 }

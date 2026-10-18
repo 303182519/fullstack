@@ -6,9 +6,9 @@ import { CacheKeys } from './cache.constants.js';
 /**
  * 账号级登录锁定策略（本服务自有，不依赖应用层常量）。
  * 连续失败 maxAttempts 次后锁定，窗口与锁定时长同为 lockMinutes，
- * 到期计数器自动归零解锁。策略调整入口集中在这里。
+ * 到期计数器自动归零解锁。策略调整入口集中在这里（ADR-007 D4）。
  */
-const LOGIN_LOCKOUT = {
+export const LOGIN_LOCKOUT = {
   maxAttempts: 5,
   lockMinutes: 15,
 } as const;
@@ -18,12 +18,14 @@ const LOGIN_LOCKOUT = {
 //   攻击者用一堆 IP（代理池）撞一个账号时，IP 限流逐个 IP 都没超阈值，
 //   只有「账号维度」的计数能把这种爆破拦下来。
 //
+// 维度为 (tenantId, username)：username 在租户内唯一，跨租户可重名，
+// 因此必须带上 tenantId，否则 A 租户的失败会误锁 B 租户的同名账号。
+//
 // 状态落在 Redis（一个带 TTL 的计数器 key），复用「可选层」哲学：
 //   Redis 连不上 → 整套锁定静默关闭，登录照常走（哪怕少了这层防护，也不让登录挂）。
-//   这和存储选 S3 时的 fail-fast 刻意相反：锁定是「锦上添花的安全层」，
-//   不是运营命脉，挂了宁可降级。
+//   这和会话存储的 fail-fast 刻意相反：锁定是「锦上添花的安全层」，不是运营命脉，挂了宁可降级。
 //
-// 单 key 设计：auth:loginFail:email=<email> = 失败次数，首次失败时起算窗口（windowSec），
+// 单 key 设计：auth:loginFail:tenant=<tid>:username=<un> = 失败次数，首次失败时起算窗口，
 //   到期自动归零 → 账号自动解锁，无需人工介入、也不会永久误锁。成功登录立即 del 清零。
 
 /** 一次失败计数的结果：当前累计次数、是否已触发锁定。 */
@@ -45,34 +47,54 @@ export class LoginAttemptService {
     this.windowSec = LOGIN_LOCKOUT.lockMinutes * 60;
   }
 
+  /** 锁定阈值（次）；供验证码阈值判定与错误文案复用 */
+  getMaxAttempts(): number {
+    return this.maxAttempts;
+  }
+
   /**
-   * 账号是否当前被锁。登录入口先问它：锁了就省掉 bcrypt 比对、直接拒（也省 CPU）。
-   * Redis 不通恒返回 false（不锁）——降级。
+   * 当前累计失败次数。登录入口据此判定是否强制验证码（ADR-007 D4）。
+   * Redis 不通恒返回 0（降级）。
    */
-  async isLocked(email: string): Promise<boolean> {
-    const redisKey = this.prefixer.prefix(CacheKeys.AUTH_LOGIN_FAIL(email));
+  async getFailures(tenantId: string, username: string): Promise<number> {
+    const redisKey = this.prefixer.prefix(
+      CacheKeys.AUTH_LOGIN_FAIL(tenantId, username),
+    );
     return withRedis(
       this.redis,
       async (r) => {
         const raw = await r.get(redisKey);
         const n = Number(raw);
-        // 判断一个值是不是整数，返回布尔值 `true / false`
-        return Number.isInteger(n) && n >= this.maxAttempts;
+        return Number.isInteger(n) && n > 0 ? n : 0;
       },
-      false, // fail-open：宁可少一层防护，也不挡登录
-      'LoginAttemptService.isLocked',
+      0,
+      'LoginAttemptService.getFailures',
     );
+  }
+
+  /**
+   * 账号是否当前被锁。登录入口先问它：锁了就省掉 argon2 比对、直接拒（也省 CPU）。
+   * Redis 不通恒返回 false（不锁）——降级。
+   */
+  async isLocked(tenantId: string, username: string): Promise<boolean> {
+    const failures = await this.getFailures(tenantId, username);
+    return failures >= this.maxAttempts;
   }
 
   /**
    * 记一次失败，返回是否刚好触发锁定。用 Lua 脚本保证「INCR + 首次起算窗口」的原子性
    * （仅当计数从 0→1 时设 EXPIRE，后续失败不重置窗口，避免滑动续期导致无限锁定的尾部效应）。
    */
-  async recordFailure(email: string): Promise<AttemptResult> {
-    const redisKey = this.prefixer.prefix(CacheKeys.AUTH_LOGIN_FAIL(email));
+  async recordFailure(
+    tenantId: string,
+    username: string,
+  ): Promise<AttemptResult> {
+    const redisKey = this.prefixer.prefix(
+      CacheKeys.AUTH_LOGIN_FAIL(tenantId, username),
+    );
 
-    // 功能：对 key 做自增；如果是第 1 次自增 (n=1)，才给这个 key 设置 TTL 过期时间；后续自增不重复设置过期。
-    // 典型用途：接口限流，比如 “1 分钟最多 5 次请求”。
+    // 对 key 自增；仅第 1 次自增（计数 0→1）时设置 TTL，后续失败不重复设置过期。
+    // 典型用途：账号维度失败计数，窗口到期自动归零解锁。
     const lua = `
       local current = redis.call("INCR", KEYS[1])
       if current == 1 then
@@ -98,8 +120,10 @@ export class LoginAttemptService {
    * 登录成功立即清零。这一点很关键：否则合法用户某次手滑输错几次后，
    * 计数器会在窗口内一直挂着，下次哪怕输对也快顶到阈值。成功即抹掉历史。
    */
-  async clear(email: string): Promise<void> {
-    const redisKey = this.prefixer.prefix(CacheKeys.AUTH_LOGIN_FAIL(email));
+  async clear(tenantId: string, username: string): Promise<void> {
+    const redisKey = this.prefixer.prefix(
+      CacheKeys.AUTH_LOGIN_FAIL(tenantId, username),
+    );
     await withRedis(
       this.redis,
       async (r) => {

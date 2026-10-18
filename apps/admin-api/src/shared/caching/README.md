@@ -265,13 +265,14 @@ export class CatsController {
 
 ```ts
 export const CacheKeys = {
-  USER_BY_ID: id => `users:${id}`,
-  AUTH_REFRESH_TOKEN: token => `auth:refresh:${hashCacheToken(token)}`,
+  AUTH_SESSION: sessionId => `auth:session:id=${sessionId}`,
+  AUTH_USER_SESSIONS: userId => `auth:user:sessions:userId=${userId}`,
+  AUTH_REFRESH: sessionId => `auth:refresh:sid=${sessionId}`,
   // ...
 } as const;
 ```
 
-**不要在调用处用字符串拼接 Key**；新业务域优先扩展 `CacheKeys`。Refresh Token 这类敏感值必须先派生摘要再进入 Key，避免原文 token 出现在 Redis Key 中。
+**不要在调用处用字符串拼接 Key**；新业务域优先扩展 `CacheKeys`。会话类敏感值（如 refresh token 原文）**不作为 Key**，而是先派生摘要（`hashCacheToken`）再作为 **Value** 存入以 sessionId 命名的 Key，从而让原文 token 既不出现在 Redis Key、也不明文落盘（见 §7）。
 
 ## 5. 配置
 
@@ -330,48 +331,24 @@ redis-cli ping
 redis-cli --scan --pattern 'admin-api:*'
 ```
 
-## 7. 双模式案例：RefreshToken
+## 7. 案例：会话管理（SessionService）
 
-`RefreshToken` 是本项目第一个 "Redis 可选" 模式的实战案例：
+会话（登录态）是 admin-api 应用层第一个**强依赖 Redis** 的业务：不同于「缓存可选」，登录态正确性敏感，不能接受 DB 兜底带来的模式切换歧义（见 ADR-007 D1/D2）。
 
-- 配了 Redis → token 存 Redis，TTL 自动清理；
-- 没配 Redis → 落回原来的 `users_refresh_tokens` 表。
+设计要点：
 
-关键写法（auth 模块落地后可在 `src/modules/auth/` 查看实现）：
+- **键结构**（`CacheKeys`）：
+  - `admin-api:auth:session:id={sessionId}` → JSON 会话记录（userId / tenantId / username / isSuper / device / ip / expiresAt）；
+  - `admin-api:auth:user:sessions:userId={userId}` → Set，汇总该用户所有在线 sessionId（用于「强制下线全部设备」）；
+  - `admin-api:auth:refresh:sid={sessionId}` → 该会话当前有效 refresh 令牌的 **sha256 摘要**。
+- **滑动过期**：refresh JWT 有效期 7 天；每次成功刷新后重签令牌、覆盖摘要，并把 session / refresh key 的 TTL 重置为 7 天。
+- **旋转校验**：请求带来的 refresh 令牌摘要必须与 `auth:refresh:sid=...` 中存储的一致；不一致（含被旋转淘汰的旧令牌）一律 401。
+- **强制下线**：删除 `auth:session:id=...` 与 `auth:refresh:sid=...`，并从用户会话集合移除；后续访问令牌在 2h 内仍可用（JWT 无状态），下次刷新即登出。
+- **Redis 降级口径**（与 LoginAttemptService 的「整体放行」不同）：
+  - **读**（`lookupSession` 被 JwtAuthGuard 调用）→ 返回 `unavailable`，守卫仅凭令牌载荷降级放行（只读模式）；
+  - **写**（登录 / 刷新 / 旋转）→ **fail-fast 抛 503**，宁可让用户稍后重试，也不签发无服务端会话的令牌。
 
-```ts
-async create(user: User) {
-  const tokens = this.generateTokens(user);
-
-  // 分支：Redis 走 Redis，否则走 DB
-  if (this.cacheService.isRedisEnabled()) {
-    await this.cacheService.set(
-      CacheKeys.AUTH_REFRESH_TOKEN(tokens.refreshToken),
-      user.id,
-      jwt.refreshExpiresIn,
-    );
-    return tokens;
-  }
-
-  // DB 兜底
-  await this.refreshTokenRepository.save({
-    token: tokens.refreshToken,
-    expiresAt: tokens.refreshExpiresAt,
-    user,
-  });
-  return tokens;
-}
-```
-
-为什么这么设计：
-
-- 学习阶段本地不一定有 Redis，DB 兜底让项目开箱即用。
-- 部署生产时配上 Redis，token 自动按 TTL 清理，省一张表。
-- 切换无感：业务调用方不需要改任何东西。
-
-⚠️ **切换模式不会迁移历史数据**：DB 模式 → Redis 模式 之间切换时，旧模式下的 token 全部失效，用户需要重新登录。
-
-> 这种"双模式 + isRedisEnabled() 分支"的写法可以复用到 session、限流、黑名单等场景。
+> 与 §4.3「缓存可选、DB 兜底」的双模式写法不同：会话是「Redis 必选」，因此 `SessionService` 在未配置 Redis 时直接抛 `AUTH_UNAVAILABLE`，不做 DB 兜底。
 
 ## 8. 何时不要用缓存
 

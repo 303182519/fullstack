@@ -368,8 +368,11 @@ model SysTenantPackageMenu {
 ### 4.3 核心机制
 
 - **菜单三级**：目录 → 菜单 → 按钮，按钮级控制 API 访问
-- **数据权限**：`@DataPermission({ deptAlias: 'd' })` 装饰器自动注入 `dept.path LIKE '{currentDeptPath}%'` 或 `1=1`（全部数据）
+- **数据权限**：Service 层**显式**调用 `DataScopeService` 生成 `dept.path LIKE '{currentDeptPath}%'` 或 `{}`（全部数据）。
+  说明：Prisma 7 已移除 query middleware，原设想的 `@DataPermission` 装饰器自动注入无法落地，改为显式调用（见 ADR-008 D3 与 `data-scope.service.ts`）。
 - **租户套餐**：套餐绑定菜单集合，租户关联套餐，决定租户可用功能范围
+
+契约快照：`docs/plans/contracts/phase-1.json`
 
 ---
 

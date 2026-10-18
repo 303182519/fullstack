@@ -33,9 +33,12 @@
     "@nestjs/common": "catalog:",
     "@nestjs/config": "catalog:",
     "@nestjs/core": "catalog:",
+    "@nestjs/jwt": "catalog:",
     "@nestjs/platform-express": "catalog:",
     "@nestjs/swagger": "catalog:",
     "@nestjs/terminus": "catalog:",
+    "@nestjs/throttler": "catalog:",
+    "argon2": "catalog:",
     "cache-manager": "catalog:",
     "class-transformer": "catalog:",
     "class-validator": "catalog:",
@@ -49,7 +52,8 @@
     "pino-http": "catalog:",
     "pino-roll": "catalog:",
     "reflect-metadata": "catalog:",
-    "rxjs": "catalog:"
+    "rxjs": "catalog:",
+    "svg-captcha": "catalog:"
   },
   "devDependencies": {
     "@fedstack/eslint-config": "workspace:*",

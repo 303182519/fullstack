@@ -22,7 +22,7 @@ import { RequestContextService } from './request-context.service.js';
  * `req.id` / 请求头 / 响应头三个落点。这样 id 的生成与 pino-http 的 `genReqId` 共用同一解析
  * 函数，两侧必然落在同一个值上——属性上等价于原来的 RequestIdMiddleware，故不再需要它。
  * 注意：`setup` **不写 user**——中间件早于守卫执行，此时 `req.user` 尚未被 JwtAuthGuard 填充；
- * 用户信息仍由 UserContextInterceptor 在守卫之后注入。
+ * 用户信息由 JwtAuthGuard 通过 RequestContextService.setUser 在守卫内写入。
  *
  * 顺序约束：本模块**必须是 AppModule 的第一个 import**，以保证 `ClsMiddleware` 早于
  * pino-http 执行、CLS 上下文最先建立（id 取值因共用 `resolveRequestId()` 而与顺序无关）。

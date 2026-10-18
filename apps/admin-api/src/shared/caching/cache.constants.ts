@@ -15,15 +15,29 @@ export { hashCacheToken };
  *   ❌ 直连 Redis 但不走 CacheService 的 key — 走 KeyPrefixer.prefix() 手动加 namespace
  *
  * 最终落盘 Key = `${namespace}${separator}${这里的返回值}`（CacheService 走 KeyvRedis 自动加；
- * 直连 client 的服务由 KeyPrefixer 加，两者同源）。
+ * 直连 client 的服务由 KeyPrefixer 加，两者同源）。namespace 为各 app 的 REDIS_KEY_PREFIX，
+ * admin-api 下形如 `admin-api:auth:session:id=...`（见 ADR-003 / ADR-007 §3.4）。
+ *
+ * 会话 / 登录安全相关的 key 口径见 ADR-007 D1 / D4：修改命名须同步更新 ADR。
  */
 export const CacheKeys = {
+  // ---- 会话管理（ADR-007 D1 / D2）：多端登录，每设备一个 sessionId ----
+  /** 会话记录：JSON {userId, tenantId, username, isSuper, device, ip, createdAt, expiresAt} */
+  AUTH_SESSION: (sessionId: string) => `auth:session:id=${sessionId}`,
+  /** 用户在线会话集合：Set [sessionId, ...]，用于「强制下线全部设备」与在线会话列表 */
+  AUTH_USER_SESSIONS: (userId: string) => `auth:user:sessions:userId=${userId}`,
+  /** 会话当前有效 refresh 令牌摘要（sha256）；旋转刷新时覆盖，登出时删除 */
+  AUTH_REFRESH: (sessionId: string) => `auth:refresh:sid=${sessionId}`,
 
-  // 登录失败计数器：邮箱归一化（trim + 小写），避免大小写差异算成两个账号
-  AUTH_LOGIN_FAIL: (email: string) =>
-    `auth:loginFail:email=${email.trim().toLowerCase()}`,
+  // ---- 登录安全（ADR-007 D4）：按账号维度计数，Redis 不通时整体降级放行 ----
+  /**
+   * 登录失败计数器（账号维度）。username 归一化（trim + 小写），
+   * 避免大小写差异把同一账号算成多个；IP 维度只记审计、不参与锁定。
+   */
+  AUTH_LOGIN_FAIL: (tenantId: string, username: string) =>
+    `auth:loginFail:tenant=${tenantId}:username=${username.trim().toLowerCase()}`,
 
-  // OAuth 一次性令牌：state 防 CSRF（TTL 10min），ticket 换 token（TTL 60s）
-  AUTH_OAUTH_STATE: (state: string) => `auth:oauthState:state=${state}`,
-  AUTH_OAUTH_TICKET: (ticket: string) => `auth:oauthTicket:ticket=${ticket}`,
+  // ---- 图形验证码（ADR-007 D4）：答案一次性使用，验证即删 ----
+  /** 验证码答案：value=文本，TTL=CAPTCHA_TTL_SECONDS */
+  AUTH_CAPTCHA: (captchaId: string) => `auth:captcha:id=${captchaId}`,
 } as const;

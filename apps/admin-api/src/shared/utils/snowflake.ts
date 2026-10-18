@@ -29,19 +29,21 @@ export class Snowflake {
   // 最大工作节点ID
   private static readonly MAX_WORKER_ID = -1n ^ (-1n << this.WORKER_ID_BITS);
   // 最大数据中心ID
-  private static readonly MAX_DATACENTER_ID =
-    -1n ^ (-1n << this.DATACENTER_ID_BITS);
+  private static readonly MAX_DATACENTER_ID
+    = -1n ^ (-1n << this.DATACENTER_ID_BITS);
+
   // 序列号掩码
   private static readonly SEQUENCE_MASK = -1n ^ (-1n << this.SEQUENCE_BITS);
 
   // 工作节点ID左移位数
   private static readonly WORKER_ID_SHIFT = this.SEQUENCE_BITS;
   // 数据中心ID左移位数
-  private static readonly DATACENTER_ID_SHIFT =
-    this.SEQUENCE_BITS + this.WORKER_ID_BITS;
+  private static readonly DATACENTER_ID_SHIFT
+    = this.SEQUENCE_BITS + this.WORKER_ID_BITS;
+
   // 时间戳左移位数
-  private static readonly TIMESTAMP_LEFT_SHIFT =
-    this.SEQUENCE_BITS + this.WORKER_ID_BITS + this.DATACENTER_ID_BITS;
+  private static readonly TIMESTAMP_LEFT_SHIFT
+    = this.SEQUENCE_BITS + this.WORKER_ID_BITS + this.DATACENTER_ID_BITS;
 
   // 序列号
   private sequence = 0n;
@@ -68,8 +70,8 @@ export class Snowflake {
       );
     }
     if (
-      this.datacenterId > Snowflake.MAX_DATACENTER_ID ||
-      this.datacenterId < 0
+      this.datacenterId > Snowflake.MAX_DATACENTER_ID
+      || this.datacenterId < 0
     ) {
       throw new Error(
         `Datacenter ID can't be greater than ${Snowflake.MAX_DATACENTER_ID} or less than 0`,
@@ -100,17 +102,18 @@ export class Snowflake {
         // 毫秒内序列溢出
         timestamp = this.tilNextMillis(this.lastTimestamp);
       }
-    } else {
+    }
+    else {
       this.sequence = 0n;
     }
 
     this.lastTimestamp = timestamp;
 
     return (
-      ((timestamp - Snowflake.EPOCH) << Snowflake.TIMESTAMP_LEFT_SHIFT) |
-      (this.datacenterId << Snowflake.DATACENTER_ID_SHIFT) |
-      (this.workerId << Snowflake.WORKER_ID_SHIFT) |
-      this.sequence
+      ((timestamp - Snowflake.EPOCH) << Snowflake.TIMESTAMP_LEFT_SHIFT)
+      | (this.datacenterId << Snowflake.DATACENTER_ID_SHIFT)
+      | (this.workerId << Snowflake.WORKER_ID_SHIFT)
+      | this.sequence
     );
   }
 
@@ -148,37 +151,37 @@ let snowflakeInstance: Snowflake | null = null;
  * @param workerId 工作节点ID
  * @param datacenterId 数据中心ID
  */
-export const initSnowflake = (workerId: bigint, datacenterId: bigint) => {
+export function initSnowflake(workerId: bigint, datacenterId: bigint) {
   if (snowflakeInstance) {
     Logger.warn('Snowflake generator has already been initialized.');
     return;
   }
 
-  // 机房	datacenterId	实例	workerId	完整组合 (datacenterId,workerId)
-  // 广州机房	0	实例 A	0	(0, 0)
-  // 广州机房	0	实例 B	1	(0, 1)
-  // 广州机房	0	实例 C	2	(0, 2)
-  // 上海机房	1	实例 A	0	(1, 0)
-  // 上海机房	1	实例 B	1	(1, 1)
-  // 上海机房	1	实例 C	2	(1, 2)
+  // 机房 datacenterId  实例 workerId 完整组合 (datacenterId,workerId)
+  // 广州机房 0 实例 A 0 (0, 0)
+  // 广州机房 0 实例 B 1 (0, 1)
+  // 广州机房 0 实例 C 2 (0, 2)
+  // 上海机房 1 实例 A 0 (1, 0)
+  // 上海机房 1 实例 B 1 (1, 1)
+  // 上海机房 1 实例 C 2 (1, 2)
   snowflakeInstance = new Snowflake(workerId, datacenterId);
-};
+}
 
 /**
  * 重置雪花算法
  */
-export const resetSnowflake = () => {
+export function resetSnowflake() {
   snowflakeInstance = null;
-};
+}
 
 /**
  * 生成一个雪花ID (字符串形式)
  */
-export const generateSnowflakeId = (): string => {
+export function generateSnowflakeId(): string {
   if (!snowflakeInstance) {
     throw new Error(
       'Snowflake generator has not been initialized. Call initSnowflake() first.',
     );
   }
   return snowflakeInstance.nextId().toString();
-};
+}

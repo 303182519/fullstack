@@ -9,7 +9,7 @@ export const validationSchema = Joi.object({
 
   // JWT
   JWT_SECRET: Joi.string().required(),
-  JWT_ACCESS_EXPIRES_IN: Joi.number().default(900),
+  JWT_ACCESS_EXPIRES_IN: Joi.number().default(7200),
   JWT_REFRESH_EXPIRES_IN: Joi.number().default(604800),
 
   // Snowflake ID Generator
@@ -43,4 +43,9 @@ export const validationSchema = Joi.object({
   REDIS_DB: Joi.number().integer().min(0).max(15).default(0),
   REDIS_DEFAULT_TTL: Joi.number().integer().min(0).default(300),
   REDIS_KEY_PREFIX: Joi.string().default('admin-api'),
+
+  // Throttler（全局限流）
+  THROTTLE_TTL: Joi.number().integer().min(1000).default(60_000),
+  THROTTLE_LIMIT: Joi.number().integer().min(1).default(120),
+  THROTTLE_BLOCK_DURATION: Joi.number().integer().min(0).default(60_000),
 }).oxor('REDIS_URL', 'REDIS_HOST'); // Redis 连接二选一,也可都不提供

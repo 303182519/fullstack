@@ -86,6 +86,24 @@ export interface RedisConfig {
   keyPrefix?: string;
 }
 
+/**
+ * 全局限流配置（`@nestjs/throttler`）。
+ *
+ * 存储介质：Redis（`ThrottlerConfigModule` 注入 `RedisThrottlerStorage`），
+ * 多实例部署下计数跨实例共享；Redis 不可用时降级为「不限流」（fail open，
+ * 账号维度锁定仍由 Redis 主防线兜住）。
+ */
+export interface ThrottlerConfig {
+  /** 计数窗口时长（毫秒） */
+  ttl?: number;
+  /** 单窗口内最大请求数 */
+  limit?: number;
+  /** 超限后的阻塞时长（毫秒），0 表示不额外阻塞 */
+  blockDuration?: number;
+  /** 触发限流时的错误提示文案 */
+  errorMessage?: string;
+}
+
 export interface AppConfig {
   /** HTTP 服务配置 */
   server?: ServerConfig;
@@ -101,6 +119,8 @@ export interface AppConfig {
   logger?: LoggerConfig;
   /** Redis 配置 */
   redis?: RedisConfig;
+  /** 全局限流配置 */
+  throttler?: ThrottlerConfig;
 }
 
 export type AppConfigForced = {

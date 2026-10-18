@@ -10,7 +10,8 @@
     "**/node_modules": true,
     "yarn.lock": true,
     "**.map": true,
-    "**/routeTree.gen.ts": true
+    "**/routeTree.gen.ts": true,
+    "**/dist/**": true
   },
   "files.readonlyInclude": {
     "**/routeTree.gen.ts": true

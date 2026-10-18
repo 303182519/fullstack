@@ -1,5 +1,5 @@
-import type { User } from '@fedstack/database';
 import type { AppClsStore, CacheState } from './cls-store.js';
+import type { AuthPrincipal } from '@/shared/auth/auth.types.js';
 import { Injectable } from '@nestjs/common';
 import { ClsService } from 'nestjs-cls';
 
@@ -13,25 +13,25 @@ import { ClsService } from 'nestjs-cls';
  * - 「读」在无上下文时返回 undefined（不抛）；
  * - requireUser() 在无用户时抛错（沿用原错误语义，供业务 try/catch 降级）；
  * - 「写」在无上下文时静默忽略（降级哲学不变）；
- * - user 由 UserContextInterceptor 在 JWT 守卫之后写入；
+ * - user 由 JwtAuthGuard 在通过鉴权后写入（request.user 与 CLS 同源同一对象）；
  * - requestId 由 ClsMiddleware 的 generateId/idGenerator 生成，经 `cls.getId()` 读取。
  */
 @Injectable()
 export class RequestContextService {
   constructor(private readonly cls: ClsService<AppClsStore>) {}
 
-  /** 读当前请求用户；无则返回 undefined。 */
-  getUser(): User | undefined {
+  /** 读当前请求主体；无则返回 undefined。 */
+  getUser(): AuthPrincipal | undefined {
     return this.cls.get('user');
   }
 
   /**
-   * 读当前请求用户；无用户时抛错。
+   * 读当前请求主体；无主体时抛错。
    *
    * 保留「抛出」语义：非请求上下文（单元测试直接调 service、定时任务等）调用时抛 Error，
    * 由调用方以既有 try/catch 结构降级。
    */
-  requireUser(): User {
+  requireUser(): AuthPrincipal {
     const user = this.getUser();
     if (!user) {
       throw new Error(
@@ -43,11 +43,11 @@ export class RequestContextService {
 
   /** 判断某个 id 是否为当前请求用户（无上下文时抛出，保持既有行为）。 */
   isRequestUser(userId: string): boolean {
-    return userId === this.requireUser().id.toString();
+    return userId === this.requireUser().userId;
   }
 
-  /** 写入当前请求用户；无上下文时静默忽略（如 WebSocket 路径）。 */
-  setUser(user: User): void {
+  /** 写入当前请求主体；无上下文时静默忽略（如 WebSocket 路径）。 */
+  setUser(user: AuthPrincipal): void {
     if (!this.cls.isActive())
       return;
     this.cls.set('user', user);

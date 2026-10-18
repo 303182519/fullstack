@@ -1,5 +1,5 @@
-import type { User } from '@fedstack/database';
 import type { ClsStore } from 'nestjs-cls';
+import type { AuthPrincipal } from '@/shared/auth/auth.types.js';
 
 /**
  * 缓存命中状态：X-Cache 响应头的取值。
@@ -24,6 +24,6 @@ export interface AppClsStore extends ClsStore {
   cache?: CacheState;
   /** 命中的缓存 key（当前仅记录，不对外输出）。 */
   cacheKey?: string;
-  /** 当前请求的登录用户。由 UserContextInterceptor 在 JWT 守卫之后写入。 */
-  user?: User;
+  /** 当前请求的登录主体。由 JwtAuthGuard 校验通过后写入（与 request.user 为同一对象引用）。 */
+  user?: AuthPrincipal;
 }

@@ -19,7 +19,7 @@ export const defaultConfig = registerAs('default', (): AppConfig => ({
   },
   jwt: {
     secret: process.env.JWT_SECRET || '123456',
-    accessExpiresIn: process.env.JWT_ACCESS_EXPIRES_IN || 900, // 15 分钟
+    accessExpiresIn: process.env.JWT_ACCESS_EXPIRES_IN || 7200, // 2 小时（ADR-007 D1）
     refreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || 604800, // 7 天
   },
   database: {
@@ -53,5 +53,14 @@ export const defaultConfig = registerAs('default', (): AppConfig => ({
     defaultTtl: Number(process.env.REDIS_DEFAULT_TTL) || 300,
     // 多 app 共享 Redis 实例时前缀是唯一隔离手段（ADR-003），默认与 app 同名
     keyPrefix: process.env.REDIS_KEY_PREFIX || 'admin-api',
+  },
+  throttler: {
+    // 计数窗口（毫秒）。120 次/分钟/IP 为粗粒度防洪泛基线；
+    // 认证端点在控制器上用 @Throttle 覆盖为更严策略（见 common/constants/auth.ts）。
+    ttl: Number(process.env.THROTTLE_TTL) || 60_000,
+    limit: Number(process.env.THROTTLE_LIMIT) || 120,
+    // 超限后额外阻塞时长（毫秒），设为与窗口等长即「本窗口内直接拉黑」
+    blockDuration: Number(process.env.THROTTLE_BLOCK_DURATION) || 60_000,
+    errorMessage: '请求过于频繁，请稍后再试',
   },
 }));
