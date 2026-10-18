@@ -33,9 +33,10 @@ import { RoleService } from './role.service.js';
 /**
  * 角色管理（租户内）。
  *
- * 鉴权：由全局 JwtAuthGuard 保护；本租户隔离在 Service 层强制。
- * 菜单授权端点（`/:id/menus`）标注 `@RequirePermission(PERMISSIONS.SYSTEM.ROLE.AUTH)`（P1 新增，见 ADR-008 D3）；
- * 角色 CRUD 沿用 P0 行为不挂权限码，待 P2 播种菜单与初始授权后统一收敛。
+ * 鉴权：全局 JwtAuthGuard + 按钮级 @RequirePermission；
+ * 角色 CRUD 权限码 P2 收敛启用（P0 行为遗留缺口，见 ADR-008 D1）；
+ * 菜单授权端点（`/:id/menus`）用 ROLE.AUTH（P1 启用，见 ADR-008 D3）；
+ * 本租户隔离在 Service 层强制。
  */
 @ApiTags('角色管理')
 @ApiBearerAuth()
@@ -44,6 +45,7 @@ export class RoleController {
   constructor(private readonly roleService: RoleService) {}
 
   @Get()
+  @RequirePermission(PERMISSIONS.SYSTEM.ROLE.QUERY)
   @ApiOperation({ summary: '分页查询本租户角色' })
   @ApiOkResponse({ description: '分页结果 { items, total, page, pageSize }', type: RoleResponseDto, isArray: true })
   async list(@Query() query: QueryRoleDto) {
@@ -51,6 +53,7 @@ export class RoleController {
   }
 
   @Post()
+  @RequirePermission(PERMISSIONS.SYSTEM.ROLE.ADD)
   @ApiOperation({ summary: '创建角色' })
   @ApiCreatedResponse({ type: RoleResponseDto })
   async create(@Body() dto: CreateRoleDto): Promise<RoleResponseDto> {
@@ -58,6 +61,7 @@ export class RoleController {
   }
 
   @Get(':id')
+  @RequirePermission(PERMISSIONS.SYSTEM.ROLE.QUERY)
   @ApiOperation({ summary: '角色详情' })
   @ApiOkResponse({ type: RoleResponseDto })
   async detail(
@@ -67,6 +71,7 @@ export class RoleController {
   }
 
   @Put(':id')
+  @RequirePermission(PERMISSIONS.SYSTEM.ROLE.EDIT)
   @ApiOperation({ summary: '更新角色' })
   @ApiOkResponse({ type: RoleResponseDto })
   async update(
@@ -77,6 +82,7 @@ export class RoleController {
   }
 
   @Delete(':id')
+  @RequirePermission(PERMISSIONS.SYSTEM.ROLE.REMOVE)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: '删除角色（软删除；被占用或内置角色禁止删除）' })
   async remove(@Param('id', ParseSnowflakePipe) id: bigint): Promise<null> {
