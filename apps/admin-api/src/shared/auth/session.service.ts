@@ -240,4 +240,50 @@ export class SessionService {
   getSessionTtlSeconds(): number {
     return this.ttlSeconds;
   }
+
+  /**
+   * 全量在线会话（P2 在线用户列表用，ADR-009）。
+   *
+   * 实现：SCAN 会话键空间（`{ns}auth:session:id=*`）。没有维护全局注册表
+   * （ZSET/Set）是有意取舍：注册表要在 create/rotate/remove 三条写路径上
+   * 保持一致，多一条不变量就多一类脏数据；SCAN 在后台管理的会话量级
+   * （数百～数千）下完全够用，且陈旧键由 Redis TTL 自然消亡。
+   * 读取型操作：Redis 故障返回空列表（与 listSessions 同口径）。
+   */
+  async listAllSessions(): Promise<SessionRecord[]> {
+    if (!this.redis)
+      return [];
+
+    try {
+      const pattern = this.prefixer.prefix('auth:session:id=*');
+      const records: SessionRecord[] = [];
+      for await (const key of this.redis.scanIterator({ MATCH: pattern, COUNT: 200 })) {
+        const keyStr = Array.isArray(key) ? key[0] : key;
+        if (!keyStr)
+          continue;
+        const raw = await this.redis.get(keyStr);
+        if (!raw)
+          continue;
+        try {
+          records.push(JSON.parse(raw) as SessionRecord);
+        }
+        catch {
+          // 单条损坏不影响整体列表
+        }
+      }
+      return records;
+    }
+    catch (err) {
+      this.logger.warn(
+        `全量在线会话读取失败，返回空列表: ${err instanceof Error ? err.message : String(err)}`,
+      );
+      return [];
+    }
+  }
+
+  /** 读单个会话记录供管理端校验（内部复用 lookupSession 语义） */
+  async getSessionRecord(sessionId: string): Promise<SessionRecord | null> {
+    const lookup = await this.lookupSession(sessionId);
+    return lookup.status === 'ok' ? lookup.record ?? null : null;
+  }
 }

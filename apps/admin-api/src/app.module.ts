@@ -11,18 +11,23 @@ import { JwtAuthGuard, PermissionGuard } from '@/common/guards/index.js';
 import { AppConfigModule } from '@/config/config.module.js';
 import { getConfig } from '@/config/configuration.js';
 import { AuthModule } from '@/modules/auth/auth.module.js';
+import { ConfigModule } from '@/modules/config/config.module.js';
 import { DeptModule } from '@/modules/dept/dept.module.js';
+import { DictModule } from '@/modules/dict/dict.module.js';
 import { MenuModule } from '@/modules/menu/menu.module.js';
+import { MonitorModule } from '@/modules/monitor/monitor.module.js';
 import { RoleModule } from '@/modules/role/role.module.js';
 import { PackageModule } from '@/modules/tenant-package/package.module.js';
 import { TenantModule } from '@/modules/tenant/tenant.module.js';
 import { UserModule } from '@/modules/user/user.module.js';
+import { AuditModule } from '@/shared/audit/audit.module.js';
 import { AuthCoreModule } from '@/shared/auth/auth-core.module.js';
 import { CachingModule } from '@/shared/caching/caching.module.js';
 import { PrismaModule } from '@/shared/database/prisma.module.js';
 import { PrismaService } from '@/shared/database/prisma.service.js';
 import { LoggerModule } from '@/shared/logger/logger.module.js';
 import { PermissionModule } from '@/shared/permission/permission.module.js';
+import { ScopeModule } from '@/shared/scope/scope.module.js';
 import { ThrottlerConfigModule } from '@/shared/throttler/throttler.module.js';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
@@ -49,6 +54,10 @@ import { AppService } from './app.service.js';
     // 认证共享底座：JwtModule + Password/Session/Captcha 服务。
     // AppModule 直接 import 的目的是让全局 JwtAuthGuard 能解析 JwtService / SessionService。
     AuthCoreModule,
+    // 审计底座（ADR-009）：@OperLog 全局拦截器 + 登录日志写入器；@Global
+    AuditModule,
+    // 主体作用域解析（租户管理员/平台超管 代管语义）；@Global
+    ScopeModule,
     // 业务模块
     AuthModule,
     UserModule,
@@ -57,6 +66,9 @@ import { AppService } from './app.service.js';
     MenuModule,
     TenantModule,
     PackageModule,
+    DictModule,
+    ConfigModule,
+    MonitorModule,
     // 共享健康检查底座（@fedstack/health，见 ADR-004）：
     // Redis 检查内置；本 app 装配数据库就绪检查
     HealthModule.forRootAsync({

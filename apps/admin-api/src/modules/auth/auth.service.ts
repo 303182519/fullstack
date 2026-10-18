@@ -1,16 +1,22 @@
 import type { CaptchaResponseDto, LoginDto, ProfileResponseDto } from './dto/index.js';
+import type { LoginMsg } from '@/shared/audit/login-msg.constants.js';
 import type {
   AccessTokenPayload,
   AuthPrincipal,
   IssuedTokens,
   RefreshTokenPayload,
 } from '@/shared/auth/auth.types.js';
-import { TenantStatus, UserStatus } from '@fedstack/database';
+import { LoginLogStatus, TenantStatus, UserStatus } from '@fedstack/database';
 import { hashCacheToken } from '@fedstack/redis';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { getConfig } from '@/config/configuration.js';
+import { LoginLogService } from '@/shared/audit/login-log.service.js';
+import {
+  LOGIN_LOG_UNKNOWN_TENANT_ID,
+  LOGIN_MSG,
+} from '@/shared/audit/login-msg.constants.js';
 import {
   CAPTCHA_THRESHOLD,
   TOKEN_TYPE,
@@ -51,6 +57,7 @@ export class AuthService {
     private readonly session: SessionService,
     private readonly captcha: CaptchaService,
     private readonly loginAttempt: LoginAttemptService,
+    private readonly loginLog: LoginLogService,
     configService: ConfigService,
   ) {
     const { jwt } = getConfig(configService);
@@ -75,19 +82,27 @@ export class AuthService {
    */
   async login(dto: LoginDto, ctx: LoginContext): Promise<IssuedTokens> {
     const tenant = await this.resolveTenant(dto.tenantCode);
+    if (!tenant) {
+      // 租户不可用：真实 tenantId 无法确定，日志记 0 占位（见 SysLoginLog 注释）
+      this.logAttempt(dto, ctx, LOGIN_LOG_UNKNOWN_TENANT_ID, LoginLogStatus.FAILURE, LOGIN_MSG.TENANT_UNAVAILABLE);
+      throw authErrors.tenantUnavailable();
+    }
     const tenantId = tenant.id.toString();
 
     if (await this.loginAttempt.isLocked(tenantId, dto.username)) {
+      this.logAttempt(dto, ctx, tenant.id, LoginLogStatus.FAILURE, LOGIN_MSG.ACCOUNT_LOCKED);
       throw authErrors.accountLocked(LOGIN_LOCKOUT.lockMinutes);
     }
 
     const failures = await this.loginAttempt.getFailures(tenantId, dto.username);
     if (failures >= CAPTCHA_THRESHOLD) {
       if (!dto.captchaId || !dto.captchaText) {
+        this.logAttempt(dto, ctx, tenant.id, LoginLogStatus.FAILURE, LOGIN_MSG.CAPTCHA_REQUIRED);
         throw authErrors.captchaRequired();
       }
       const captchaOk = await this.captcha.consume(dto.captchaId, dto.captchaText);
       if (!captchaOk) {
+        this.logAttempt(dto, ctx, tenant.id, LoginLogStatus.FAILURE, LOGIN_MSG.CAPTCHA_INVALID);
         throw authErrors.captchaInvalid();
       }
     }
@@ -98,20 +113,25 @@ export class AuthService {
 
     if (!user || !user.password) {
       await this.loginAttempt.recordFailure(tenantId, dto.username);
+      this.logAttempt(dto, ctx, tenant.id, LoginLogStatus.FAILURE, LOGIN_MSG.INVALID_CREDENTIALS);
       throw authErrors.invalidCredentials();
     }
 
     if (user.status !== UserStatus.ACTIVE) {
+      this.logAttempt(dto, ctx, tenant.id, LoginLogStatus.FAILURE, LOGIN_MSG.USER_DISABLED);
       throw authErrors.userDisabled();
     }
 
     const passwordOk = await this.password.verify(user.password, dto.password);
     if (!passwordOk) {
       await this.loginAttempt.recordFailure(tenantId, dto.username);
+      this.logAttempt(dto, ctx, tenant.id, LoginLogStatus.FAILURE, LOGIN_MSG.INVALID_CREDENTIALS);
       throw authErrors.invalidCredentials();
     }
 
     await this.loginAttempt.clear(tenantId, dto.username);
+
+    this.logAttempt(dto, ctx, tenant.id, LoginLogStatus.SUCCESS, LOGIN_MSG.SUCCESS, user.id);
 
     const userId = user.id.toString();
     const sessionId = await this.session.createSession({
@@ -233,21 +253,44 @@ export class AuthService {
     };
   }
 
-  /** 解析并校验租户可用性（存在 / 未删除 / 状态可用 / 未过期） */
+  /**
+   * 解析并校验租户可用性（存在 / 未删除 / 状态可用 / 未过期）。
+   * 不可用返回 null 而非抛错：调用方（login）需要先埋登录日志再抛业务异常。
+   */
   private async resolveTenant(tenantCode: string) {
     const tenant = await this.prisma.sysTenant.findFirst({
       where: { tenantCode, deletedAt: null },
     });
     if (!tenant) {
-      throw authErrors.tenantUnavailable();
+      return null;
     }
     if (tenant.status !== TenantStatus.ACTIVE) {
-      throw authErrors.tenantUnavailable();
+      return null;
     }
     if (tenant.expireTime && tenant.expireTime.getTime() <= Date.now()) {
-      throw authErrors.tenantUnavailable();
+      return null;
     }
     return tenant;
+  }
+
+  /** 埋一条登录日志（fire-and-forget：日志落库失败绝不阻塞登录主链路，见 LoginLogService） */
+  private logAttempt(
+    dto: LoginDto,
+    ctx: LoginContext,
+    tenantId: bigint,
+    status: LoginLogStatus,
+    msg: LoginMsg,
+    userId?: bigint,
+  ): void {
+    void this.loginLog.append({
+      tenantId,
+      userId: userId ?? null,
+      username: dto.username,
+      ip: ctx.ip,
+      device: ctx.device,
+      status,
+      msg,
+    });
   }
 
   /** 签发 access + refresh 双令牌 */

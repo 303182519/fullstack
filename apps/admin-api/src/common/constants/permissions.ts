@@ -35,18 +35,51 @@ export const PERMISSIONS = {
       EDIT: 'system:dept:edit',
       REMOVE: 'system:dept:remove',
     },
+    /** 字典管理：P2 新增（平台级定义 + 租户级遮蔽，见 ADR-009） */
+    DICT: {
+      QUERY: 'system:dict:query',
+      ADD: 'system:dict:add',
+      EDIT: 'system:dict:edit',
+      REMOVE: 'system:dict:remove',
+    },
+    /** 参数设置：P2 新增（遮蔽语义与字典一致，见 ADR-009） */
+    CONFIG: {
+      QUERY: 'system:config:query',
+      ADD: 'system:config:add',
+      EDIT: 'system:config:edit',
+      REMOVE: 'system:config:remove',
+    },
+  },
+  /** 系统监控：P2 新增 */
+  MONITOR: {
+    OPER_LOG: {
+      QUERY: 'monitor:operlog:query',
+    },
+    LOGIN_LOG: {
+      QUERY: 'monitor:loginlog:query',
+    },
+    /** 在线用户：REMOVE 覆盖「踢单会话」与「按用户全部下线」两类操作 */
+    ONLINE: {
+      QUERY: 'monitor:online:query',
+      REMOVE: 'monitor:online:remove',
+    },
   },
 } as const;
 
-/** 取出 `{ KEY: 'code' }` 对象所有值组成的字面量联合 */
-type LeafValues<T> = T[keyof T];
-
-type SystemModule = (typeof PERMISSIONS)['SYSTEM'];
+/**
+ * 取出嵌套常量对象最内层字符串字面量组成的联合（递归到「值全为 string」的层）。
+ *
+ * 为什么递归而非 `T[keyof T]` 一层取值：对联合做 `keyof` 是取「共有键」交集，
+ * SYSTEM 与 MONITOR 无共有键会直接得 never；分布式条件类型可逐成员展开，天然规避。
+ */
+type LeafValues<T> = T extends Record<string, string>
+  ? T[keyof T]
+  : T extends object
+    ? LeafValues<T[keyof T]>
+    : never;
 
 /**
  * 已登记权限码的字面量联合类型。
  * 用于把 `@RequirePermission` 的入参收窄到「已登记的编码」，未登记字符串直接编译报错。
  */
-export type PermissionCode = LeafValues<{
-  [M in keyof SystemModule]: LeafValues<SystemModule[M]>;
-}>;
+export type PermissionCode = LeafValues<typeof PERMISSIONS>;

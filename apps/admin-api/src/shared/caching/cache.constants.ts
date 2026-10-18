@@ -40,4 +40,14 @@ export const CacheKeys = {
   // ---- 图形验证码（ADR-007 D4）：答案一次性使用，验证即删 ----
   /** 验证码答案：value=文本，TTL=CAPTCHA_TTL_SECONDS */
   AUTH_CAPTCHA: (captchaId: string) => `auth:captcha:id=${captchaId}`,
+
+  // ---- 字典 / 参数消费端缓存（P2，ADR-009）：cache-aside + 写时失效 ----
+  // 粒度说明：只缓存「数据行 / 值」，不缓存「遮蔽判定」——判定是一次索引点查，
+  // 缓存它会让平台级写入无法精确失效所有租户副本，得不偿失。
+  /** 字典选项（消费端）：value=DictOption[]（仅 ACTIVE，按 sort 升序）；tenantId=null 表示平台级 */
+  DICT_OPTIONS: (tenantId: string | null, dictType: string) =>
+    `dict:options:tenant=${tenantId ?? 'platform'}:type=${dictType}`,
+  /** 参数取值（消费端）：value=string；tenantId=null 表示平台级 */
+  CONFIG_VALUE: (tenantId: string | null, configKey: string) =>
+    `config:value:tenant=${tenantId ?? 'platform'}:key=${configKey}`,
 } as const;

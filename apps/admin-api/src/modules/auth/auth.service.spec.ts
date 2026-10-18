@@ -7,6 +7,7 @@ import { Logger } from '@nestjs/common';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthService } from '@/modules/auth/auth.service.js';
 import { LoginDto } from '@/modules/auth/dto/login.dto.js';
+import { LoginLogService } from '@/shared/audit/login-log.service.js';
 import { CAPTCHA_THRESHOLD } from '@/shared/auth/auth.constants.js';
 import { CaptchaService } from '@/shared/auth/captcha.service.js';
 import { PasswordService } from '@/shared/auth/password.service.js';
@@ -110,6 +111,7 @@ describe('authService', () => {
     recordFailure: vi.fn(),
     clear: vi.fn(),
   };
+  const loginLog = { append: vi.fn(async () => {}) };
 
   let service: AuthService;
 
@@ -126,6 +128,7 @@ describe('authService', () => {
       session as unknown as SessionService,
       captcha as unknown as CaptchaService,
       loginAttempt as unknown as LoginAttemptService,
+      loginLog as unknown as LoginLogService,
       makeConfigService(),
     );
 
@@ -199,6 +202,11 @@ describe('authService', () => {
       const error = await service.login(makeLoginDto(), ctx).catch(e => e);
       expect(codeOf(error)).toBe('10A02');
       expect(loginAttempt.recordFailure).toHaveBeenCalledWith('10', 'alice');
+      expect(loginLog.append).toHaveBeenCalledWith(expect.objectContaining({
+        tenantId: 10n,
+        status: 'FAILURE',
+        msg: 'INVALID_CREDENTIALS',
+      }));
     });
 
     it('用户无密码字段时记失败并拒绝', async () => {
@@ -229,6 +237,12 @@ describe('authService', () => {
       const tokens = await service.login(makeLoginDto(), ctx);
 
       expect(loginAttempt.clear).toHaveBeenCalledWith('10', 'alice');
+      expect(loginLog.append).toHaveBeenCalledWith(expect.objectContaining({
+        tenantId: 10n,
+        userId: 1n,
+        status: 'SUCCESS',
+        msg: 'SUCCESS',
+      }));
       expect(session.createSession).toHaveBeenCalledWith({
         userId: '1',
         tenantId: '10',
