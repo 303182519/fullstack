@@ -5,29 +5,13 @@ import type { ResolvedDataScope } from '@/shared/permission/data-scope.service.j
 import { Prisma, UserStatus } from '@fedstack/database';
 import { Injectable, Logger } from '@nestjs/common';
 import { RequestContextService } from '@/common/context/request-context.service.js';
-import {
-  badRequest,
-  conflict,
-  forbidden,
-  notFound,
-} from '@/common/exceptions/business.exception.js';
 import { authErrors } from '@/shared/auth/auth.errors.js';
 import { PasswordService } from '@/shared/auth/password.service.js';
 import { SessionService } from '@/shared/auth/session.service.js';
 import { PrismaService } from '@/shared/database/prisma.service.js';
 import { DataScopeService } from '@/shared/permission/data-scope.service.js';
 import { generateSnowflakeId } from '@/shared/utils/snowflake.js';
-
-/** 用户模块业务错误码（MMSNN 规范；20 = 用户模块） */
-const USER_BIZ = {
-  NOT_FOUND: '20A01',
-  USERNAME_EXISTS: '20A02',
-  EMAIL_EXISTS: '20A03',
-  INVALID_ROLE: '20A04',
-  DELETE_SELF: '20A05',
-  FORBIDDEN: '20A06',
-  INVALID_DEPT: '20A07',
-} as const;
+import { userErrors } from './errors.js';
 
 /** 统一 include：连带角色摘要一次查出，避免列表 N+1 */
 const USER_INCLUDE = {
@@ -137,7 +121,7 @@ export class UserService {
       include: USER_INCLUDE,
     });
     if (!user)
-      throw notFound('用户不存在', USER_BIZ.NOT_FOUND);
+      throw userErrors.notFound();
     return this.toDetail(user);
   }
 
@@ -195,7 +179,7 @@ export class UserService {
       where: { id, tenantId, deletedAt: null, ...this.dataScope.scopeUserWhere(scope) },
     });
     if (!existing)
-      throw notFound('用户不存在', USER_BIZ.NOT_FOUND);
+      throw userErrors.notFound();
 
     if (dto.username && dto.username !== existing.username)
       await this.assertUsernameAvailable(tenantId, dto.username);
@@ -259,11 +243,11 @@ export class UserService {
       where: { id, tenantId, deletedAt: null, ...this.dataScope.scopeUserWhere(scope) },
     });
     if (!user)
-      throw notFound('用户不存在', USER_BIZ.NOT_FOUND);
+      throw userErrors.notFound();
     if (user.id === BigInt(principal.userId))
-      throw badRequest('不能删除当前登录账号', USER_BIZ.DELETE_SELF);
+      throw userErrors.deleteSelf();
     if (user.isSuper && !principal.isSuper)
-      throw forbidden('无权删除平台超级管理员', USER_BIZ.FORBIDDEN);
+      throw userErrors.forbidden();
 
     await this.prisma.$transaction(async (tx) => {
       await tx.sysUserRole.deleteMany({ where: { userId: user.id } });
@@ -293,7 +277,7 @@ export class UserService {
       select: { id: true },
     });
     if (existing)
-      throw conflict('用户名已被占用', USER_BIZ.USERNAME_EXISTS);
+      throw userErrors.usernameExists();
   }
 
   private async assertEmailAvailable(tenantId: bigint, email: string): Promise<void> {
@@ -302,7 +286,7 @@ export class UserService {
       select: { id: true },
     });
     if (existing)
-      throw conflict('邮箱已被占用', USER_BIZ.EMAIL_EXISTS);
+      throw userErrors.emailExists();
   }
 
   /**
@@ -324,7 +308,7 @@ export class UserService {
       select: { id: true },
     });
     if (!dept)
-      throw badRequest('所属部门不存在或不在数据权限范围内', USER_BIZ.INVALID_DEPT);
+      throw userErrors.invalidDept();
   }
 
   /** 角色重绑定：先删旧关联再插新（事务内）。roleIds 省略时不动现有绑定。 */
@@ -348,7 +332,7 @@ export class UserService {
       select: { id: true },
     });
     if (roles.length !== uniqueIds.length)
-      throw badRequest('存在无效角色（不存在或不属于本租户）', USER_BIZ.INVALID_ROLE);
+      throw userErrors.invalidRole();
 
     await tx.sysUserRole.deleteMany({ where: { userId } });
     await tx.sysUserRole.createMany({
@@ -370,8 +354,8 @@ export class UserService {
         ? (error.meta.target as string[]).join(',')
         : String(error.meta?.target ?? '');
       if (target.includes('email'))
-        return conflict('邮箱已被占用', USER_BIZ.EMAIL_EXISTS);
-      return conflict('用户名已被占用', USER_BIZ.USERNAME_EXISTS);
+        return userErrors.emailExists();
+      return userErrors.usernameExists();
     }
     return error;
   }

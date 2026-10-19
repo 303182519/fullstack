@@ -9,18 +9,11 @@ import type { OperateScope } from '@/shared/scope/scope-resolver.service.js';
 import { DictStatus, Prisma } from '@fedstack/database';
 import { CacheService } from '@fedstack/redis';
 import { Injectable } from '@nestjs/common';
-import { conflict, notFound } from '@/common/exceptions/business.exception.js';
 import { PrismaService } from '@/shared/database/prisma.service.js';
 import { ScopeResolverService } from '@/shared/scope/scope-resolver.service.js';
 import { generateSnowflakeId } from '@/shared/utils/snowflake.js';
 import { invalidateDictOptions } from './dict.cache.js';
-
-/** 字典模块业务错误码（MMSNN 规范；80 = 字典模块） */
-const DICT_BIZ = {
-  TYPE_NOT_FOUND: '80A01',
-  TYPE_EXISTS: '80A02',
-  TYPE_HAS_DATA: '80A03',
-} as const;
+import { dictErrors } from './errors.js';
 
 /** Prisma 字典类型查询结果的读取形状 */
 interface DictTypeRow {
@@ -101,7 +94,7 @@ export class DictTypeService {
       where: { tenantId: scope.tenantId, dictType: dto.dictType, deletedAt: null },
     });
     if (existing)
-      throw conflict('字典类型已存在', DICT_BIZ.TYPE_EXISTS);
+      throw dictErrors.typeExists();
 
     // 复活同键软删行，避免 (tenantId, dict_type) 唯一索引（租户级）挡住重建
     const resurrected = await this.prisma.sysDictType.findFirst({
@@ -137,7 +130,7 @@ export class DictTypeService {
     catch (err) {
       // 租户级并发创建命中唯一索引：明确报冲突，不吞
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002')
-        throw conflict('字典类型已存在', DICT_BIZ.TYPE_EXISTS);
+        throw dictErrors.typeExists();
       throw err;
     }
   }
@@ -169,7 +162,7 @@ export class DictTypeService {
       where: { tenantId: scope.tenantId, dictType: row.dictType, deletedAt: null },
     });
     if (dataCount > 0)
-      throw conflict('字典类型下仍有数据条目，请先删除', DICT_BIZ.TYPE_HAS_DATA);
+      throw dictErrors.typeHasData();
 
     await this.prisma.sysDictType.update({
       where: { id: row.id },
@@ -185,7 +178,7 @@ export class DictTypeService {
       where: { id, tenantId: scope.tenantId, deletedAt: null },
     });
     if (!row)
-      throw notFound('字典类型不存在', DICT_BIZ.TYPE_NOT_FOUND);
+      throw dictErrors.typeNotFound();
     return row;
   }
 

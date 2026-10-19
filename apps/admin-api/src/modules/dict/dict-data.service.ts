@@ -10,19 +10,12 @@ import type { OperateScope } from '@/shared/scope/scope-resolver.service.js';
 import { DictStatus, Prisma } from '@fedstack/database';
 import { CacheService } from '@fedstack/redis';
 import { Injectable } from '@nestjs/common';
-import { badRequest, conflict, notFound } from '@/common/exceptions/business.exception.js';
 import { CacheKeys } from '@/shared/caching/cache.constants.js';
 import { PrismaService } from '@/shared/database/prisma.service.js';
 import { scopeKeyOf, ScopeResolverService } from '@/shared/scope/scope-resolver.service.js';
 import { generateSnowflakeId } from '@/shared/utils/snowflake.js';
 import { invalidateDictOptions } from './dict.cache.js';
-
-/** 字典数据业务错误码（80 = 字典模块） */
-const DICT_BIZ = {
-  DATA_NOT_FOUND: '80A05',
-  DATA_VALUE_EXISTS: '80A06',
-  TYPE_MISSING: '80A07',
-} as const;
+import { dictErrors } from './errors.js';
 
 interface DictDataRow {
   id: bigint;
@@ -138,13 +131,13 @@ export class DictDataService {
       select: { id: true },
     });
     if (!type)
-      throw badRequest('字典类型不存在，请先创建类型定义', DICT_BIZ.TYPE_MISSING);
+      throw dictErrors.typeMissing();
 
     const existing = await this.prisma.sysDictData.findFirst({
       where: { tenantId: scope.tenantId, dictType: dto.dictType, dictValue: dto.dictValue, deletedAt: null },
     });
     if (existing)
-      throw conflict('字典数据已存在', DICT_BIZ.DATA_VALUE_EXISTS);
+      throw dictErrors.dataValueExists();
 
     // 复活同键软删行，避免唯一索引（租户级）挡住重建
     const resurrected = await this.prisma.sysDictData.findFirst({
@@ -182,7 +175,7 @@ export class DictDataService {
     }
     catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002')
-        throw conflict('字典数据已存在', DICT_BIZ.DATA_VALUE_EXISTS);
+        throw dictErrors.dataValueExists();
       throw err;
     }
   }
@@ -248,7 +241,7 @@ export class DictDataService {
       where: { id, tenantId: scope.tenantId, deletedAt: null },
     });
     if (!row)
-      throw notFound('字典数据不存在', DICT_BIZ.DATA_NOT_FOUND);
+      throw dictErrors.dataNotFound();
     return row;
   }
 

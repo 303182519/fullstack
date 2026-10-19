@@ -2,23 +2,10 @@ import type { CreateDeptDto, DeptResponseDto, QueryDeptDto, UpdateDeptDto } from
 import { DeptStatus, Prisma } from '@fedstack/database';
 import { Injectable } from '@nestjs/common';
 import { RequestContextService } from '@/common/context/request-context.service.js';
-import {
-  badRequest,
-  conflict,
-  notFound,
-} from '@/common/exceptions/business.exception.js';
 import { PrismaService } from '@/shared/database/prisma.service.js';
 import { DataScopeService } from '@/shared/permission/data-scope.service.js';
 import { generateSnowflakeId } from '@/shared/utils/snowflake.js';
-
-/** 部门模块业务错误码（MMSNN 规范；50 = 部门模块） */
-const DEPT_BIZ = {
-  NOT_FOUND: '50A01',
-  PARENT_INVALID: '50A02',
-  HAS_CHILDREN: '50A03',
-  IN_USE: '50A04',
-  CYCLE: '50A05',
-} as const;
+import { deptErrors } from './errors.js';
 
 /** Prisma 部门查询结果的读取形状 */
 interface DeptRow {
@@ -112,7 +99,7 @@ export class DeptService {
       newParentPath = (await this.requireParent(tenantId, requestedParentId)).path;
       // 新上级若位于自身子树内（新上级 path 以自身 path 为前缀），会形成环，拒绝
       if (newParentPath.startsWith(dept.path))
-        throw conflict('不能把部门移动到自身或其下级部门之下', DEPT_BIZ.CYCLE);
+        throw deptErrors.cycle();
     }
 
     const data: Prisma.SysDeptUpdateInput = {
@@ -158,9 +145,9 @@ export class DeptService {
       this.prisma.sysUser.count({ where: { tenantId, deptId: dept.id, deletedAt: null } }),
     ]);
     if (childCount > 0)
-      throw conflict('存在下级部门，请先删除下级部门', DEPT_BIZ.HAS_CHILDREN);
+      throw deptErrors.hasChildren();
     if (userCount > 0)
-      throw conflict('部门下存在用户，请先调整用户归属', DEPT_BIZ.IN_USE);
+      throw deptErrors.inUse();
 
     await this.prisma.sysDept.update({
       where: { id: dept.id },
@@ -179,7 +166,7 @@ export class DeptService {
       where: { id, tenantId, deletedAt: null },
     });
     if (!dept)
-      throw notFound('部门不存在', DEPT_BIZ.NOT_FOUND);
+      throw deptErrors.notFound();
     return dept;
   }
 
@@ -189,7 +176,7 @@ export class DeptService {
       where: { id: parentId, tenantId, deletedAt: null },
     });
     if (!parent)
-      throw badRequest('上级部门不存在或不属于本租户', DEPT_BIZ.PARENT_INVALID);
+      throw deptErrors.parentInvalid();
     return parent;
   }
 
