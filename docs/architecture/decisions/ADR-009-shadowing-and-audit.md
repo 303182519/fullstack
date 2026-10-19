@@ -2,7 +2,7 @@
 
 - 状态：已采纳（2026-10-18）
 - 日期：2026-10-18（P2 实施）
-- 影响范围：`apps/admin-api/src/modules/`（dict/config/monitor）、`apps/admin-api/src/shared/audit/`、`apps/admin-api/src/shared/scope/`、`apps/admin-api/src/common/constants/permissions.ts`、`packages/database/prisma/schema.prisma`、`packages/database/src/seed.ts`
+- 影响范围：`apps/admin-api/src/modules/`（dict/config/monitor）、`apps/admin-api/src/shared/audit/`、`apps/admin-api/src/shared/scope/`、`packages/auth-core`（功能权限码注册表，2026-10-19 自 `apps/admin-api/src/common/constants/permissions.ts` 迁入，见 ADR-010）、`packages/database/prisma/schema.prisma`、`packages/database/src/seed.ts`
 - 相关规范：前置文档 `ADR-005`（多租户）、`ADR-006`（schema 重设计）、`ADR-007`（认证与会话）、`ADR-008`（权限模型）；迁移路线图 `docs/plans/nest-admin-soybean-migration.md`
 - 契约快照：`docs/plans/contracts/phase-2.json`
 

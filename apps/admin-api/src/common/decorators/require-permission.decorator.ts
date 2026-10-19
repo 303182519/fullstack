@@ -1,4 +1,4 @@
-import type { PermissionCode } from '@/common/constants/permissions.js';
+import type { PermissionCode } from '@fedstack/auth-core';
 import { SetMetadata } from '@nestjs/common';
 
 /**
@@ -15,7 +15,7 @@ export const REQUIRE_PERMISSION_KEY = 'require_permission';
  * - 未标注本装饰器的端点不做功能权限校验（仍受 JwtAuthGuard 的登录校验约束）；
  * - 平台超级管理员（isSuper）不受功能权限约束。
  *
- * 入参类型收窄为 `PermissionCode`（`common/constants/permissions.ts` 中登记的字面量联合）：
+ * 入参类型收窄为 `PermissionCode`（`@fedstack/auth-core` 注册表中登记的字面量联合）：
  * 未登记/拼错的权限码是编译错误，不会拖到运行期才发现。
  *
  * 注意：perm_code 与端点的映射关系靠本装饰器显式声明，代码即文档；新增受控端点必须标注。

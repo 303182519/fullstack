@@ -572,6 +572,6 @@ model SysGenColumn { ... }      // 代码生成列配置
 
 ## 10. 下一步行动
 
-1. **立即执行**：创建 `packages/auth-core` 共享包（JWT 策略、argon2 工具、权限装饰器骨架）
+1. **已完成（2026-10-19，部分完成）**：已创建 `packages/auth-core` 共享包，并迁入功能权限码注册表作为 `sys_menu.perm_code` 的单一真相源（见 ADR-010）；JWT 策略、argon2 工具、权限装饰器骨架待后续按需沉淀进本包。
 2. **P0 开发**：按 3.2 Schema 执行 Prisma 迁移，实现 auth/user/role/tenant 模块
 3. **P0 验收**：完成后输出 `docs/plans/contracts/phase-0.json`，进入 P1

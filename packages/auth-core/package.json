@@ -1,0 +1,23 @@
+{
+  "name": "@fedstack/auth-core",
+  "type": "module",
+  "version": "0.0.1",
+  "private": true,
+  "description": "企业级共享认证与授权核心：功能权限码注册表（sys_menu.perm_code 单一真相源），供后端鉴权声明与数据库播种脚本共同消费",
+  "license": "UNLICENSED",
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "import": "./dist/src/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "clean": "node -e \"fs.rmSync('dist', { recursive: true, force: true })\""
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "typescript": "catalog:"
+  }
+}

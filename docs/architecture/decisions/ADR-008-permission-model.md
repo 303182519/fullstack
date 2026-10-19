@@ -94,7 +94,7 @@
 **负面 / 风险**
 
 - 物化路径在部门树调整（移动节点）时需级联更新子树路径，写操作复杂度增加。缓解：部门移动是低频操作，且可在事务内批量更新。
-- `perm_code` 与路由的映射关系需要维护（如 `POST /api/users` 对应 `system:user:add`）。缓解：权限码集中登记在 `apps/admin-api/src/common/constants/permissions.ts`（`as const` 注册表 + `PermissionCode` 字面量联合），装饰器写作 `@RequirePermission(PERMISSIONS.SYSTEM.USER.ADD)`——未登记/拼错即编译错误；P2 播种脚本 import 同一份常量，不产生二次硬编码。代码即文档。
+- `perm_code` 与路由的映射关系需要维护（如 `POST /api/users` 对应 `system:user:add`）。缓解：权限码集中登记在共享包 `@fedstack/auth-core`（`as const` 注册表 + `PermissionCode` 字面量联合；2026-10-19 由 `apps/admin-api/src/common/constants/permissions.ts` 迁入，见 ADR-010），装饰器写作 `@RequirePermission(PERMISSIONS.SYSTEM.USER.ADD)`——未登记/拼错即编译错误；P2 播种脚本与前端均 import 同一份常量，不产生二次硬编码。代码即文档。
 - 三级菜单 + 平台级/租户级双维度，菜单管理界面复杂度增加。缓解：P1 先实现平台级菜单管理，租户级菜单作为后续扩展。
 - **权限解析不做缓存（P1 有意取舍）**：受控端点每次请求做一次索引查询（`sys_user_role` / `sys_role_menu` 均建索引）。缓存能省这次查询，但授权变更后旧缓存未及时失效会造成**越权或误拒**（安全敏感）；后台管理端流量低，单次索引查询开销可忽略，故选择「不缓存」以规避一致性风险。P1 未引入任何权限缓存，因而**不存在缓存失效残风险**；后续如流量上升，再引入带显式失效（授权/绑定时主动清除）的缓存，届时应重新评审本 ADR。
 - **套餐变更的语义缺口**：移除套餐内菜单不会级联删除既有租户的角色绑定，但该菜单即时退出许可集合（fail closed），表现为「权限自动失效」而非报错。缓解：此为有意设计，避免级联写入放大；如业务要求显式提示，可在 P2 增补审计事件。

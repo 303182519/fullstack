@@ -23,6 +23,7 @@
     "clean": "node -e \"fs.rmSync('dist', { recursive: true, force: true }); fs.rmSync('generated', { recursive: true, force: true })\""
   },
   "dependencies": {
+    "@fedstack/auth-core": "workspace:*",
     "@prisma/adapter-mariadb": "catalog:",
     "@prisma/client": "catalog:"
   },

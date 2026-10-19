@@ -23,6 +23,7 @@
     "clean": "node -e \"fs.rmSync('dist', { recursive: true, force: true })\""
   },
   "dependencies": {
+    "@fedstack/auth-core": "workspace:*",
     "@fedstack/database": "workspace:*",
     "@fedstack/health": "workspace:*",
     "@fedstack/redis": "workspace:*",

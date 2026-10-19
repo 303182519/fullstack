@@ -1,3 +1,4 @@
+import { PERMISSIONS } from '@fedstack/auth-core';
 import {
   Body,
   Controller,
@@ -17,7 +18,6 @@ import {
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
-import { PERMISSIONS } from '@/common/constants/permissions.js';
 import { RequirePermission } from '@/common/decorators/index.js';
 import { ParseSnowflakePipe } from '@/common/pipes/parse-snowflake.pipe.js';
 import { OperLog } from '@/shared/audit/oper-log.decorator.js';

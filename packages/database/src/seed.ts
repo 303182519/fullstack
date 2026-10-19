@@ -11,22 +11,27 @@
 // 不回写 sort / icon / visible 等允许运维在线调整的字段，避免每次播种覆盖人工配置。
 //
 // 注意：本脚本运行在 packages/database 内，**禁止** import apps/* 的代码（依赖方向：app → package）。
-// 菜单树中的 permCode 字符串与 apps/admin-api 的 common/constants/permissions.ts
-// （PERMISSIONS 注册表）保持人工同步 —— 两处都在同一 PR 内修改，review 时必须对照。
+// 菜单树的 permCode 直接引用共享包 @fedstack/auth-core 的 PERMISSIONS 注册表
+// （`sys_menu.perm_code` 的单一真相源，见 ADR-010）：注册表变更即编译期可见，不存在二次硬编码。
 
+import type { PermissionCode } from '@fedstack/auth-core';
 import type { Prisma, SysMenu } from '../generated/prisma/client.js';
 import process from 'node:process';
+import { PERMISSIONS } from '@fedstack/auth-core';
 import { DataScope, MenuStatus, MenuType, PrismaClient, RoleStatus } from '../generated/prisma/client.js';
 import { createPrismaClientOptions } from './client.js';
 
-/** 菜单树节点定义（平台级）。permCode 缺省表示目录/页面节点，以 routeName 为幂等键。 */
+/**
+ * 菜单树节点定义（平台级）。permCode 缺省表示目录/页面节点，以 routeName 为幂等键。
+ * permCode 收窄为 `PermissionCode`：写入库的编码必须来自 `@fedstack/auth-core` 注册表，拼错即编译错误。
+ */
 interface MenuSeedNode {
   routeName: string;
   menuType: MenuType;
   menuName: string;
   routePath?: string;
   component?: string;
-  permCode?: string;
+  permCode?: PermissionCode;
   icon?: string;
   sort?: number;
   children?: MenuSeedNode[];
@@ -58,10 +63,10 @@ const MENU_TREE: MenuSeedNode[] = [
         component: 'system/user/index',
         sort: 1,
         children: [
-          { routeName: 'SystemUserQuery', menuType: MenuType.BUTTON, menuName: '用户查询', permCode: 'system:user:query' },
-          { routeName: 'SystemUserAdd', menuType: MenuType.BUTTON, menuName: '用户新增', permCode: 'system:user:add' },
-          { routeName: 'SystemUserEdit', menuType: MenuType.BUTTON, menuName: '用户编辑', permCode: 'system:user:edit' },
-          { routeName: 'SystemUserRemove', menuType: MenuType.BUTTON, menuName: '用户删除', permCode: 'system:user:remove' },
+          { routeName: 'SystemUserQuery', menuType: MenuType.BUTTON, menuName: '用户查询', permCode: PERMISSIONS.SYSTEM.USER.QUERY },
+          { routeName: 'SystemUserAdd', menuType: MenuType.BUTTON, menuName: '用户新增', permCode: PERMISSIONS.SYSTEM.USER.ADD },
+          { routeName: 'SystemUserEdit', menuType: MenuType.BUTTON, menuName: '用户编辑', permCode: PERMISSIONS.SYSTEM.USER.EDIT },
+          { routeName: 'SystemUserRemove', menuType: MenuType.BUTTON, menuName: '用户删除', permCode: PERMISSIONS.SYSTEM.USER.REMOVE },
         ],
       },
       {
@@ -72,11 +77,11 @@ const MENU_TREE: MenuSeedNode[] = [
         component: 'system/role/index',
         sort: 2,
         children: [
-          { routeName: 'SystemRoleQuery', menuType: MenuType.BUTTON, menuName: '角色查询', permCode: 'system:role:query' },
-          { routeName: 'SystemRoleAdd', menuType: MenuType.BUTTON, menuName: '角色新增', permCode: 'system:role:add' },
-          { routeName: 'SystemRoleEdit', menuType: MenuType.BUTTON, menuName: '角色编辑', permCode: 'system:role:edit' },
-          { routeName: 'SystemRoleRemove', menuType: MenuType.BUTTON, menuName: '角色删除', permCode: 'system:role:remove' },
-          { routeName: 'SystemRoleAuth', menuType: MenuType.BUTTON, menuName: '角色授权', permCode: 'system:role:auth' },
+          { routeName: 'SystemRoleQuery', menuType: MenuType.BUTTON, menuName: '角色查询', permCode: PERMISSIONS.SYSTEM.ROLE.QUERY },
+          { routeName: 'SystemRoleAdd', menuType: MenuType.BUTTON, menuName: '角色新增', permCode: PERMISSIONS.SYSTEM.ROLE.ADD },
+          { routeName: 'SystemRoleEdit', menuType: MenuType.BUTTON, menuName: '角色编辑', permCode: PERMISSIONS.SYSTEM.ROLE.EDIT },
+          { routeName: 'SystemRoleRemove', menuType: MenuType.BUTTON, menuName: '角色删除', permCode: PERMISSIONS.SYSTEM.ROLE.REMOVE },
+          { routeName: 'SystemRoleAuth', menuType: MenuType.BUTTON, menuName: '角色授权', permCode: PERMISSIONS.SYSTEM.ROLE.AUTH },
         ],
       },
       {
@@ -87,10 +92,10 @@ const MENU_TREE: MenuSeedNode[] = [
         component: 'system/dept/index',
         sort: 3,
         children: [
-          { routeName: 'SystemDeptQuery', menuType: MenuType.BUTTON, menuName: '部门查询', permCode: 'system:dept:query' },
-          { routeName: 'SystemDeptAdd', menuType: MenuType.BUTTON, menuName: '部门新增', permCode: 'system:dept:add' },
-          { routeName: 'SystemDeptEdit', menuType: MenuType.BUTTON, menuName: '部门编辑', permCode: 'system:dept:edit' },
-          { routeName: 'SystemDeptRemove', menuType: MenuType.BUTTON, menuName: '部门删除', permCode: 'system:dept:remove' },
+          { routeName: 'SystemDeptQuery', menuType: MenuType.BUTTON, menuName: '部门查询', permCode: PERMISSIONS.SYSTEM.DEPT.QUERY },
+          { routeName: 'SystemDeptAdd', menuType: MenuType.BUTTON, menuName: '部门新增', permCode: PERMISSIONS.SYSTEM.DEPT.ADD },
+          { routeName: 'SystemDeptEdit', menuType: MenuType.BUTTON, menuName: '部门编辑', permCode: PERMISSIONS.SYSTEM.DEPT.EDIT },
+          { routeName: 'SystemDeptRemove', menuType: MenuType.BUTTON, menuName: '部门删除', permCode: PERMISSIONS.SYSTEM.DEPT.REMOVE },
         ],
       },
       {
@@ -101,10 +106,10 @@ const MENU_TREE: MenuSeedNode[] = [
         component: 'system/dict/index',
         sort: 4,
         children: [
-          { routeName: 'SystemDictQuery', menuType: MenuType.BUTTON, menuName: '字典查询', permCode: 'system:dict:query' },
-          { routeName: 'SystemDictAdd', menuType: MenuType.BUTTON, menuName: '字典新增', permCode: 'system:dict:add' },
-          { routeName: 'SystemDictEdit', menuType: MenuType.BUTTON, menuName: '字典编辑', permCode: 'system:dict:edit' },
-          { routeName: 'SystemDictRemove', menuType: MenuType.BUTTON, menuName: '字典删除', permCode: 'system:dict:remove' },
+          { routeName: 'SystemDictQuery', menuType: MenuType.BUTTON, menuName: '字典查询', permCode: PERMISSIONS.SYSTEM.DICT.QUERY },
+          { routeName: 'SystemDictAdd', menuType: MenuType.BUTTON, menuName: '字典新增', permCode: PERMISSIONS.SYSTEM.DICT.ADD },
+          { routeName: 'SystemDictEdit', menuType: MenuType.BUTTON, menuName: '字典编辑', permCode: PERMISSIONS.SYSTEM.DICT.EDIT },
+          { routeName: 'SystemDictRemove', menuType: MenuType.BUTTON, menuName: '字典删除', permCode: PERMISSIONS.SYSTEM.DICT.REMOVE },
         ],
       },
       {
@@ -115,10 +120,10 @@ const MENU_TREE: MenuSeedNode[] = [
         component: 'system/config/index',
         sort: 5,
         children: [
-          { routeName: 'SystemConfigQuery', menuType: MenuType.BUTTON, menuName: '参数查询', permCode: 'system:config:query' },
-          { routeName: 'SystemConfigAdd', menuType: MenuType.BUTTON, menuName: '参数新增', permCode: 'system:config:add' },
-          { routeName: 'SystemConfigEdit', menuType: MenuType.BUTTON, menuName: '参数编辑', permCode: 'system:config:edit' },
-          { routeName: 'SystemConfigRemove', menuType: MenuType.BUTTON, menuName: '参数删除', permCode: 'system:config:remove' },
+          { routeName: 'SystemConfigQuery', menuType: MenuType.BUTTON, menuName: '参数查询', permCode: PERMISSIONS.SYSTEM.CONFIG.QUERY },
+          { routeName: 'SystemConfigAdd', menuType: MenuType.BUTTON, menuName: '参数新增', permCode: PERMISSIONS.SYSTEM.CONFIG.ADD },
+          { routeName: 'SystemConfigEdit', menuType: MenuType.BUTTON, menuName: '参数编辑', permCode: PERMISSIONS.SYSTEM.CONFIG.EDIT },
+          { routeName: 'SystemConfigRemove', menuType: MenuType.BUTTON, menuName: '参数删除', permCode: PERMISSIONS.SYSTEM.CONFIG.REMOVE },
         ],
       },
     ],
@@ -139,7 +144,7 @@ const MENU_TREE: MenuSeedNode[] = [
         component: 'monitor/operlog/index',
         sort: 1,
         children: [
-          { routeName: 'MonitorOperLogQuery', menuType: MenuType.BUTTON, menuName: '操作日志查询', permCode: 'monitor:operlog:query' },
+          { routeName: 'MonitorOperLogQuery', menuType: MenuType.BUTTON, menuName: '操作日志查询', permCode: PERMISSIONS.MONITOR.OPER_LOG.QUERY },
         ],
       },
       {
@@ -150,7 +155,7 @@ const MENU_TREE: MenuSeedNode[] = [
         component: 'monitor/loginlog/index',
         sort: 2,
         children: [
-          { routeName: 'MonitorLoginLogQuery', menuType: MenuType.BUTTON, menuName: '登录日志查询', permCode: 'monitor:loginlog:query' },
+          { routeName: 'MonitorLoginLogQuery', menuType: MenuType.BUTTON, menuName: '登录日志查询', permCode: PERMISSIONS.MONITOR.LOGIN_LOG.QUERY },
         ],
       },
       {
@@ -161,8 +166,8 @@ const MENU_TREE: MenuSeedNode[] = [
         component: 'monitor/online/index',
         sort: 3,
         children: [
-          { routeName: 'MonitorOnlineQuery', menuType: MenuType.BUTTON, menuName: '在线用户查询', permCode: 'monitor:online:query' },
-          { routeName: 'MonitorOnlineRemove', menuType: MenuType.BUTTON, menuName: '强制下线', permCode: 'monitor:online:remove' },
+          { routeName: 'MonitorOnlineQuery', menuType: MenuType.BUTTON, menuName: '在线用户查询', permCode: PERMISSIONS.MONITOR.ONLINE.QUERY },
+          { routeName: 'MonitorOnlineRemove', menuType: MenuType.BUTTON, menuName: '强制下线', permCode: PERMISSIONS.MONITOR.ONLINE.REMOVE },
         ],
       },
     ],
