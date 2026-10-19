@@ -20,13 +20,13 @@
 
 ## 2. 分期路线图总览
 
-| 阶段 | 主题       | 核心交付物                                  | 依赖 |
-| ---- | ---------- | ------------------------------------------- | ---- |
-| P0   | 认证基座   | 租户骨架、用户/角色基础、JWT 认证、登录安全 | 无   |
-| P1   | 权限与组织 | 菜单管理、部门管理、角色授权、数据权限      | P0   |
-| P2   | 系统管理   | 字典、参数、操作日志、登录日志、在线用户    | P1   |
-| P3   | 扩展能力   | 文件/OSS、消息中心、MFA、客户端管理         | P2   |
-| P4   | 观察项     | 定时任务、监控指标、代码生成                | P3   |
+| 阶段 | 主题       | 核心交付物                                                                                   | 依赖 |
+| ---- | ---------- | -------------------------------------------------------------------------------------------- | ---- |
+| P0   | 认证基座   | 租户骨架、用户/角色基础、JWT 认证、登录安全                                                  | 无   |
+| P1   | 权限与组织 | 菜单管理、部门管理、角色授权、数据权限                                                       | P0   |
+| P2   | 系统管理   | 字典、参数、操作日志、登录日志、在线用户                                                     | P1   |
+| P3   | 扩展能力   | P3a：文件/OSS（含封面归一化）、公告/站内信/实时推送；P3b：消息模板、邮件/短信通道、MFA、队列 | P2   |
+| P4   | 观察项     | 定时任务、监控指标、代码生成                                                                 | P3   |
 
 ---
 
@@ -481,13 +481,13 @@ P2 已实施完毕，实际交付以本节为准；§5.2 为实施前设计草�
 
 **与设计稿 §5.2 的偏差**：
 
-| 项          | 设计稿                                     | 实际实现                                                                        | 依据                                               |
-| ----------- | ------------------------------------------ | ------------------------------------------------------------------------------- | -------------------------------------------------- |
-| SysDictData | 无租户维度                                 | 加 `tenantId`（null=平台级），唯一键 `(tenantId, dictType, dictValue)`          | 租户自定义字典数据需要隔离（本期决策第 3 项）       |
-| SysConfig   | `configType` 字段                          | 移除，新增 `isSystem`（内置参数禁删、key 不可改）                               | 类型信息无消费场景；防误删内置参数                 |
-| SysOperLog  | `url` / `costTime`，tenantId/userId 可空   | `path` / `costMs`；tenantId/userId/username 必填（username 为主体名快照）        | 审计写路径只发生在已认证主体；快照保证用户删除后日志可读 |
-| SysLoginLog | `userAgent`                                | `device`（会话设备标识）；`msg` 收敛为枚举 token                                | 与会话/强制下线语义对齐；展示文案由前端映射        |
-| 在线用户    | 设计稿未列端点                             | 三端点（列表/踢单/全设备下线），会话遍历用 SCAN 键空间                          | 本期决策第 7 项                                    |
+| 项          | 设计稿                                   | 实际实现                                                                  | 依据                                                     |
+| ----------- | ---------------------------------------- | ------------------------------------------------------------------------- | -------------------------------------------------------- |
+| SysDictData | 无租户维度                               | 加 `tenantId`（null=平台级），唯一键 `(tenantId, dictType, dictValue)`    | 租户自定义字典数据需要隔离（本期决策第 3 项）            |
+| SysConfig   | `configType` 字段                        | 移除，新增 `isSystem`（内置参数禁删、key 不可改）                         | 类型信息无消费场景；防误删内置参数                       |
+| SysOperLog  | `url` / `costTime`，tenantId/userId 可空 | `path` / `costMs`；tenantId/userId/username 必填（username 为主体名快照） | 审计写路径只发生在已认证主体；快照保证用户删除后日志可读 |
+| SysLoginLog | `userAgent`                              | `device`（会话设备标识）；`msg` 收敛为枚举 token                          | 与会话/强制下线语义对齐；展示文案由前端映射              |
+| 在线用户    | 设计稿未列端点                           | 三端点（列表/踢单/全设备下线），会话遍历用 SCAN 键空间                    | 本期决策第 7 项                                          |
 
 **关键机制**：
 
@@ -500,29 +500,307 @@ P2 已实施完毕，实际交付以本节为准；§5.2 为实施前设计草�
 
 契约快照：`docs/plans/contracts/phase-2.json`
 
-
 ---
 
-## 6. P3 扩展能力
+## 6. P3 扩展能力（详细设计，2026-10-19 定稿）
 
-### 6.1 范围
+P3 分两批交付，决策依据见 `ADR-012`（文件存储与配额）、`ADR-013`（消息中心 / 实时推送 / 队列），并修订了 `ADR-003`（Redis 连接分层）。
 
-文件/OSS、消息中心（短信/邮件/站内信）、MFA、客户端管理。
+| 批次 | 范围                                                     |
+| ---- | -------------------------------------------------------- |
+| P3a  | 文件/OSS（含图片封面归一化）、通知公告、站内信、实时推送 |
+| P3b  | 消息中心模板、邮件/短信通道、MFA、队列引入与审计落库改造 |
 
-### 6.2 新增表（概要）
+**明确不做**（上游缺陷或本项目无消费方）：`SysClient`（上游为 RuoYi 风格 OAuth 客户端注册表，本仓库无鉴权消费方）；文件夹 / 分享 / 回收站 / 版本 / 秒传 / 分片；多存储配置管理页面（`sys_oss_config` 式配置入库）。
+
+### 6.1 新增表（P3a）
 
 ```prisma
-model SysFile { ... }           // 文件元数据
-model SysOssConfig { ... }      // OSS 配置
-model SysSmsTemplate { ... }    // 短信模板
-model SysSmsLog { ... }         // 短信发送日志
-model SysMailTemplate { ... }   // 邮件模板
-model SysMailLog { ... }        // 邮件发送日志
-model SysNotice { ... }         // 站内信/通知公告
-model SysUserNotice { ... }     // 用户已读记录
-model SysUserMfa { ... }        // MFA 配置
-model SysClient { ... }         // OAuth 客户端管理
+// ==========================================
+// P3a 扩展能力（一）：文件 / 站内信 / 通知公告
+// ==========================================
+
+/// 文件。租户级二进制资产元数据；对象本体存于存储后端（本地磁盘 / S3 兼容对象存储）。
+/// 图片类保留原图，并在**同一行**派生封面列（cover*）——不新建行、不新建表。
+/// 存储配额用量按本表未删除行的 size + coverSize 聚合（ADR-012 D5）。
+model SysFile {
+  id        BigInt    @id
+  createdAt DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt DateTime? @map("deleted_at") @db.DateTime(3)
+
+  tenantId   BigInt @map("tenant_id")
+  uploaderId BigInt @map("uploader_id")
+
+  storage      FileStorage @map("storage") // 产生该对象时使用的驱动
+  bucket       String?     @map("bucket") @db.VarChar(100)
+  objectKey    String      @map("object_key") @db.VarChar(500) // 存储后端内唯一键
+  originalName String      @map("original_name") @db.VarChar(255)
+  mimeType     String      @map("mime_type") @db.VarChar(100)
+  size         Int         @map("size") // 原图字节数
+  module       String?     @map("module") @db.VarChar(50) // 业务归属标记，如 "avatar" / "notice"
+
+  // 派生封面（仅图片类产生；归一化失败时留空，消费端必须容忍）
+  coverKey    String? @map("cover_key") @db.VarChar(500)
+  coverFormat String? @map("cover_format") @db.VarChar(10)
+  coverWidth  Int?    @map("cover_width")
+  coverHeight Int?    @map("cover_height")
+  coverSize   Int?    @map("cover_size")
+
+  @@index([tenantId, createdAt])
+  @@index([tenantId, deletedAt])
+  @@index([uploaderId])
+  @@map("sys_file")
+}
+
+/// 站内信。定向到单个用户；readAt 非空即已读（不设 read 布尔列，避免双真相源）。
+/// 实时推送为 best-effort，本表是权威真相源（ADR-013 D2/D5）。
+model SysUserMessage {
+  id        BigInt    @id
+  createdAt DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt DateTime? @map("deleted_at") @db.DateTime(3) // 用户侧删除
+
+  tenantId BigInt @map("tenant_id")
+  userId   BigInt @map("user_id")
+
+  title      String  @map("title") @db.VarChar(200)
+  content    String  @map("content") @db.Text
+  category   String? @map("category") @db.VarChar(50) // 来源分类，如 "system"
+  sourceType String? @map("source_type") @db.VarChar(50) // 来源对象类型
+  sourceId   String? @map("source_id") @db.VarChar(80) // 来源对象主键（雪花串）
+
+  readAt DateTime? @map("read_at") @db.DateTime(3)
+
+  @@index([userId, readAt])
+  @@index([userId, createdAt])
+  @@map("sys_user_message")
+}
+
+/// 通知公告。广播型：无逐用户已读记录（ADR-013 D2）。
+/// tenantId 为空表示平台级公告；消费端把平台级与租户级公告**并列合并**展示（非遮蔽，ADR-013 D3）。
+model SysNotice {
+  id        BigInt    @id
+  createdAt DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt DateTime? @map("deleted_at") @db.DateTime(3)
+
+  tenantId BigInt? @map("tenant_id") // null = 平台级公告
+
+  title   String       @map("title") @db.VarChar(200)
+  content String       @map("content") @db.Text
+  type    NoticeType   @default(NOTICE) @map("type") // 通知 / 公告
+  status  NoticeStatus @default(DRAFT) @map("status")
+
+  publisherId   BigInt? @map("publisher_id")
+  publisherName String? @map("publisher_name") @db.VarChar(100) // 主体名快照
+
+  @@index([tenantId, status, createdAt])
+  @@map("sys_notice")
+}
+
+enum FileStorage {
+  LOCAL @map("local")
+  S3    @map("s3")
+}
+
+enum NoticeType {
+  NOTICE   @map("notice") // 通知
+  BULLETIN @map("bulletin") // 公告
+}
+
+enum NoticeStatus {
+  DRAFT     @map("draft")
+  PUBLISHED @map("published")
+  CLOSED    @map("closed")
+}
 ```
+
+### 6.2 新增表（P3b）
+
+```prisma
+// ==========================================
+// P3b 扩展能力（二）：消息模板 / 投递记录 / 用户 MFA
+// ==========================================
+
+/// 消息模板。tenantId 为空表示平台级标准模板；租户对同 (templateKey, channel)
+/// 建立自有模板后**整体遮蔽**平台级（复用 ADR-009 D2 判定与缓存纪律）。
+model SysMessageTemplate {
+  id        BigInt    @id
+  createdAt DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt DateTime? @map("deleted_at") @db.DateTime(3)
+
+  tenantId BigInt? @map("tenant_id") // null = 平台级模板
+
+  templateKey String         @map("template_key") @db.VarChar(100) // 模板键，如 "mfa.bind"
+  channel     MessageChannel @map("channel")
+  title       String?        @map("title") @db.VarChar(200)
+  content     String         @map("content") @db.Text // 变量占位模板
+  status      TemplateStatus @default(ACTIVE) @map("status")
+  remark      String?        @map("remark") @db.VarChar(500)
+
+  @@unique([tenantId, templateKey, channel], name: "uniq_tenant_message_template")
+  @@index([templateKey])
+  @@map("sys_message_template")
+}
+
+/// 消息投递记录。只增表：无 updated_at / deleted_at（同审计日志口径，ADR-009）。
+model SysMessageSendLog {
+  id        BigInt   @id
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+
+  tenantId    BigInt            @map("tenant_id")
+  channel     MessageChannel    @map("channel")
+  templateKey String?           @map("template_key") @db.VarChar(100)
+  receiver    String            @map("receiver") @db.VarChar(255) // 邮箱 / 手机号 / 用户 ID
+  title       String?           @map("title") @db.VarChar(200)
+  content     String?           @map("content") @db.Text
+  provider    String?           @map("provider") @db.VarChar(50) // 服务商标识
+  status      MessageSendStatus @map("status")
+  errorMsg    String?           @map("error_msg") @db.VarChar(2000)
+
+  @@index([tenantId, createdAt])
+  @@index([channel, createdAt])
+  @@map("sys_message_send_log")
+}
+
+/// 用户 MFA 配置。secret 为 AES-256-GCM 密文（密钥走 env，ADR-013 D8）；
+/// 恢复码存 SHA-256 摘要数组（含 usedAt），**不存明文**。
+model SysUserMfa {
+  id        BigInt    @id
+  createdAt DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.DateTime(3)
+
+  tenantId BigInt @map("tenant_id")
+  userId   BigInt @map("user_id")
+
+  secretCipher  String    @map("secret_cipher") @db.VarChar(500)
+  recoveryCodes Json?     @map("recovery_codes") // [{ hash, usedAt }]
+  enabled       Boolean   @default(false) @map("enabled") // 二次校验通过后才置 true
+  confirmedAt   DateTime? @map("confirmed_at") @db.DateTime(3)
+
+  @@unique([userId], name: "uniq_user_mfa")
+  @@index([tenantId])
+  @@map("sys_user_mfa")
+}
+
+enum MessageChannel {
+  INNER @map("inner") // 站内信
+  EMAIL @map("email")
+  SMS   @map("sms")
+}
+
+enum MessageSendStatus {
+  SUCCESS @map("success")
+  FAILURE @map("failure")
+}
+
+enum TemplateStatus {
+  ACTIVE   @map("active")
+  DISABLED @map("disabled")
+}
+```
+
+### 6.3 文件与存储（P3a）
+
+完整决策见 `ADR-012`。
+
+- **存储抽象**：`StorageDriver` 接口（`put` / `getStream` / `delete` / `getSignedUrl`），两实现 `LocalStorageDriver` / `S3StorageDriver`；驱动由 `STORAGE_DRIVER`（`local` | `s3`）选择；落点 `apps/admin-api/src/shared/storage/`，**不抽共享包**（唯一消费方）。
+- **凭据纪律**：密钥 / 端点 / bucket 全部走 env（joi 校验），**不建配置表、不入库、不进日志**。
+- **上传约束**（服务端强制、全部 env）：`UPLOAD_MAX_BYTES=5242880`（图片）/ `UPLOAD_MAX_BYTES_OTHER=20971520`（其它白名单类型）；`UPLOAD_ALLOWED_IMAGE_TYPES` / `UPLOAD_ALLOWED_FILE_TYPES` 白名单；缓冲式上传（multer `memoryStorage`），超限在缓冲阶段中断；**上传端点必须配限流**（复用既有 throttler + Redis）。
+- **归一化**：所有图片经 `sharp` 归一化；`UPLOAD_COVER_MAX_WIDTH=1600`（不放大小图）、`UPLOAD_COVER_FORMAT=webp`（默认，可选 `jpeg` / `png`）；**保留原图**，封面写同一行 `cover_*` 列；归一化失败降级为「仅原图」。
+- **配额**：`SysTenant.storageLimit` 为上限；用量 = 未删除 `SysFile` 行的 `SUM(size + coverSize)`（**不落冗余计数列**）；并发小幅超限窗口已接受（同 ADR-009 D3 口径）。
+- **删除**：软删元数据 + 物理删对象（best-effort）→ 孤儿对象补偿任务**依赖 P3b 队列**（记待办）；配额随软删自动释放。
+- **下载双通路**：默认代理（`GET /api/files/{id}/content`）；仅显式 `?direct=true` 才签发预签名 URL（TTL `STORAGE_SIGNED_URL_TTL=300`，需登录 + 权限，审计只记「签发」）；**不建 `download_count` 字段**。
+
+| 端点                      | 方法         | 说明                            | 鉴权                           |
+| ------------------------- | ------------ | ------------------------------- | ------------------------------ |
+| `/api/files`              | POST         | 上传（multipart）               | `system:file:add` + 限流       |
+| `/api/files`              | GET          | 列表（分页）                    | `system:file:query`            |
+| `/api/files/{id}`         | GET / DELETE | 详情 / 删除                     | `system:file:query` / `remove` |
+| `/api/files/{id}/content` | GET          | 代理下载（`?direct=true` 直连） | `system:file:download`         |
+
+### 6.4 站内信与通知公告（P3a）
+
+- **站内信** `SysUserMessage`：定向到单用户，`readAt` 表达已读（不设布尔列）；来源 = 内部投递 API + 自助读；P3a **无模板**。
+- **公告** `SysNotice`：广播型、**无逐用户已读记录**；`tenantId` 可空（平台级）。
+- **公告两级并列合并，不是遮蔽**：消费端同时展示平台级与租户级公告（见 `ADR-013` D3，术语口径已写入 `GLOSSARY.md`）。
+- 权限：公告管理挂 `system:notice:*`（平台级公告走 `SuperAdminGuard`）；站内信自助仅需认证 + 租户作用域。管理写端点挂 `@OperLog`，高频读不挂。
+
+| 端点                              | 方法               | 说明                       |
+| --------------------------------- | ------------------ | -------------------------- |
+| `/api/notices`                    | GET / POST         | 公告列表（两级合并）/ 创建 |
+| `/api/notices/{id}`               | GET / PUT / DELETE | 详情 / 更新 / 删除         |
+| `/api/user-messages`              | GET                | 自助列表（分页）           |
+| `/api/user-messages/unread-count` | GET                | 未读数                     |
+| `/api/user-messages/{id}/read`    | PUT                | 标记已读                   |
+| `/api/user-messages/read-all`     | PUT                | 全部已读                   |
+| `/api/user-messages/{id}`         | DELETE             | 删除（软删）               |
+
+### 6.5 实时推送（P3a）
+
+- **SSE**：`GET /api/realtime/stream`（`text/event-stream`）；前端用 `fetch` 消费，令牌走 `Authorization` 头（**绝不进 URL / query**）。
+- **跨实例**：Redis pub/sub；`@fedstack/redis` 新增 `PubSubService`（发布复用共享 client、订阅独占连接），已并入 `ADR-003`（§7 / D9）。
+- 频道：`{ns}rt:user:{userId}`（定向）、`{ns}rt:notice:{tenantId|platform}`（公告广播）；实例按本地连接动态订阅 / 退订。
+- **best-effort**：DB 为权威真相源，Redis 故障时推送静默降级，不影响落库与拉取对齐。
+
+### 6.6 消息中心与通道（P3b）
+
+- `MessageCenter` + `MessageProvider` 接口；站内信 provider 在 P3a 已落，邮件 / 短信 provider 与模板化在 P3b 落地。
+- 模板 `SysMessageTemplate`：平台级 + 租户级覆盖，**复用 ADR-009 D2 遮蔽语义**与缓存纪律。
+- 投递记录 `SysMessageSendLog`：只增表（同审计日志口径）。
+- 服务商配置（SMTP / 短信 AK）走 env，**不建表**。
+
+### 6.7 MFA（P3b）
+
+- 仅 **TOTP + 一次性恢复码**；二步登录用 **pending token**（Redis、短 TTL、一次性消费），未启用 MFA 的用户登录流程零变化（`ADR-013` D8）。
+- 策略走参数配置（遮蔽语义，默认「可选」），**不建策略表**。
+- secret 用 **AES-256-GCM**（`node:crypto`，密钥 env `MFA_SECRET_ENC_KEY`）；恢复码存 SHA-256 摘要 + `usedAt`（不存明文）。
+- 自助端点（绑定 / 校验 / 解绑 / 重置恢复码）**仅需认证**。
+- 依赖 `otpauth`；**不引 `qrcode`**（后端只回 otpauth URI，二维码由前端生成）。
+
+### 6.8 队列与审计改造（P3b）
+
+- 引入 `bullmq` + `@nestjs/bullmq`（Redis 承载）；用途：邮件 / 短信投递、**审计日志落库**（结清 `ADR-009` §4「fire-and-forget 无背压」待评估项）、文件物理删除补偿（`ADR-012` D6 待办）。
+- 队列**只承载可丢弃 / 可重放的任务**，权威数据仍在 MySQL（`AGENTS.md` §13 / §14）。
+- P4 定时任务复用同一队列底座，不引入第二套。
+
+### 6.9 权限码与契约
+
+- 新增权限码注册进 `@fedstack/auth-core`，并由 `packages/database/src/seed.ts` **import 同一注册表**同步菜单按钮（不得二次硬编码，见 `ADR-010`）。
+- 计划新增：`SYSTEM.FILE.{QUERY,ADD,REMOVE,DOWNLOAD}`、`SYSTEM.NOTICE.{QUERY,ADD,EDIT,REMOVE}`、`SYSTEM.MESSAGE_TEMPLATE.{QUERY,ADD,EDIT,REMOVE}`（P3b）、`MONITOR.MESSAGE_LOG.QUERY`（P3b）。实际编码以注册表为准。
+- 契约快照：`docs/plans/contracts/phase-3a.json` / `phase-3b.json`。
+
+### 6.10 依赖清单
+
+| 依赖                               | 批次 | 用途         | 备注                          |
+| ---------------------------------- | ---- | ------------ | ----------------------------- |
+| `@aws-sdk/client-s3`               | P3a  | S3 兼容驱动  | 通用端点（MinIO / COS / OSS） |
+| `@aws-sdk/s3-request-presigner`    | P3a  | 直连下载签名 | 保留演进路径                  |
+| `sharp`                            | P3a  | 图片归一化   | 原生依赖（同 argon2 类别）    |
+| `@types/multer`                    | P3a  | 上传类型     | 仅类型                        |
+| `nodemailer` + `@types/nodemailer` | P3b  | 邮件通道     |                               |
+| `otpauth`                          | P3b  | TOTP         |                               |
+| `bullmq` + `@nestjs/bullmq`        | P3b  | 队列         | P4 定时任务复用               |
+
+- 全部先入 `pnpm-workspace.yaml` catalog，包内以 `"catalog:"` 引用。
+- **不引**：`qrcode`、短信服务商 SDK（服务商待定，先用 `MessageProvider` 接口占位）。
+- **零新依赖**：SSE（Nest `@Sse` + `rxjs`）、AES-256-GCM（`node:crypto`）。
+
+### 6.11 验收标准
+
+- [ ] 存储双驱动可用；密钥不入库、不进日志
+- [ ] 上传类型 / 大小约束在服务端生效，超限在缓冲阶段中断，上传端点有限流
+- [ ] 图片归一化（1600 / webp / 不放大小图），保留原图，封面写同一行
+- [ ] 配额超限拒绝上传；删除后配额自动释放
+- [ ] 代理 / 直连双通路可用，直连签发记审计，令牌不进 URL
+- [ ] 站内信定向 + 公告广播（两级**并列合并**，非遮蔽）语义正确
+- [ ] SSE 跨实例可达；Redis 故障静默降级且不影响落库
+- [ ] 消息模板遮蔽、邮件 / 短信通道、MFA 二步登录（均 P3b）通过
+- [ ] 审计日志自 P3b 起走队列投递
+- [ ] 权限码与 seed 菜单一致；`phase-3a.json` / `phase-3b.json` 契约快照输出
+- [ ] 类型检查 / 构建 / 测试通过；改动文件 lint 0 问题
 
 ---
 
@@ -545,33 +823,43 @@ model SysGenColumn { ... }      // 代码生成列配置
 
 ## 8. 技术决策汇总
 
-| 决策项     | 方案                     | 理由                              |
-| ---------- | ------------------------ | --------------------------------- |
-| 密码哈希   | argon2id                 | 抗 GPU 破解，内存硬度，现代标准   |
-| Token 策略 | 2h access + 7d refresh   | 安全与体验平衡，Redis 滑动过期    |
-| 多端登录   | 允许，可强制下线         | 企业级审计需求                    |
-| 登录锁定   | 5 次/15min，账号维度     | 防暴力破解，避免 NAT 误伤         |
-| 数据权限   | 部门物化路径             | 避免递归查询，性能可控            |
-| 菜单权限   | 三级进库，按钮级         | 细粒度控制到 API                  |
-| 代码组织   | 业务模块留 admin-api     | 不过度抽象，保持 NestJS idiomatic |
-| 契约管理   | OpenAPI 快照 + 扩展-收缩 | 前后端协同安全                    |
+| 决策项     | 方案                                                 | 理由                                                 |
+| ---------- | ---------------------------------------------------- | ---------------------------------------------------- |
+| 密码哈希   | argon2id                                             | 抗 GPU 破解，内存硬度，现代标准                      |
+| Token 策略 | 2h access + 7d refresh                               | 安全与体验平衡，Redis 滑动过期                       |
+| 多端登录   | 允许，可强制下线                                     | 企业级审计需求                                       |
+| 登录锁定   | 5 次/15min，账号维度                                 | 防暴力破解，避免 NAT 误伤                            |
+| 数据权限   | 部门物化路径                                         | 避免递归查询，性能可控                               |
+| 菜单权限   | 三级进库，按钮级                                     | 细粒度控制到 API                                     |
+| 代码组织   | 业务模块留 admin-api                                 | 不过度抽象，保持 NestJS idiomatic                    |
+| 存储抽象   | `StorageDriver` 双驱动（本地 / S3 兼容），配置走 env | 凭据不入库；切换存储只改环境变量（ADR-012）          |
+| 存储配额   | 未删除文件行聚合（不落计数列）                       | 单一真相源，无计数漂移（ADR-012 D5）                 |
+| 实时推送   | SSE + Redis pub/sub                                  | 令牌不进 URL，复用既有 HTTP 鉴权链路（ADR-013 D5）   |
+| 消息队列   | BullMQ（Redis 承载，P3b 引入）                       | 外部 IO 可重试；只承载可丢弃任务（ADR-013 D7）       |
+| 双因素认证 | TOTP + AES-256-GCM                                   | 零新加密依赖；pending token 隔离第二步（ADR-013 D8） |
+| 契约管理   | OpenAPI 快照 + 扩展-收缩                             | 前后端协同安全                                       |
 
 ---
 
 ## 9. 风险与缓解
 
-| 风险                          | 影响           | 缓解措施                                    |
-| ----------------------------- | -------------- | ------------------------------------------- |
-| Prisma 7 与 Prisma 5 行为差异 | 迁移逻辑错误   | 逐表对比验证，不照搬上游查询逻辑            |
-| MySQL 与 PostgreSQL 差异      | SQL 兼容问题   | 使用 Prisma 标准 API，避免原生 SQL          |
-| 多租户过滤遗漏                | 数据泄露       | ALS + `$extends` 自动注入，集成测试覆盖     |
-| 会话存储 Redis 故障           | 用户登出       | 降级为内存缓存 + 告警，Redis 恢复后自动同步 |
-| 契约变更破坏前端              | 前后端联调失败 | 严格扩展-收缩，每期契约快照评审             |
+| 风险                          | 影响           | 缓解措施                                                    |
+| ----------------------------- | -------------- | ----------------------------------------------------------- |
+| Prisma 7 与 Prisma 5 行为差异 | 迁移逻辑错误   | 逐表对比验证，不照搬上游查询逻辑                            |
+| MySQL 与 PostgreSQL 差异      | SQL 兼容问题   | 使用 Prisma 标准 API，避免原生 SQL                          |
+| 多租户过滤遗漏                | 数据泄露       | ALS + `$extends` 自动注入，集成测试覆盖                     |
+| 会话存储 Redis 故障           | 用户登出       | 降级为内存缓存 + 告警，Redis 恢复后自动同步                 |
+| 契约变更破坏前端              | 前后端联调失败 | 严格扩展-收缩，每期契约快照评审                             |
+| 缓冲式上传造成内存压力        | 服务不可用     | 分类上限 + 类型白名单 + 上传端点限流（ADR-012 D3）          |
+| 对象删除失败残留孤儿对象      | 存储成本泄漏   | 软删留痕 + 补偿任务（P3b 队列），期间人工巡检（ADR-012 D6） |
+| SSE 长连接被反向代理缓冲      | 推送静默失效   | 部署时关闭代理缓冲并加心跳保活（ADR-013 §5）                |
 
 ---
 
 ## 10. 下一步行动
 
-1. **已完成（2026-10-19，部分完成）**：已创建 `packages/auth-core` 共享包，并迁入功能权限码注册表作为 `sys_menu.perm_code` 的单一真相源（见 ADR-010）；JWT 策略、argon2 工具、权限装饰器骨架待后续按需沉淀进本包。
-2. **P0 开发**：按 3.2 Schema 执行 Prisma 迁移，实现 auth/user/role/tenant 模块
-3. **P0 验收**：完成后输出 `docs/plans/contracts/phase-0.json`，进入 P1
+1. **已完成（P0–P2）**：认证基座、权限与组织、系统管理三期均已交付，迁移 `init_p0_auth` / `init_p1_permission` / `init_p2_system` 已落库；`packages/auth-core` 已沉淀功能权限码注册表（`ADR-010`）；契约快照 `phase-0.json` / `phase-1.json` / `phase-2.json` 已输出。
+2. **P3 规划已定稿（2026-10-19）**：P3a / P3b 范围、表结构、端点与依赖见本文 §6；决策记录 `ADR-012`（文件存储与配额）、`ADR-013`（消息中心 / 实时推送 / 队列），并修订 `ADR-003`（§7 `PubSubService` 连接分层）。
+3. **P3a 开发（下一步）**：按 §6.1 执行 Prisma 迁移（新增 `SysFile` / `SysUserMessage` / `SysNotice`），实现 `shared/storage`（`StorageDriver` 双驱动）、`modules/file`、`modules/notice`、`modules/message`（站内信）、`modules/realtime`，并在 `@fedstack/redis` 增补 `PubSubService`。
+4. **P3a 验收**：按 §6.11 校验清单执行，输出 `docs/plans/contracts/phase-3a.json`，进入 P3b。
+5. **P3b 开发与验收**：按 §6.2 迁移（`SysMessageTemplate` / `SysMessageSendLog` / `SysUserMfa`），实现模板遮蔽、邮件 / 短信 provider、BullMQ 队列（含审计落库改造与文件删除补偿）、MFA 二步登录，输出 `docs/plans/contracts/phase-3b.json`。

@@ -1,8 +1,8 @@
 # ADR-003：以共享包 `@fedstack/redis` 统一缓存基础设施
 
-- 状态：已采纳（2026-10-15）
-- 日期：2026-10-15
-- 影响范围：`packages/redis`（新增）、`apps/admin-api`、根 `eslint.config.js`；后续 `apps/api` 接入时零新增基础设施代码
+- 状态：已采纳（2026-10-15；2026-10-19 修订，见 §7）
+- 日期：2026-10-15（修订 2026-10-19）
+- 影响范围：`packages/redis`（新增）、`apps/admin-api`、根 `eslint.config.js`、`apps/admin-api` 实时推送（P3a，见 `ADR-013`）；后续 `apps/api` 接入时零新增基础设施代码
 - 相关规范：`AGENTS.md`、`.rules/backend/AGENTS.md`；前置文档：`ADR-002`（缓存拓扑）、`apps/admin-api/src/shared/caching/README.md`
 
 ---
@@ -64,3 +64,12 @@
 | 全量测试         | `pnpm test`                                         | 5/5 通过（含本次补齐的 `env.validation.spec.ts` 3 用例——该文件在 HEAD 中为 0 字节空文件，属 ADR-001 §8 遗留，本次在改动域内一并修复）                                                                                      |
 | Lint（改动文件） | `eslint`（admin-api 本次全部修改 / 新建文件）       | 0 问题                                                                                                                                                                                                                     |
 | Lint（基线）     | `eslint .` / `turbo run lint`                       | 既有基线未变：root 60 个错误全部落既有文件（ADR-001 §8 同源）；`api` 52 个 `style/semi`（既有）；`admin-api` 既有错误含 README 2 个 parsing error（经 HEAD 版本对照确认为既有代码片段）；**本次新增 / 修改文件零新增问题** |
+
+---
+
+## 7. 修订（2026-10-19）：PubSubService 连接分层纪律并入包
+
+- 触发：P3a 引入实时推送（SSE），需要跨实例 pub/sub（证据：`ADR-013` D5/D6）。
+- 事实：Redis 连接一旦进入 subscribe 模式便**不能再执行普通命令**；`admin-api` 现有 4 处直连 `REDIS_CLIENT`（证据：`ADR-003 §1` 同期调研），若订阅复用该共享 client，会阻塞同一连接上的其它命令。
+- 决策（**D9**）：`packages/redis` 新增 `PubSubService`——**发布复用共享 client，订阅使用独占连接**；独立连接的创建/释放、`disableOfflineQueue`、错误处理与降级口径沿用 `D6` 的连接纪律并进包；**频道命名等业务语义不进包**（与 `KeyPrefixer` 的 keyPrefix 纪律同构）。
+- `D1`–`D8` 不变；`D9` 的验证待 P3a 实施后按 `ADR-013 §6` 校验项补。
