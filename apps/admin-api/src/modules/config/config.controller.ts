@@ -48,7 +48,7 @@ export class ConfigController {
 
   @Get()
   @RequirePermission(PERMISSIONS.SYSTEM.CONFIG.QUERY)
-  @ApiOperation({ summary: '参数列表（平台级 + 本级合并视图，含 shadowed 标记）' })
+  @ApiOperation({ summary: '参数列表（平台级 + 本级合并视图，含 shadowed（遮蔽语义） 标记）' })
   @ApiOkResponse({ description: '分页结果', type: ConfigResponseDto, isArray: true })
   async list(
     @Query() query: QueryConfigDto,

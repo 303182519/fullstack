@@ -132,6 +132,7 @@ export class ConfigService {
     if (existing)
       throw conflict('参数键已存在', CONFIG_BIZ.KEY_EXISTS);
 
+    // 检查同键软删行是否复活
     const resurrected = await this.prisma.sysConfig.findFirst({
       where: { tenantId: scope.tenantId, configKey: dto.configKey, deletedAt: { not: null } },
     });
