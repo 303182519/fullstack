@@ -37,3 +37,62 @@ describe('env.validation Redis 段', () => {
     expect(none.error).toBeUndefined();
   });
 });
+
+describe('env.validation 文件存储与上传段', () => {
+  it('缺省时默认 local 驱动、本地根目录与签名 TTL', () => {
+    const { error, value } = validationSchema.validate(REQUIRED_ENV);
+
+    expect(error).toBeUndefined();
+    expect(value.STORAGE_DRIVER).toBe('local');
+    expect(value.STORAGE_LOCAL_ROOT).toBe('storage');
+    expect(value.STORAGE_SIGNED_URL_TTL).toBe(300);
+  });
+
+  it('sTORAGE_DRIVER 取值非法时报错', () => {
+    const { error } = validationSchema.validate({
+      ...REQUIRED_ENV,
+      STORAGE_DRIVER: 'ftp',
+    });
+    expect(error).toBeDefined();
+  });
+
+  it('driver=s3 时缺 bucket / region 报错，齐备时通过', () => {
+    const missingBucket = validationSchema.validate({
+      ...REQUIRED_ENV,
+      STORAGE_DRIVER: 's3',
+      STORAGE_S3_REGION: 'us-east-1',
+    });
+    expect(missingBucket.error).toBeDefined();
+
+    const missingRegion = validationSchema.validate({
+      ...REQUIRED_ENV,
+      STORAGE_DRIVER: 's3',
+      STORAGE_S3_BUCKET: 'bucket',
+    });
+    expect(missingRegion.error).toBeDefined();
+
+    const complete = validationSchema.validate({
+      ...REQUIRED_ENV,
+      STORAGE_DRIVER: 's3',
+      STORAGE_S3_REGION: 'us-east-1',
+      STORAGE_S3_BUCKET: 'bucket',
+    });
+    expect(complete.error).toBeUndefined();
+  });
+
+  it('上传约束缺省值生效，显式覆盖被尊重', () => {
+    const defaults = validationSchema.validate(REQUIRED_ENV);
+    expect(defaults.value.UPLOAD_MAX_BYTES).toBe(5_242_880);
+    expect(defaults.value.UPLOAD_MAX_BYTES_OTHER).toBe(20_971_520);
+    expect(defaults.value.UPLOAD_COVER_MAX_WIDTH).toBe(1600);
+    expect(defaults.value.UPLOAD_COVER_FORMAT).toBe('webp');
+
+    const overridden = validationSchema.validate({
+      ...REQUIRED_ENV,
+      UPLOAD_MAX_BYTES: 1024,
+      UPLOAD_COVER_FORMAT: 'png',
+    });
+    expect(overridden.value.UPLOAD_MAX_BYTES).toBe(1024);
+    expect(overridden.value.UPLOAD_COVER_FORMAT).toBe('png');
+  });
+});

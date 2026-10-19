@@ -368,6 +368,90 @@ model SysLoginLog {
 }
 
 // ==========================================
+// P3a 扩展能力（一）：文件 / 站内信 / 通知公告
+// 决策依据：ADR-012（文件存储与配额）、ADR-013（消息中心 / 实时推送）
+// ==========================================
+
+/// 文件。租户级二进制资产元数据；对象本体存于存储后端（本地磁盘 / S3 兼容对象存储）。
+/// 图片类保留原图，并在**同一行**派生封面列（cover*）——不新建行、不新建表。
+/// 存储配额用量按本表未删除行的 size + coverSize 聚合（ADR-012 D5，不落冗余计数列）。
+model SysFile {
+  id        BigInt    @id
+  createdAt DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt DateTime? @map("deleted_at") @db.DateTime(3)
+
+  tenantId   BigInt @map("tenant_id")
+  uploaderId BigInt @map("uploader_id")
+
+  storage      FileStorage @map("storage") // 产生该对象时使用的驱动（驱动切换后历史对象仍可据此定位）
+  bucket       String?     @map("bucket") @db.VarChar(100) // S3 桶名；本地驱动为 null
+  objectKey    String      @map("object_key") @db.VarChar(500) // 存储后端内唯一键
+  originalName String      @map("original_name") @db.VarChar(255) // 上传时的原始文件名
+  mimeType     String      @map("mime_type") @db.VarChar(100)
+  size         Int         @map("size") // 原图字节数
+  module       String?     @map("module") @db.VarChar(50) // 业务归属标记，如 "avatar" / "notice"
+
+  // 派生封面（仅图片类产生；归一化失败时留空，消费端必须容忍——ADR-012 D4）
+  coverKey    String? @map("cover_key") @db.VarChar(500)
+  coverFormat String? @map("cover_format") @db.VarChar(10) // 归一化输出格式（webp / jpeg / png）
+  coverWidth  Int?    @map("cover_width")
+  coverHeight Int?    @map("cover_height")
+  coverSize   Int?    @map("cover_size")
+
+  @@index([tenantId, createdAt])
+  @@index([tenantId, deletedAt])
+  @@index([uploaderId])
+  @@map("sys_file")
+}
+
+/// 站内信。定向到单个用户；readAt 非空即已读（不设 read 布尔列，避免双真相源）。
+/// 实时推送为 best-effort，本表是权威真相源（ADR-013 D2/D5）。
+model SysUserMessage {
+  id        BigInt    @id
+  createdAt DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt DateTime? @map("deleted_at") @db.DateTime(3) // 用户侧删除
+
+  tenantId BigInt @map("tenant_id")
+  userId   BigInt @map("user_id")
+
+  title      String  @map("title") @db.VarChar(200)
+  content    String  @map("content") @db.Text
+  category   String? @map("category") @db.VarChar(50) // 来源分类，如 "system"
+  sourceType String? @map("source_type") @db.VarChar(50) // 来源对象类型
+  sourceId   String? @map("source_id") @db.VarChar(80) // 来源对象主键（雪花串，避免 BigInt 跨语言精度问题）
+
+  readAt DateTime? @map("read_at") @db.DateTime(3)
+
+  @@index([userId, readAt])
+  @@index([userId, createdAt])
+  @@map("sys_user_message")
+}
+
+/// 通知公告。广播型：无逐用户已读记录（ADR-013 D2）。
+/// tenantId 为空表示平台级公告；消费端把平台级与租户级公告**并列合并**展示（非遮蔽，ADR-013 D3）。
+model SysNotice {
+  id        BigInt    @id
+  createdAt DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt DateTime? @map("deleted_at") @db.DateTime(3)
+
+  tenantId BigInt? @map("tenant_id") // null = 平台级公告
+
+  title   String       @map("title") @db.VarChar(200)
+  content String       @map("content") @db.Text
+  type    NoticeType   @default(NOTICE) @map("type") // 通知 / 公告
+  status  NoticeStatus @default(DRAFT) @map("status")
+
+  publisherId   BigInt? @map("publisher_id")
+  publisherName String? @map("publisher_name") @db.VarChar(100) // 主体名快照（发布人删除后公告仍可读）
+
+  @@index([tenantId, status, createdAt])
+  @@map("sys_notice")
+}
+
+// ==========================================
 // 枚举
 // ==========================================
 
@@ -433,4 +517,20 @@ enum OperLogStatus {
 enum LoginLogStatus {
   SUCCESS @map("success")
   FAILURE @map("failure")
+}
+
+enum FileStorage {
+  LOCAL @map("local")
+  S3    @map("s3")
+}
+
+enum NoticeType {
+  NOTICE   @map("notice") // 通知
+  BULLETIN @map("bulletin") // 公告
+}
+
+enum NoticeStatus {
+  DRAFT     @map("draft")
+  PUBLISHED @map("published")
+  CLOSED    @map("closed")
 }

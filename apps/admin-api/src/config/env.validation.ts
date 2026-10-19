@@ -48,4 +48,47 @@ export const validationSchema = Joi.object({
   THROTTLE_TTL: Joi.number().integer().min(1000).default(60_000),
   THROTTLE_LIMIT: Joi.number().integer().min(1).default(120),
   THROTTLE_BLOCK_DURATION: Joi.number().integer().min(0).default(60_000),
+
+  // 文件存储（ADR-012 D1/D2）：凭据只走 env，不入库、不进日志
+  STORAGE_DRIVER: Joi.string().valid('local', 's3').default('local'),
+  // 本地驱动落盘根目录
+  STORAGE_LOCAL_ROOT: Joi.string().default('storage'),
+  // S3 兼容端点：AWS 官方可留空；MinIO / COS / OSS 必须显式配置
+  STORAGE_S3_ENDPOINT: Joi.string().uri({ scheme: ['http', 'https'] }),
+  STORAGE_S3_REGION: Joi.string().when('STORAGE_DRIVER', {
+    is: 's3',
+    then: Joi.required(),
+  }),
+  STORAGE_S3_BUCKET: Joi.string().when('STORAGE_DRIVER', {
+    is: 's3',
+    then: Joi.required(),
+  }),
+  // 访问密钥：留空则走 SDK 默认凭证链（环境变量 / IAM 角色）
+  STORAGE_S3_ACCESS_KEY_ID: Joi.string().allow(''),
+  STORAGE_S3_SECRET_ACCESS_KEY: Joi.string().allow(''),
+  // MinIO 等自建端点须为 true，AWS S3 为 false
+  STORAGE_S3_FORCE_PATH_STYLE: Joi.boolean()
+    .truthy('true', '1')
+    .falsy('false', '0')
+    .default(true),
+  // 预签名直连 URL 有效期（秒）
+  STORAGE_SIGNED_URL_TTL: Joi.number().integer().min(1).default(300),
+
+  // 上传面约束（ADR-012 D3/D4）：服务端强制，前端校验仅作体验层
+  UPLOAD_MAX_BYTES: Joi.number().integer().min(1).default(5_242_880),
+  UPLOAD_MAX_BYTES_OTHER: Joi.number().integer().min(1).default(20_971_520),
+  // 逗号分隔的 MIME 白名单
+  UPLOAD_ALLOWED_IMAGE_TYPES: Joi.string().default(
+    'image/jpeg,image/png,image/gif,image/webp',
+  ),
+  UPLOAD_ALLOWED_FILE_TYPES: Joi.string().default(
+    'application/pdf,application/zip,text/plain,text/csv,application/msword,'
+    + 'application/vnd.openxmlformats-officedocument.wordprocessingml.document,'
+    + 'application/vnd.ms-excel,'
+    + 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  ),
+  // 封面归一化最大宽度（不放大小图）
+  UPLOAD_COVER_MAX_WIDTH: Joi.number().integer().min(16).default(1600),
+  // 封面归一化输出格式
+  UPLOAD_COVER_FORMAT: Joi.string().valid('webp', 'jpeg', 'png').default('webp'),
 }).oxor('REDIS_URL', 'REDIS_HOST'); // Redis 连接二选一,也可都不提供

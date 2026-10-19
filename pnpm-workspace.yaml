@@ -79,4 +79,11 @@ catalog:
   argon2: ^0.45.1
   '@nestjs/jwt': ^12.0.3
   svg-captcha: ^1.4.0
+  # P3a 文件存储（ADR-012 §6.10）：S3 兼容驱动 + 预签名直连 + 图片归一化
+  '@aws-sdk/client-s3': ^3.1152.0
+  '@aws-sdk/s3-request-presigner': ^3.1152.0
+  # sharp 为原生依赖（同 argon2 类别）：预编译二进制，无容器化构建时无额外适配面
+  sharp: ^0.35.5
+  # 仅类型：上传面 multipart 的 Request 类型增强（运行时 multer 由 @nestjs/platform-express 提供）
+  '@types/multer': ^2.3.0
 

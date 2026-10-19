@@ -18,6 +18,11 @@ declare global {
       LOG_DIR: string;
       LOG_MAX_FILE_SIZE: number;
       LOG_MAX_FILES: number;
+
+      STORAGE_DRIVER: StorageDriver;
+      STORAGE_LOCAL_ROOT: string;
+      STORAGE_SIGNED_URL_TTL: number;
+      UPLOAD_COVER_FORMAT: coverFormat;
     }
   }
 }

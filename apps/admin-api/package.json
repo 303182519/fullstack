@@ -23,6 +23,8 @@
     "clean": "node -e \"fs.rmSync('dist', { recursive: true, force: true })\""
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "catalog:",
+    "@aws-sdk/s3-request-presigner": "catalog:",
     "@fedstack/auth-core": "workspace:*",
     "@fedstack/database": "workspace:*",
     "@fedstack/health": "workspace:*",
@@ -54,6 +56,7 @@
     "pino-roll": "catalog:",
     "reflect-metadata": "catalog:",
     "rxjs": "catalog:",
+    "sharp": "catalog:",
     "svg-captcha": "catalog:"
   },
   "devDependencies": {
@@ -63,6 +66,7 @@
     "@nestjs/testing": "catalog:",
     "@types/cookie-parser": "catalog:",
     "@types/express": "catalog:",
+    "@types/multer": "catalog:",
     "@types/node": "catalog:",
     "@types/supertest": "catalog:",
     "@vitest/coverage-v8": "catalog:",

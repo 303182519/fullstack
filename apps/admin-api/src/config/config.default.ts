@@ -3,6 +3,22 @@ import {
   AppConfig,
 } from './configuration.interface.js';
 
+/** 读取布尔型 env。经 Joi 校验回写后 env 值恒为字符串，统一按 'false' / '0' 判否。 */
+function toBool(raw: string | undefined, fallback: boolean): boolean {
+  if (raw === undefined)
+    return fallback;
+  const value = String(raw).toLowerCase();
+  return value !== 'false' && value !== '0';
+}
+
+/** 逗号分隔的 env 列表转数组；空或未配置时用兜底默认。 */
+function toList(raw: string | undefined, fallback: string[]): string[] {
+  if (!raw)
+    return fallback;
+  const items = raw.split(',').map(item => item.trim()).filter(Boolean);
+  return items.length > 0 ? items : fallback;
+}
+
 export const defaultConfig = registerAs('default', (): AppConfig => ({
   server: {
     port: process.env.PORT || 3001,
@@ -62,5 +78,43 @@ export const defaultConfig = registerAs('default', (): AppConfig => ({
     // 超限后额外阻塞时长（毫秒），设为与窗口等长即「本窗口内直接拉黑」
     blockDuration: Number(process.env.THROTTLE_BLOCK_DURATION) || 60_000,
     errorMessage: '请求过于频繁，请稍后再试',
+  },
+  storage: {
+    // 单一活动驱动（ADR-012 D1）：切换存储只改这一个变量
+    driver: process.env.STORAGE_DRIVER || 'local',
+    localRoot: process.env.STORAGE_LOCAL_ROOT || 'storage',
+    signedUrlTtl: Number(process.env.STORAGE_SIGNED_URL_TTL) || 300,
+    s3: {
+      endpoint: process.env.STORAGE_S3_ENDPOINT,
+      region: process.env.STORAGE_S3_REGION,
+      bucket: process.env.STORAGE_S3_BUCKET,
+      accessKeyId: process.env.STORAGE_S3_ACCESS_KEY_ID,
+      secretAccessKey: process.env.STORAGE_S3_SECRET_ACCESS_KEY,
+      // MinIO 等自建端点需 path-style；AWS S3 为 false
+      forcePathStyle: toBool(process.env.STORAGE_S3_FORCE_PATH_STYLE, true),
+    },
+  },
+  upload: {
+    // 分类上限（ADR-012 D3）：图片 5 MiB / 其它白名单类型 20 MiB
+    maxBytes: Number(process.env.UPLOAD_MAX_BYTES) || 5_242_880,
+    maxBytesOther: Number(process.env.UPLOAD_MAX_BYTES_OTHER) || 20_971_520,
+    allowedImageTypes: toList(process.env.UPLOAD_ALLOWED_IMAGE_TYPES, [
+      'image/jpeg',
+      'image/png',
+      'image/gif',
+      'image/webp',
+    ]),
+    allowedFileTypes: toList(process.env.UPLOAD_ALLOWED_FILE_TYPES, [
+      'application/pdf',
+      'application/zip',
+      'text/plain',
+      'text/csv',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.ms-excel',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    ]),
+    coverMaxWidth: Number(process.env.UPLOAD_COVER_MAX_WIDTH) || 1600,
+    coverFormat: process.env.UPLOAD_COVER_FORMAT || 'webp',
   },
 }));

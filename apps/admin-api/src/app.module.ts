@@ -28,6 +28,7 @@ import { PrismaService } from '@/shared/database/prisma.service.js';
 import { LoggerModule } from '@/shared/logger/logger.module.js';
 import { PermissionModule } from '@/shared/permission/permission.module.js';
 import { ScopeModule } from '@/shared/scope/scope.module.js';
+import { StorageModule } from '@/shared/storage/storage.module.js';
 import { ThrottlerConfigModule } from '@/shared/throttler/throttler.module.js';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
@@ -49,6 +50,8 @@ import { AppService } from './app.service.js';
     }),
     // 应用层缓存业务（登录锁定策略、业务 key 工厂）
     CachingModule,
+    // 文件存储抽象（ADR-012）：单一活动驱动由 STORAGE_DRIVER 选定；@Global
+    StorageModule,
     // 权限底座（功能权限 + 数据权限）：@Global，供全局 PermissionGuard 与各业务模块复用
     PermissionModule,
     // 认证共享底座：JwtModule + Password/Session/Captcha 服务。

@@ -104,6 +104,57 @@ export interface ThrottlerConfig {
   errorMessage?: string;
 }
 
+/** S3 兼容存储后端配置。凭据只走 env，不入库、不进日志（ADR-012 D2）。 */
+export interface StorageS3Config {
+  /** S3 兼容端点；AWS 官方可留空走默认区域端点，MinIO / COS / OSS 必须显式配置 */
+  endpoint?: string;
+  /** 存储区域（S3 客户端必填） */
+  region?: string;
+  /** 桶名 */
+  bucket?: string;
+  /** 访问密钥 ID（留空则走 SDK 默认凭证链） */
+  accessKeyId?: string;
+  /** 访问密钥密文（留空则走 SDK 默认凭证链） */
+  secretAccessKey?: string;
+  /** MinIO 等自建端点须为 true，AWS S3 为 false */
+  forcePathStyle?: boolean;
+}
+
+/**
+ * 文件存储配置。
+ *
+ * 驱动由 `STORAGE_DRIVER` 在启动期选定为**单一活动驱动**（local | s3，ADR-012 D1）；
+ * 切换存储 = 改环境变量 + 重启，业务代码只依赖 `StorageDriver` 接口。
+ */
+export interface StorageConfig {
+  /** 活动驱动：local（本地磁盘，默认）/ s3（S3 兼容对象存储） */
+  driver?: 'local' | 's3';
+  /** 本地驱动落盘根目录 */
+  localRoot?: string;
+  /** S3 驱动参数（driver=s3 时生效） */
+  s3?: StorageS3Config;
+  /** 预签名直连 URL 有效期（秒），默认 300（ADR-012 D8） */
+  signedUrlTtl?: number;
+}
+
+/**
+ * 上传面约束（服务端强制，全部 env 可调，前端校验仅作体验层——ADR-012 D3/D4）。
+ */
+export interface UploadConfig {
+  /** 图片类单文件上限（字节） */
+  maxBytes?: number;
+  /** 其它白名单类型单文件上限（字节） */
+  maxBytesOther?: number;
+  /** 图片 MIME 白名单 */
+  allowedImageTypes?: string[];
+  /** 非图片 MIME 白名单 */
+  allowedFileTypes?: string[];
+  /** 封面归一化最大宽度（不放大小图） */
+  coverMaxWidth?: number;
+  /** 封面归一化输出格式 */
+  coverFormat?: 'webp' | 'jpeg' | 'png';
+}
+
 export interface AppConfig {
   /** HTTP 服务配置 */
   server?: ServerConfig;
@@ -121,6 +172,10 @@ export interface AppConfig {
   redis?: RedisConfig;
   /** 全局限流配置 */
   throttler?: ThrottlerConfig;
+  /** 文件存储配置 */
+  storage?: StorageConfig;
+  /** 上传面约束配置 */
+  upload?: UploadConfig;
 }
 
 export type AppConfigForced = {
