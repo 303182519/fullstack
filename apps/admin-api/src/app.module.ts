@@ -28,6 +28,7 @@ import { PrismaService } from '@/shared/database/prisma.service.js';
 import { LoggerModule } from '@/shared/logger/logger.module.js';
 import { PermissionModule } from '@/shared/permission/permission.module.js';
 import { ScopeModule } from '@/shared/scope/scope.module.js';
+import { StorageHealthIndicator } from '@/shared/storage/storage.health.js';
 import { StorageModule } from '@/shared/storage/storage.module.js';
 import { ThrottlerConfigModule } from '@/shared/throttler/throttler.module.js';
 import { AppController } from './app.controller.js';
@@ -73,13 +74,19 @@ import { AppService } from './app.service.js';
     ConfigModule,
     MonitorModule,
     // 共享健康检查底座（@fedstack/health，见 ADR-004）：
-    // Redis 检查内置；本 app 装配数据库就绪检查
+    // Redis 检查内置；本 app 装配数据库 + 存储就绪检查
     HealthModule.forRootAsync({
-      inject: [PrismaHealthIndicator, PrismaService],
-      useFactory: (db: PrismaHealthIndicator, prisma: PrismaService) => ({
+      inject: [PrismaHealthIndicator, PrismaService, StorageHealthIndicator],
+      useFactory: (
+        db: PrismaHealthIndicator,
+        prisma: PrismaService,
+        storage: StorageHealthIndicator,
+      ) => ({
         readinessChecks: [
           // PrismaHealthIndicator 内部执行 SELECT 1，默认 1000ms 超时
           () => db.pingCheck('database', prisma),
+          // 存储探针：对一个不存在的 key 调 exists，返回 false = 可达，抛出 = 不可达
+          () => storage.pingCheck('storage'),
         ],
       }),
     }),

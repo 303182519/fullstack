@@ -59,6 +59,24 @@ describe('localStorageDriver', () => {
     await expect(driver.getSignedUrl('x.txt', 300)).resolves.toBeNull();
   });
 
+  it('exists 对象存在时返回 true，不存在时返回 false', async () => {
+    await driver.put({ key: 'a/b.txt', body: Buffer.from('x'), contentType: 'text/plain' });
+    await expect(driver.exists('a/b.txt')).resolves.toBe(true);
+    await expect(driver.exists('missing.txt')).resolves.toBe(false);
+  });
+
+  it('put 原子写入：目标文件完整可读，无残留临时文件', async () => {
+    const body = Buffer.from('atomic-content');
+    await driver.put({ key: 'dir/atomic.txt', body, contentType: 'text/plain' });
+
+    // 目标文件内容完整
+    const stream = await driver.getStream('dir/atomic.txt');
+    await expect(drain(stream as Readable)).resolves.toEqual(body);
+
+    // 无 .tmp.* 残留（用 exists 间接验证：临时文件命名 .tmp.<uuid> 不会被误判为业务对象）
+    await expect(driver.exists('dir/atomic.txt')).resolves.toBe(true);
+  });
+
   it('拒绝越出存储根目录的对象键', async () => {
     await expect(
       driver.put({

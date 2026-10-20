@@ -2,10 +2,12 @@ import type { StorageDriver } from './storage.types.js';
 import type { StorageConfig } from '@/config/configuration.interface.js';
 import { Global, Logger, Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { TerminusModule } from '@nestjs/terminus';
 import { getConfig } from '@/config/configuration.js';
 import { LocalStorageDriver } from './local-storage.driver.js';
 import { S3StorageDriver } from './s3-storage.driver.js';
 import { STORAGE_DRIVER } from './storage.constants.js';
+import { StorageHealthIndicator } from './storage.health.js';
 
 /**
  * 依据配置构造**单一活动驱动**（ADR-012 D1）。
@@ -52,7 +54,10 @@ export function createStorageDriver(config: StorageConfig | undefined): StorageD
  */
 @Global()
 @Module({
+  // TerminusModule 提供 HealthIndicatorService，供 StorageHealthIndicator 注入
+  imports: [TerminusModule],
   providers: [
+    StorageHealthIndicator,
     {
       provide: STORAGE_DRIVER,
       inject: [ConfigService],
@@ -60,6 +65,6 @@ export function createStorageDriver(config: StorageConfig | undefined): StorageD
         createStorageDriver(getConfig(configService).storage),
     },
   ],
-  exports: [STORAGE_DRIVER],
+  exports: [STORAGE_DRIVER, StorageHealthIndicator],
 })
 export class StorageModule {}

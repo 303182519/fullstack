@@ -1,6 +1,11 @@
 import { Buffer } from 'node:buffer';
 import { Readable as NodeReadable } from 'node:stream';
-import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
+import {
+  DeleteObjectCommand,
+  GetObjectCommand,
+  HeadObjectCommand,
+  PutObjectCommand,
+} from '@aws-sdk/client-s3';
 import { Logger } from '@nestjs/common';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { S3StorageDriver } from './s3-storage.driver.js';
@@ -37,6 +42,7 @@ describe('s3StorageDriver', () => {
     sendMock.mockReset();
     presignMock.mockReset();
     vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => {});
+    vi.spyOn(Logger.prototype, 'error').mockImplementation(() => {});
     driver = new S3StorageDriver(OPTIONS);
   });
 
@@ -48,16 +54,18 @@ describe('s3StorageDriver', () => {
     expect(driver.kind).toBe('s3');
   });
 
-  it('put 以 PutObjectCommand 写入并带上 bucket / key / contentType', async () => {
+  it('put 以 PutObjectCommand 写入并带上 bucket / key / contentType 与写超时', async () => {
     sendMock.mockResolvedValue({});
     await driver.put({ key: 'a/b.txt', body: Buffer.from('hi'), contentType: 'text/plain' });
 
     expect(sendMock).toHaveBeenCalledTimes(1);
     const command = sendMock.mock.calls[0]?.[0] as PutObjectCommand;
+    const opts = sendMock.mock.calls[0]?.[1] as { abortSignal?: AbortSignal };
     expect(command).toBeInstanceOf(PutObjectCommand);
     expect(command.input.Bucket).toBe('test-bucket');
     expect(command.input.Key).toBe('a/b.txt');
     expect(command.input.ContentType).toBe('text/plain');
+    expect(opts?.abortSignal).toBeInstanceOf(AbortSignal);
   });
 
   it('getStream 命中对象时返回对象流', async () => {
@@ -81,6 +89,38 @@ describe('s3StorageDriver', () => {
   it('getStream 其它错误向上抛出', async () => {
     sendMock.mockRejectedValue(new Error('network down'));
     await expect(driver.getStream('a/b.txt')).rejects.toThrow('network down');
+  });
+
+  it('exists 对象存在时返回 true 并发出 HeadObjectCommand', async () => {
+    sendMock.mockResolvedValue({});
+    await expect(driver.exists('a/b.txt')).resolves.toBe(true);
+    expect(sendMock.mock.calls[0]?.[0]).toBeInstanceOf(HeadObjectCommand);
+  });
+
+  it('exists 对象不存在（NoSuchKey / 404）时返回 false', async () => {
+    sendMock.mockRejectedValue(
+      Object.assign(new Error('no such key'), { name: 'NoSuchKey' }),
+    );
+    await expect(driver.exists('gone.txt')).resolves.toBe(false);
+
+    sendMock.mockRejectedValue(
+      Object.assign(new Error('not found'), { $metadata: { httpStatusCode: 404 } }),
+    );
+    await expect(driver.exists('gone.txt')).resolves.toBe(false);
+  });
+
+  it('exists 403 权限错误打 error 日志并向上抛出', async () => {
+    const errorSpy = vi.spyOn(Logger.prototype, 'error').mockImplementation(() => {});
+    sendMock.mockRejectedValue(
+      Object.assign(new Error('forbidden'), { $metadata: { httpStatusCode: 403 } }),
+    );
+    await expect(driver.exists('a/b.txt')).rejects.toThrow('forbidden');
+    expect(errorSpy).toHaveBeenCalled();
+  });
+
+  it('exists 其它错误向上抛出', async () => {
+    sendMock.mockRejectedValue(new Error('network down'));
+    await expect(driver.exists('a/b.txt')).rejects.toThrow('network down');
   });
 
   it('delete 失败仅告警不抛出（best-effort）', async () => {

@@ -31,6 +31,15 @@ export interface StorageDriver {
   getStream: (key: string) => Promise<Readable | null>;
 
   /**
+   * 判断对象是否存在。
+   *
+   * 语义约定：对象不存在 → `false`；真实故障（网络 / 权限 / 超时）→ 抛出，
+   * 由调用方决定降级或告警。健康检查依赖此约定：对一个肯定不存在的探针 key 调用，
+   * 返回 `false` 即「后端可达」，抛出即「后端不可达」。
+   */
+  exists: (key: string) => Promise<boolean>;
+
+  /**
    * 删除对象。**幂等且 best-effort**：对象不存在视为成功，失败仅告警不抛出
    * ——元数据软删不因对象删除失败而回滚，遗留孤儿对象由补偿任务收口（ADR-012 D6）。
    */
