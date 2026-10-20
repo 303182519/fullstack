@@ -106,7 +106,7 @@ describe('onlineService.list', () => {
 });
 
 describe('onlineService.kick', () => {
-  it('会话不存在时 404（95A02）', async () => {
+  it('会话不存在时 404（92A02）', async () => {
     const { session, requestContext, service } = makeService();
     requestContext.requireUser.mockReturnValue({
       userId: '1',
@@ -117,7 +117,7 @@ describe('onlineService.kick', () => {
     });
     session.getSessionRecord.mockResolvedValue(undefined);
 
-    await expect(service.kick('nope')).rejects.toMatchObject({ code: '95A02' });
+    await expect(service.kick('nope')).rejects.toMatchObject({ code: '92A02' });
   });
 
   it('跨租户会话表现为 404，不泄露存在性', async () => {
@@ -131,7 +131,7 @@ describe('onlineService.kick', () => {
     });
     session.getSessionRecord.mockResolvedValue(makeSession({ tenantId: '20' }));
 
-    await expect(service.kick('sid-1')).rejects.toMatchObject({ code: '95A02' });
+    await expect(service.kick('sid-1')).rejects.toMatchObject({ code: '92A02' });
     expect(session.removeSession).not.toHaveBeenCalled();
   });
 
@@ -163,7 +163,7 @@ describe('onlineService.forceLogout', () => {
     });
     prisma.sysUser.findFirst.mockResolvedValue({ tenantId: 20n });
 
-    await expect(service.forceLogout('99')).rejects.toMatchObject({ code: '95A03' });
+    await expect(service.forceLogout('99')).rejects.toMatchObject({ code: '92A03' });
     expect(session.removeAllSessions).not.toHaveBeenCalled();
   });
 

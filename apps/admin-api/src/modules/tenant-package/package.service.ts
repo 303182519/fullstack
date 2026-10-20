@@ -2,21 +2,9 @@ import type { CreatePackageDto, PackageMenusDto, PackageResponseDto, QueryPackag
 import type { PaginatedResult } from '@/common/dto/pagination.dto.js';
 import { MenuStatus, PackageStatus, Prisma } from '@fedstack/database';
 import { Injectable } from '@nestjs/common';
-import {
-  badRequest,
-  conflict,
-  notFound,
-} from '@/common/exceptions/business.exception.js';
 import { PrismaService } from '@/shared/database/prisma.service.js';
 import { generateSnowflakeId } from '@/shared/utils/snowflake.js';
-
-/** 套餐模块业务错误码（MMSNN 规范；70 = 套餐模块） */
-const PACKAGE_BIZ = {
-  NOT_FOUND: '70A01',
-  CODE_EXISTS: '70A02',
-  IN_USE: '70A03',
-  MENU_INVALID: '70A04',
-} as const;
+import { tenantPackageErrors } from './errors.js';
 
 /** Prisma 套餐查询结果的读取形状 */
 interface PackageRow {
@@ -129,7 +117,7 @@ export class PackageService {
       where: { packageId: pkg.id, deletedAt: null },
     });
     if (bound > 0)
-      throw conflict('套餐已被租户使用，请先解绑', PACKAGE_BIZ.IN_USE);
+      throw tenantPackageErrors.inUse();
 
     await this.prisma.sysTenantPackage.update({
       where: { id: pkg.id },
@@ -173,7 +161,7 @@ export class PackageService {
         select: { id: true },
       });
       if (valid.length !== menuIds.length)
-        throw badRequest('存在无效的菜单（仅允许平台级启用菜单）', PACKAGE_BIZ.MENU_INVALID);
+        throw tenantPackageErrors.menuInvalid();
     }
 
     await this.prisma.$transaction(async (tx) => {
@@ -198,7 +186,7 @@ export class PackageService {
       where: { id, deletedAt: null },
     });
     if (!pkg)
-      throw notFound('套餐不存在', PACKAGE_BIZ.NOT_FOUND);
+      throw tenantPackageErrors.notFound();
     return pkg;
   }
 
@@ -213,7 +201,7 @@ export class PackageService {
       select: { id: true },
     });
     if (existing)
-      throw conflict('套餐编码已被占用', PACKAGE_BIZ.CODE_EXISTS);
+      throw tenantPackageErrors.codeExists();
   }
 
   /** 唯一约束冲突（并发下预检失效）转成业务冲突错误；其它错误原样上抛 */
@@ -222,7 +210,7 @@ export class PackageService {
       error instanceof Prisma.PrismaClientKnownRequestError
       && error.code === 'P2002'
     ) {
-      return conflict('套餐编码已被占用', PACKAGE_BIZ.CODE_EXISTS);
+      return tenantPackageErrors.codeExists();
     }
     return error;
   }

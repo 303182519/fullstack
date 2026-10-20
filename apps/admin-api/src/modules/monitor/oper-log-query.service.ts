@@ -3,13 +3,8 @@ import type { PaginatedResult } from '@/common/dto/pagination.dto.js';
 import { Prisma } from '@fedstack/database';
 import { Injectable } from '@nestjs/common';
 import { RequestContextService } from '@/common/context/request-context.service.js';
-import { badRequest } from '@/common/exceptions/business.exception.js';
 import { PrismaService } from '@/shared/database/prisma.service.js';
-
-/** 操作日志业务错误码（95 = 监控模块） */
-const MONITOR_BIZ = {
-  TENANT_ID_INVALID: '95A01',
-} as const;
+import { monitorErrors } from './errors.js';
 
 const SNOWFLAKE_PATTERN = /^\d+$/;
 
@@ -32,7 +27,7 @@ export abstract class LogQueryBase {
       return { tenantId: BigInt(user.tenantId) };
     if (filterTenantId !== undefined && filterTenantId !== '') {
       if (!SNOWFLAKE_PATTERN.test(filterTenantId))
-        throw badRequest('tenantId 必须是雪花 ID 数字串', MONITOR_BIZ.TENANT_ID_INVALID);
+        throw monitorErrors.tenantIdInvalid();
       return { tenantId: BigInt(filterTenantId) };
     }
     return {};

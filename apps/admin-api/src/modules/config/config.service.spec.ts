@@ -99,7 +99,7 @@ describe('configService.effectiveValue', () => {
     expect(out.value).toBe('platform');
   });
 
-  it('两级都不存在时抛 90A01', async () => {
+  it('两级都不存在时抛 70A01', async () => {
     const { prisma, cache, requestContext, service } = makeService();
     requestContext.requireUser.mockReturnValue({
       userId: '1',
@@ -111,12 +111,12 @@ describe('configService.effectiveValue', () => {
     cache.get.mockResolvedValue(undefined);
     prisma.sysConfig.findFirst.mockResolvedValue(null);
 
-    await expect(service.effectiveValue('ghost.key')).rejects.toMatchObject({ code: '90A01' });
+    await expect(service.effectiveValue('ghost.key')).rejects.toMatchObject({ code: '70A01' });
   });
 });
 
 describe('configService 写路径', () => {
-  it('isSystem 参数禁止删除（90A03）', async () => {
+  it('isSystem 参数禁止删除（70A03）', async () => {
     const { prisma, requestContext, service } = makeService();
     requestContext.requireUser.mockReturnValue({
       userId: '1',
@@ -127,7 +127,7 @@ describe('configService 写路径', () => {
     });
     prisma.sysConfig.findFirst.mockResolvedValue(makeRow({ tenantId: 10n, isSystem: true }));
 
-    await expect(service.remove(1n)).rejects.toMatchObject({ code: '90A03' });
+    await expect(service.remove(1n)).rejects.toMatchObject({ code: '70A03' });
   });
 
   it('更新后失效对应作用域的取值缓存', async () => {

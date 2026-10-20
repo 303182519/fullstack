@@ -2,17 +2,8 @@ import type { QueryTenantDto, TenantResponseDto, UpdateTenantDto } from './dto/i
 import type { PaginatedResult } from '@/common/dto/pagination.dto.js';
 import { Prisma } from '@fedstack/database';
 import { Injectable } from '@nestjs/common';
-import {
-  badRequest,
-  notFound,
-} from '@/common/exceptions/business.exception.js';
 import { PrismaService } from '@/shared/database/prisma.service.js';
-
-/** 租户模块业务错误码（MMSNN 规范；40 = 租户/平台模块） */
-const TENANT_BIZ = {
-  NOT_FOUND: '40A01',
-  PACKAGE_NOT_FOUND: '40A02',
-} as const;
+import { tenantErrors } from './errors.js';
 
 /** Prisma 租户查询结果的读取形状 */
 interface TenantRow {
@@ -77,7 +68,7 @@ export class TenantService {
       where: { id, deletedAt: null },
     });
     if (!tenant)
-      throw notFound('租户不存在', TENANT_BIZ.NOT_FOUND);
+      throw tenantErrors.notFound();
     return this.toResponse(tenant);
   }
 
@@ -87,7 +78,7 @@ export class TenantService {
       where: { id, deletedAt: null },
     });
     if (!existing)
-      throw notFound('租户不存在', TENANT_BIZ.NOT_FOUND);
+      throw tenantErrors.notFound();
 
     // 绑定套餐前校验目标套餐存在（传 null 表示解绑，无需校验）
     if (dto.packageId) {
@@ -96,7 +87,7 @@ export class TenantService {
         select: { id: true },
       });
       if (!pkg)
-        throw badRequest('套餐不存在', TENANT_BIZ.PACKAGE_NOT_FOUND);
+        throw tenantErrors.packageNotFound();
     }
 
     const data: Prisma.SysTenantUpdateInput = {

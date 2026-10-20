@@ -35,20 +35,22 @@
 auth 模块因位于 `shared/auth/`（跨模块共享基础设施，不是单一业务模块目录），保留原位 `shared/auth/auth.errors.ts`，命名保持 `AuthBizCode` + `authErrors`。
 
 **取舍**：
+
 - **否决 common/exceptions/ 集中**：本项目 P0–P4 预计 20+ 模块，全部拉到 common/ 会让基础设施层膨胀（上游 build-server 只有 10 个模块，可接受）。且删除某个业务模块时，其异常文件不会被自然一起删除，属于无关残留风险。
 - **否决 service 内联**：新人定位成本高、码段冲突无编译期保护。
 - **选择 co-located**：模块自包含（service / dto / errors 同目录），删除模块时一并移除；同时保持"一模块一 errors.ts"的集中纪律——**不是散到每个 service 文件里**。
 
 ### D2 命名规范：推广 auth 风格
 
-| 元素 | 规范 | 示例 |
-|------|------|------|
-| 常量对象 | `<ModuleName>BizCode`（PascalCase + BizCode） | `DeptBizCode`、`UserBizCode`、`DictBizCode` |
-| 工厂对象 | `<moduleName>Errors`（camelCase + Errors） | `deptErrors`、`userErrors`、`dictErrors` |
-| 常量 key | 全大写 snake_case（TypeScript 常量惯例） | `NOT_FOUND`、`HAS_CHILDREN`、`INVALID_ROLE` |
-| 工厂方法 | camelCase（动词开头或语义短语） | `notFound()`、`hasChildren()`、`usernameExists()` |
+| 元素     | 规范                                          | 示例                                              |
+| -------- | --------------------------------------------- | ------------------------------------------------- |
+| 常量对象 | `<ModuleName>BizCode`（PascalCase + BizCode） | `DeptBizCode`、`UserBizCode`、`DictBizCode`       |
+| 工厂对象 | `<moduleName>Errors`（camelCase + Errors）    | `deptErrors`、`userErrors`、`dictErrors`          |
+| 常量 key | 全大写 snake_case（TypeScript 常量惯例）      | `NOT_FOUND`、`HAS_CHILDREN`、`INVALID_ROLE`       |
+| 工厂方法 | camelCase（动词开头或语义短语）               | `notFound()`、`hasChildren()`、`usernameExists()` |
 
 **否决的备选**：
+
 - 全大写 `DEPT_BIZ`：与内层 key 全大写形成双重全大写，`throw conflict('消息', DEPT_BIZ.HAS_CHILDREN)` 可读性差。
 - 工厂用 `new XxxException()` 类继承：过度设计——auth 模块已证明 `const` 对象工厂 + 函数返回足够灵活且类型安全。
 
@@ -58,11 +60,11 @@ auth 模块因位于 `shared/auth/`（跨模块共享基础设施，不是单一
 
 - **A 类（默认）**：message 硬编码在工厂里，无参数。保证错误消息一处定义、全站一致。
   ```typescript
-  notFound: () => authError('部门不存在', HttpStatus.NOT_FOUND, DeptBizCode.NOT_FOUND)
+  notFound: () => authError('部门不存在', HttpStatus.NOT_FOUND, DeptBizCode.NOT_FOUND);
   ```
 - **B 类（例外）**：有默认值但允许覆盖 message，或参数化拼接动态内容（如数字）。仅用于确实需要动态值的场景。
   ```typescript
-  accountLocked: (minutes: number) => authError(`账号已锁定，请 ${minutes} 分钟后重试`, HttpStatus.TOO_MANY_REQUESTS, AuthBizCode.ACCOUNT_LOCKED)
+  accountLocked: (minutes: number) => authError(`账号已锁定，请 ${minutes} 分钟后重试`, HttpStatus.TOO_MANY_REQUESTS, AuthBizCode.ACCOUNT_LOCKED);
   ```
 
 **严禁**在 service 内写 `throw conflict('消息', CODE)` 模式——必须通过工厂。service 内允许使用的唯一 throw 形式是 `throw xxxErrors.someMethod()`。
@@ -73,11 +75,11 @@ auth 模块因位于 `shared/auth/`（跨模块共享基础设施，不是单一
 
 MMSNN = **MM**（模块编号，2 位十进制）+ **S**（子类型，1 位字母）+ **NN**（序号，2 位十进制，模块内递增）。
 
-| 子类型 | 含义 | 典型 HTTP Status | 示例 |
-|--------|------|-----------------|------|
-| A | 调用方 / 请求 / 资源错误 | 400 / 401 / 403 / 404 / 409 | `NOT_FOUND`(404)、`CYCLE`(409)、`INVALID_ROLE`(400) |
-| B | 系统内部 / 基础设施依赖错误 | 502 / 503 | `AUTH_UNAVAILABLE`(503) |
-| C | 业务规则冲突 / 系统级异常（预留） | 422 / 500 | 模块内序号从 C01 起编，当前无实际使用，预留以便未来扩展（如并发乐观锁冲突、数据一致性检查失败） |
+| 子类型 | 含义                              | 典型 HTTP Status            | 示例                                                                                            |
+| ------ | --------------------------------- | --------------------------- | ----------------------------------------------------------------------------------------------- |
+| A      | 调用方 / 请求 / 资源错误          | 400 / 401 / 403 / 404 / 409 | `NOT_FOUND`(404)、`CYCLE`(409)、`INVALID_ROLE`(400)                                             |
+| B      | 系统内部 / 基础设施依赖错误       | 502 / 503                   | `AUTH_UNAVAILABLE`(503)                                                                         |
+| C      | 业务规则冲突 / 系统级异常（预留） | 422 / 500                   | 模块内序号从 C01 起编，当前无实际使用，预留以便未来扩展（如并发乐观锁冲突、数据一致性检查失败） |
 
 **设计意图**：A/B 覆盖当前可预见的错误类别，C 作为未来扩展槽位——不需要立即使用但先占好"位"，避免将来需要时再修改规范。
 
@@ -89,27 +91,28 @@ IDE 自动补全直接可见已分配的号段，新增模块时挑一个未占�
 
 **本文档为快照**（2026-10-20 更新）；代码为最终权威，以代码为准。
 
-| 编号 | 模块 | 位置 | 错误文件 | 状态 |
-|------|------|------|----------|------|
-| 10 | 认证 | `shared/auth/` | `auth.errors.ts` | ✅ 已规范化 |
-| 20 | 用户 | `modules/user/` | `errors.ts` | ✅ 已规范化 |
-| 30 | 角色 | `modules/role/` | —（待迁移） | 📌 内联常量 |
-| 40 | 菜单 | `modules/menu/` | —（待迁移） | 📌 内联常量 |
-| 50 | 部门 | `modules/dept/` | `errors.ts` | ✅ 已规范化 |
-| 60 | 租户 | `modules/tenant/` | —（待迁移） | 📌 内联常量 |
-| 70 | 参数配置 | `modules/config/` | —（待迁移） | 📌 内联常量 |
-| 80 | 字典 | `modules/dict/` | `errors.ts` | ✅ 已规范化 |
-| 90 | 文件/存储 | `modules/file/` | `errors.ts` | ✅ 已规范化（2026-10-20 迁入，原裸占 Auth 号段） |
-| 91 | 租户套餐 | `modules/tenant-package/` | —（待迁移） | 📌 内联常量 |
-| 92 | 审计监控 | `modules/monitor/` | —（待迁移） | 📌 内联常量 |
-| 93 | 站内信（P3b 预留） | — | — | 🕳️ 未实现 |
-| 94 | 通知公告（P3b 预留） | — | — | 🕳️ 未实现 |
-| 95 | SMS 通道（P3b 预留） | — | — | 🕳️ 未实现 |
-| 96 | Mail 通道（P3b 预留） | — | — | 🕳️ 未实现 |
-| 97 | MFA（P3b 预留） | — | — | 🕳️ 未实现 |
-| 98 | 定时任务（P4 预留） | — | — | 🕳️ 未实现 |
+| 编号 | 模块                  | 位置                      | 错误文件         | 状态                                                  |
+| ---- | --------------------- | ------------------------- | ---------------- | ----------------------------------------------------- |
+| 10   | 认证                  | `shared/auth/`            | `auth.errors.ts` | ✅ 已规范化                                           |
+| 20   | 用户                  | `modules/user/`           | `errors.ts`      | ✅ 已规范化                                           |
+| 30   | 角色                  | `modules/role/`           | `errors.ts`      | ✅ 已规范化                                           |
+| 40   | 菜单                  | `modules/menu/`           | `errors.ts`      | ✅ 已规范化（2026-10-20 迁入，原误写 60）             |
+| 50   | 部门                  | `modules/dept/`           | `errors.ts`      | ✅ 已规范化                                           |
+| 60   | 租户                  | `modules/tenant/`         | `errors.ts`      | ✅ 已规范化（2026-10-20 迁入，原误写 40）             |
+| 70   | 参数配置              | `modules/config/`         | `errors.ts`      | ✅ 已规范化（2026-10-20 迁入，原误写 90 撞 FILE）     |
+| 80   | 字典                  | `modules/dict/`           | `errors.ts`      | ✅ 已规范化                                           |
+| 90   | 文件/存储             | `modules/file/`           | `errors.ts`      | ✅ 已规范化（2026-10-20 迁入，原裸占 Auth 号段）      |
+| 91   | 租户套餐              | `modules/tenant-package/` | `errors.ts`      | ✅ 已规范化（2026-10-20 迁入，原误写 70）             |
+| 92   | 审计监控              | `modules/monitor/`        | `errors.ts`      | ✅ 已规范化（2026-10-20 迁入，原误写 95 撞 SMS 预留） |
+| 93   | 站内信（P3b 预留）    | —                         | —                | 🕳️ 未实现                                             |
+| 94   | 通知公告（P3b 预留）  | —                         | —                | 🕳️ 未实现                                             |
+| 95   | SMS 通道（P3b 预留）  | —                         | —                | 🕳️ 未实现                                             |
+| 96   | Mail 通道（P3b 预留） | —                         | —                | 🕳️ 未实现                                             |
+| 97   | MFA（P3b 预留）       | —                         | —                | 🕳️ 未实现                                             |
+| 98   | 定时任务（P4 预留）   | —                         | —                | 🕳️ 未实现                                             |
 
 **编号分配纪律**：
+
 - 按模块在业务域的出现顺序递增分配；不回收、不复用已删除模块的编号（防止历史日志歧义）。
 - 10–89 为已实现业务模块，90–99 为 P3/P4 新增预分配区。
 - 子类型内序号 **NN** 从 01 起按出现顺序递增；同一子类型内不跳号。
@@ -140,23 +143,23 @@ IDE 自动补全直接可见已分配的号段，新增模块时挑一个未占�
 
 ## 6. 验证
 
-| 校验 | 命令 | 预期 |
-|------|------|------|
-| 类型检查 | `pnpm --filter admin-api exec tsc --noEmit` | 0 错误 |
-| Lint | `pnpm --filter admin-api exec eslint <改动文件>` | 0 问题 |
-| 构建 | `pnpm --filter admin-api build` | 成功 |
-| 单元测试 | `pnpm --filter admin-api test` | 全绿（迁移不改行为，测试应全部继续通过） |
+| 校验     | 命令                                             | 预期                                     |
+| -------- | ------------------------------------------------ | ---------------------------------------- |
+| 类型检查 | `pnpm --filter admin-api exec tsc --noEmit`      | 0 错误                                   |
+| Lint     | `pnpm --filter admin-api exec eslint <改动文件>` | 0 问题                                   |
+| 构建     | `pnpm --filter admin-api build`                  | 成功                                     |
+| 单元测试 | `pnpm --filter admin-api test`                   | 全绿（迁移不改行为，测试应全部继续通过） |
 
 **本次迁移改动范围**（纯重构、message 一字不动）：
 
-| 操作 | 文件 |
-|------|------|
-| 新建 | `modules/dept/errors.ts` |
-| 新建 | `modules/user/errors.ts` |
-| 新建 | `modules/dict/errors.ts` |
+| 操作 | 文件                                                                                  |
+| ---- | ------------------------------------------------------------------------------------- |
+| 新建 | `modules/dept/errors.ts`                                                              |
+| 新建 | `modules/user/errors.ts`                                                              |
+| 新建 | `modules/dict/errors.ts`                                                              |
 | 修改 | `modules/dept/dept.service.ts`（删除内联 DEPT_BIZ + 改 import + 改 throw 为工厂调用） |
 | 修改 | `modules/user/user.service.ts`（删除内联 USER_BIZ + 改 import + 改 throw 为工厂调用） |
-| 修改 | `modules/dict/dict-type.service.ts`（删除内联 DICT_BIZ + 改 import + 改 throw） |
-| 修改 | `modules/dict/dict-data.service.ts`（删除内联 DICT_BIZ + 改 import + 改 throw） |
+| 修改 | `modules/dict/dict-type.service.ts`（删除内联 DICT_BIZ + 改 import + 改 throw）       |
+| 修改 | `modules/dict/dict-data.service.ts`（删除内联 DICT_BIZ + 改 import + 改 throw）       |
 
 auth 模块已符合新规范，不做改动。

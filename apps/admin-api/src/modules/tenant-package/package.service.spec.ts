@@ -87,18 +87,18 @@ describe('packageService', () => {
   });
 
   describe('detail', () => {
-    it('套餐不存在时抛 70A01', async () => {
+    it('套餐不存在时抛 91A01', async () => {
       prisma.sysTenantPackage.findFirst.mockResolvedValue(null);
       const error = await service.detail(1n).catch(e => e);
-      expect(codeOf(error)).toBe('70A01');
+      expect(codeOf(error)).toBe('91A01');
     });
   });
 
   describe('create', () => {
-    it('套餐编码已存在时抛 70A02', async () => {
+    it('套餐编码已存在时抛 91A02', async () => {
       prisma.sysTenantPackage.findFirst.mockResolvedValue({ id: 9n });
       const error = await service.create(makeCreatePackageDto()).catch(e => e);
-      expect(codeOf(error)).toBe('70A02');
+      expect(codeOf(error)).toBe('91A02');
     });
 
     it('创建成功写入套餐字段', async () => {
@@ -114,7 +114,7 @@ describe('packageService', () => {
   });
 
   describe('update', () => {
-    it('改编码命中已有编码时抛 70A02', async () => {
+    it('改编码命中已有编码时抛 91A02', async () => {
       prisma.sysTenantPackage.findFirst
         .mockResolvedValueOnce(makePackageRow({ packageCode: 'old_code' }))
         .mockResolvedValueOnce({ id: 9n });
@@ -122,7 +122,7 @@ describe('packageService', () => {
       const dto = new UpdatePackageDto();
       dto.packageCode = 'new_code';
       const error = await service.update(1n, dto).catch(e => e);
-      expect(codeOf(error)).toBe('70A02');
+      expect(codeOf(error)).toBe('91A02');
     });
 
     it('更新成功写入变更字段', async () => {
@@ -143,12 +143,12 @@ describe('packageService', () => {
   });
 
   describe('remove', () => {
-    it('套餐被租户引用时抛 70A03', async () => {
+    it('套餐被租户引用时抛 91A03', async () => {
       prisma.sysTenantPackage.findFirst.mockResolvedValue(makePackageRow());
       prisma.sysTenant.count.mockResolvedValue(1);
 
       const error = await service.remove(1n).catch(e => e);
-      expect(codeOf(error)).toBe('70A03');
+      expect(codeOf(error)).toBe('91A03');
     });
 
     it('删除成功：墓碑化编码并置为禁用', async () => {
@@ -169,22 +169,22 @@ describe('packageService', () => {
   });
 
   describe('authorizeMenus', () => {
-    it('套餐不存在时抛 70A01', async () => {
+    it('套餐不存在时抛 91A01', async () => {
       prisma.sysTenantPackage.findFirst.mockResolvedValue(null);
       const error = await service
         .authorizeMenus(1n, { menuIds: ['2'] })
         .catch(e => e);
-      expect(codeOf(error)).toBe('70A01');
+      expect(codeOf(error)).toBe('91A01');
     });
 
-    it('存在非平台级启用菜单时抛 70A04', async () => {
+    it('存在非平台级启用菜单时抛 91A04', async () => {
       prisma.sysTenantPackage.findFirst.mockResolvedValue(makePackageRow());
       prisma.sysMenu.findMany.mockResolvedValue([{ id: 2n }]);
 
       const error = await service
         .authorizeMenus(1n, { menuIds: ['2', '3'] })
         .catch(e => e);
-      expect(codeOf(error)).toBe('70A04');
+      expect(codeOf(error)).toBe('91A04');
     });
 
     it('授权成功：事务内删旧插新（全量替换）', async () => {

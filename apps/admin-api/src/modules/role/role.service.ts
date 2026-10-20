@@ -3,23 +3,10 @@ import type { PaginatedResult } from '@/common/dto/pagination.dto.js';
 import { Prisma, RoleStatus } from '@fedstack/database';
 import { Injectable } from '@nestjs/common';
 import { RequestContextService } from '@/common/context/request-context.service.js';
-import {
-  badRequest,
-  conflict,
-  notFound,
-} from '@/common/exceptions/business.exception.js';
 import { MenuService } from '@/modules/menu/menu.service.js';
 import { PrismaService } from '@/shared/database/prisma.service.js';
 import { generateSnowflakeId } from '@/shared/utils/snowflake.js';
-
-/** 角色模块业务错误码（MMSNN 规范；30 = 角色模块） */
-const ROLE_BIZ = {
-  NOT_FOUND: '30A01',
-  CODE_EXISTS: '30A02',
-  SYSTEM_IMMUTABLE: '30A03',
-  IN_USE: '30A04',
-  MENU_NOT_LICENSED: '30A05',
-} as const;
+import { roleErrors } from './errors.js';
 
 /** Prisma 角色查询结果的读取形状 */
 interface RoleRow {
@@ -90,7 +77,7 @@ export class RoleService {
       where: { id, tenantId, deletedAt: null },
     });
     if (!role)
-      throw notFound('角色不存在', ROLE_BIZ.NOT_FOUND);
+      throw roleErrors.notFound();
     return this.toResponse(role);
   }
 
@@ -127,14 +114,14 @@ export class RoleService {
       where: { id, tenantId, deletedAt: null },
     });
     if (!existing)
-      throw notFound('角色不存在', ROLE_BIZ.NOT_FOUND);
+      throw roleErrors.notFound();
 
     if (
       dto.roleCode !== undefined
       && dto.roleCode !== existing.roleCode
     ) {
       if (existing.isSystem)
-        throw conflict('系统内置角色不允许修改角色编码', ROLE_BIZ.SYSTEM_IMMUTABLE);
+        throw roleErrors.systemImmutable('系统内置角色不允许修改角色编码');
       await this.assertCodeAvailable(tenantId, dto.roleCode);
     }
 
@@ -165,13 +152,13 @@ export class RoleService {
       where: { id, tenantId, deletedAt: null },
     });
     if (!role)
-      throw notFound('角色不存在', ROLE_BIZ.NOT_FOUND);
+      throw roleErrors.notFound();
     if (role.isSystem)
-      throw conflict('系统内置角色不允许删除', ROLE_BIZ.SYSTEM_IMMUTABLE);
+      throw roleErrors.systemImmutable('系统内置角色不允许删除');
 
     const bound = await this.prisma.sysUserRole.count({ where: { roleId: role.id } });
     if (bound > 0)
-      throw conflict('角色已被用户使用，请先解绑', ROLE_BIZ.IN_USE);
+      throw roleErrors.inUse();
 
     await this.prisma.sysRole.update({
       where: { id: role.id },
@@ -211,7 +198,7 @@ export class RoleService {
       const licensed = await this.menuService.resolveLicensedMenuIds(tenantId);
       const notLicensed = menuIds.filter(menuId => !licensed.has(menuId));
       if (notLicensed.length > 0)
-        throw badRequest('存在当前租户不可用的菜单，授权已拒绝', ROLE_BIZ.MENU_NOT_LICENSED);
+        throw roleErrors.menuNotLicensed();
     }
 
     await this.prisma.$transaction(async (tx) => {
@@ -236,7 +223,7 @@ export class RoleService {
       where: { id, tenantId, deletedAt: null },
     });
     if (!role)
-      throw notFound('角色不存在', ROLE_BIZ.NOT_FOUND);
+      throw roleErrors.notFound();
     return role;
   }
 
@@ -252,7 +239,7 @@ export class RoleService {
       select: { id: true },
     });
     if (existing)
-      throw conflict('角色编码已被占用', ROLE_BIZ.CODE_EXISTS);
+      throw roleErrors.codeExists();
   }
 
   /** 唯一约束冲突（并发下预检失效）转成业务冲突错误；其它错误原样上抛 */
@@ -261,7 +248,7 @@ export class RoleService {
       error instanceof Prisma.PrismaClientKnownRequestError
       && error.code === 'P2002'
     ) {
-      return conflict('角色编码已被占用', ROLE_BIZ.CODE_EXISTS);
+      return roleErrors.codeExists();
     }
     return error;
   }

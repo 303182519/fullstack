@@ -5,15 +5,9 @@ import type {
 import type { PaginatedResult } from '@/common/dto/pagination.dto.js';
 import { Injectable } from '@nestjs/common';
 import { RequestContextService } from '@/common/context/request-context.service.js';
-import { notFound } from '@/common/exceptions/business.exception.js';
 import { SessionService } from '@/shared/auth/session.service.js';
 import { PrismaService } from '@/shared/database/prisma.service.js';
-
-/** 在线用户业务错误码（95 = 监控模块） */
-const ONLINE_BIZ = {
-  SESSION_NOT_FOUND: '95A02',
-  USER_NOT_FOUND: '95A03',
-} as const;
+import { monitorErrors } from './errors.js';
 
 /**
  * 在线用户（ADR-009 / ADR-007 会话模型）。
@@ -66,7 +60,7 @@ export class OnlineService {
   async kick(sessionId: string): Promise<null> {
     const record = await this.session.getSessionRecord(sessionId);
     if (!record)
-      throw notFound('会话不存在或已过期', ONLINE_BIZ.SESSION_NOT_FOUND);
+      throw monitorErrors.sessionNotFound();
 
     this.assertSameTenant(record.tenantId);
     await this.session.removeSession(record.sessionId, record.userId);
@@ -82,7 +76,7 @@ export class OnlineService {
         select: { tenantId: true },
       });
       if (!target || target.tenantId.toString() !== user.tenantId)
-        throw notFound('用户不存在', ONLINE_BIZ.USER_NOT_FOUND);
+        throw monitorErrors.userNotFound();
     }
 
     await this.session.removeAllSessions(userId);
@@ -93,6 +87,6 @@ export class OnlineService {
   private assertSameTenant(recordTenantId: string): void {
     const user = this.requestContext.requireUser();
     if (!user.isSuper && recordTenantId !== user.tenantId)
-      throw notFound('会话不存在或已过期', ONLINE_BIZ.SESSION_NOT_FOUND);
+      throw monitorErrors.sessionNotFound();
   }
 }

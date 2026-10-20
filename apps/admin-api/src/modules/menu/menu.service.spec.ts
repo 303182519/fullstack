@@ -137,18 +137,18 @@ describe('menuService', () => {
   });
 
   describe('create', () => {
-    it('按钮类型缺少权限编码时抛 60A05', async () => {
+    it('按钮类型缺少权限编码时抛 40A05', async () => {
       const dto = Object.assign(new CreateMenuDto(), {
         menuType: MenuType.BUTTON,
         menuName: '新增',
       });
 
       const error = await service.create(dto).catch(e => e);
-      expect(codeOf(error)).toBe('60A05');
+      expect(codeOf(error)).toBe('40A05');
       expect(prisma.sysMenu.create).not.toHaveBeenCalled();
     });
 
-    it('权限编码已存在时抛 60A04', async () => {
+    it('权限编码已存在时抛 40A04', async () => {
       prisma.sysMenu.findFirst.mockResolvedValue({ id: 9n });
       const dto = Object.assign(new CreateMenuDto(), {
         menuType: MenuType.BUTTON,
@@ -157,10 +157,10 @@ describe('menuService', () => {
       });
 
       const error = await service.create(dto).catch(e => e);
-      expect(codeOf(error)).toBe('60A04');
+      expect(codeOf(error)).toBe('40A04');
     });
 
-    it('上级菜单不存在时抛 60A02', async () => {
+    it('上级菜单不存在时抛 40A02', async () => {
       prisma.sysMenu.findFirst.mockResolvedValue(null);
       const dto = Object.assign(new CreateMenuDto(), {
         menuType: MenuType.MENU,
@@ -169,7 +169,7 @@ describe('menuService', () => {
       });
 
       const error = await service.create(dto).catch(e => e);
-      expect(codeOf(error)).toBe('60A02');
+      expect(codeOf(error)).toBe('40A02');
     });
 
     it('创建平台级菜单：tenantId 恒为 null', async () => {
@@ -188,13 +188,13 @@ describe('menuService', () => {
   });
 
   describe('update', () => {
-    it('菜单不存在时抛 60A01', async () => {
+    it('菜单不存在时抛 40A01', async () => {
       prisma.sysMenu.findFirst.mockResolvedValue(null);
       const error = await service.update(1n, new UpdateMenuDto()).catch(e => e);
-      expect(codeOf(error)).toBe('60A01');
+      expect(codeOf(error)).toBe('40A01');
     });
 
-    it('有子菜单时改为按钮类型抛 60A03', async () => {
+    it('有子菜单时改为按钮类型抛 40A03', async () => {
       prisma.sysMenu.findFirst.mockResolvedValue(
         makeMenuRow({ id: 1n, menuType: MenuType.MENU, permCode: 'system:user:query' }),
       );
@@ -203,19 +203,19 @@ describe('menuService', () => {
       const dto = new UpdateMenuDto();
       dto.menuType = MenuType.BUTTON;
       const error = await service.update(1n, dto).catch(e => e);
-      expect(codeOf(error)).toBe('60A03');
+      expect(codeOf(error)).toBe('40A03');
     });
 
-    it('上级菜单是自身时抛 60A02', async () => {
+    it('上级菜单是自身时抛 40A02', async () => {
       prisma.sysMenu.findFirst.mockResolvedValue(makeMenuRow({ id: 1n }));
 
       const dto = new UpdateMenuDto();
       dto.parentId = '1';
       const error = await service.update(1n, dto).catch(e => e);
-      expect(codeOf(error)).toBe('60A02');
+      expect(codeOf(error)).toBe('40A02');
     });
 
-    it('上级菜单为按钮时抛 60A02', async () => {
+    it('上级菜单为按钮时抛 40A02', async () => {
       prisma.sysMenu.findFirst
         .mockResolvedValueOnce(makeMenuRow({ id: 1n }))
         .mockResolvedValueOnce(makeMenuRow({ id: 2n, menuType: MenuType.BUTTON }));
@@ -223,7 +223,7 @@ describe('menuService', () => {
       const dto = new UpdateMenuDto();
       dto.parentId = '2';
       const error = await service.update(1n, dto).catch(e => e);
-      expect(codeOf(error)).toBe('60A02');
+      expect(codeOf(error)).toBe('40A02');
     });
 
     it('更新成功写入变更字段', async () => {
@@ -242,24 +242,24 @@ describe('menuService', () => {
   });
 
   describe('remove', () => {
-    it('存在子菜单时抛 60A03', async () => {
+    it('存在子菜单时抛 40A03', async () => {
       prisma.sysMenu.findFirst.mockResolvedValue(makeMenuRow({ id: 1n }));
       prisma.sysMenu.count.mockResolvedValue(1);
       prisma.sysRoleMenu.count.mockResolvedValue(0);
       prisma.sysTenantPackageMenu.count.mockResolvedValue(0);
 
       const error = await service.remove(1n).catch(e => e);
-      expect(codeOf(error)).toBe('60A03');
+      expect(codeOf(error)).toBe('40A03');
     });
 
-    it('菜单被角色引用时抛 60A06', async () => {
+    it('菜单被角色引用时抛 40A06', async () => {
       prisma.sysMenu.findFirst.mockResolvedValue(makeMenuRow({ id: 1n }));
       prisma.sysMenu.count.mockResolvedValue(0);
       prisma.sysRoleMenu.count.mockResolvedValue(1);
       prisma.sysTenantPackageMenu.count.mockResolvedValue(0);
 
       const error = await service.remove(1n).catch(e => e);
-      expect(codeOf(error)).toBe('60A06');
+      expect(codeOf(error)).toBe('40A06');
     });
 
     it('删除成功：软删除并置为禁用', async () => {

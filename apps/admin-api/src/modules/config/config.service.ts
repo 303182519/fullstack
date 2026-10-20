@@ -10,18 +10,11 @@ import type { OperateScope } from '@/shared/scope/scope-resolver.service.js';
 import { Prisma } from '@fedstack/database';
 import { CacheService } from '@fedstack/redis';
 import { Injectable } from '@nestjs/common';
-import { conflict, notFound } from '@/common/exceptions/business.exception.js';
 import { CacheKeys } from '@/shared/caching/cache.constants.js';
 import { PrismaService } from '@/shared/database/prisma.service.js';
 import { scopeKeyOf, ScopeResolverService } from '@/shared/scope/scope-resolver.service.js';
 import { generateSnowflakeId } from '@/shared/utils/snowflake.js';
-
-/** 参数配置业务错误码（MMSNN 规范；90 = 参数模块） */
-const CONFIG_BIZ = {
-  NOT_FOUND: '90A01',
-  KEY_EXISTS: '90A02',
-  SYSTEM_IMMUTABLE: '90A03',
-} as const;
+import { configErrors } from './errors.js';
 
 interface ConfigRow {
   id: bigint;
@@ -115,7 +108,7 @@ export class ConfigService {
       where: { tenantId: null, configKey, deletedAt: null },
     });
     if (!platform)
-      throw notFound('参数不存在', CONFIG_BIZ.NOT_FOUND);
+      throw configErrors.notFound();
 
     const resolved = { value: platform.configValue, source: 'PLATFORM' as const };
     await this.cache.set(cacheKey, resolved);
@@ -130,7 +123,7 @@ export class ConfigService {
       where: { tenantId: scope.tenantId, configKey: dto.configKey, deletedAt: null },
     });
     if (existing)
-      throw conflict('参数键已存在', CONFIG_BIZ.KEY_EXISTS);
+      throw configErrors.keyExists();
 
     // 检查同键软删行是否复活
     const resurrected = await this.prisma.sysConfig.findFirst({
@@ -167,7 +160,7 @@ export class ConfigService {
     }
     catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002')
-        throw conflict('参数键已存在', CONFIG_BIZ.KEY_EXISTS);
+        throw configErrors.keyExists();
       throw err;
     }
   }
@@ -196,7 +189,7 @@ export class ConfigService {
     const row = await this.requireInScope(id, scope);
 
     if (row.isSystem)
-      throw conflict('内置参数不允许删除', CONFIG_BIZ.SYSTEM_IMMUTABLE);
+      throw configErrors.systemImmutable();
 
     await this.prisma.sysConfig.update({
       where: { id: row.id },
@@ -216,7 +209,7 @@ export class ConfigService {
       where: { id, tenantId: scope.tenantId, deletedAt: null },
     });
     if (!row)
-      throw notFound('参数不存在', CONFIG_BIZ.NOT_FOUND);
+      throw configErrors.notFound();
     return row;
   }
 
