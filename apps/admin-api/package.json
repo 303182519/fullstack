@@ -49,6 +49,7 @@
     "es-toolkit": "catalog:",
     "joi": "catalog:",
     "keyv": "catalog:",
+    "multer": "catalog:",
     "nestjs-cls": "catalog:",
     "nestjs-pino": "catalog:",
     "pino": "catalog:",

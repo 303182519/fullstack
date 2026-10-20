@@ -44,6 +44,7 @@ interface MenuSeedNode {
  *   - system:dept:*   → 部门管理按钮组
  *   - system:dict:*   → 字典管理按钮组
  *   - system:config:* → 参数设置按钮组
+ *   - system:file:*   → 文件管理按钮组（P3a，ADR-012）
  *   - monitor:*       → 系统监控三个页面的按钮组
  */
 const MENU_TREE: MenuSeedNode[] = [
@@ -124,6 +125,20 @@ const MENU_TREE: MenuSeedNode[] = [
           { routeName: 'SystemConfigAdd', menuType: MenuType.BUTTON, menuName: '参数新增', permCode: PERMISSIONS.SYSTEM.CONFIG.ADD },
           { routeName: 'SystemConfigEdit', menuType: MenuType.BUTTON, menuName: '参数编辑', permCode: PERMISSIONS.SYSTEM.CONFIG.EDIT },
           { routeName: 'SystemConfigRemove', menuType: MenuType.BUTTON, menuName: '参数删除', permCode: PERMISSIONS.SYSTEM.CONFIG.REMOVE },
+        ],
+      },
+      {
+        routeName: 'SystemFile',
+        menuType: MenuType.MENU,
+        menuName: '文件管理',
+        routePath: '/system/files',
+        component: 'system/file/index',
+        sort: 6,
+        children: [
+          { routeName: 'SystemFileQuery', menuType: MenuType.BUTTON, menuName: '文件查询', permCode: PERMISSIONS.SYSTEM.FILE.QUERY },
+          { routeName: 'SystemFileAdd', menuType: MenuType.BUTTON, menuName: '文件上传', permCode: PERMISSIONS.SYSTEM.FILE.ADD },
+          { routeName: 'SystemFileRemove', menuType: MenuType.BUTTON, menuName: '文件删除', permCode: PERMISSIONS.SYSTEM.FILE.REMOVE },
+          { routeName: 'SystemFileDownload', menuType: MenuType.BUTTON, menuName: '文件下载', permCode: PERMISSIONS.SYSTEM.FILE.DOWNLOAD },
         ],
       },
     ],

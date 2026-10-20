@@ -84,6 +84,9 @@ catalog:
   '@aws-sdk/s3-request-presigner': ^3.1152.0
   # sharp 为原生依赖（同 argon2 类别）：预编译二进制，无容器化构建时无额外适配面
   sharp: ^0.35.5
-  # 仅类型：上传面 multipart 的 Request 类型增强（运行时 multer 由 @nestjs/platform-express 提供）
+  # 文件上传运行时：@nestjs/platform-express 提供 FileInterceptor 装饰器，
+  # 但 memoryStorage 等存储引擎由 multer 本体暴露；v2 修复 DoS 漏洞（Express 2025 安全公告）
+  multer: ^2.4.0
+  # multer 运行时类型；与 multer 本体 v2.x 配套
   '@types/multer': ^2.3.0
 
