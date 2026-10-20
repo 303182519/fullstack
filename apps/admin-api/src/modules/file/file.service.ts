@@ -8,7 +8,6 @@ import { Readable } from 'node:stream';
 import { Prisma } from '@fedstack/database';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { badRequest, conflict, notFound } from '@/common/exceptions/business.exception.js';
 import { getConfig } from '@/config/configuration.js';
 import { PrismaService } from '@/shared/database/prisma.service.js';
 import { ImageProcessorService } from '@/shared/image/image-processor.service.js';
@@ -16,14 +15,7 @@ import { STORAGE_DRIVER } from '@/shared/storage/storage.constants.js';
 import { toFileStorage } from '@/shared/storage/storage.types.js';
 import { generateSnowflakeId } from '@/shared/utils/snowflake.js';
 import { FileResponseDto, QueryFileDto } from './dto/index.js';
-
-/** 文件模块业务错误码（MMSNN；10 = 文件模块） */
-const FILE_BIZ = {
-  NOT_FOUND: '10A01',
-  MIME_FORBIDDEN: '10A02',
-  SIZE_EXCEEDED: '10A03',
-  QUOTA_EXCEEDED: '10A04',
-} as const;
+import { fileErrors } from './errors.js';
 
 interface UploadConfigRuntime {
   maxBytes: number;
@@ -106,17 +98,14 @@ export class FileService {
     const sizeLimit = isImage ? this.uploadConfig.maxBytes : this.uploadConfig.maxBytesOther;
     if (isImage) {
       if (!this.uploadConfig.imageTypes.has(mimeType))
-        throw badRequest(`不支持的图片类型：${mimeType}`, FILE_BIZ.MIME_FORBIDDEN);
+        throw fileErrors.mimeForbidden(mimeType);
     }
     else {
       if (!this.uploadConfig.fileTypes.has(mimeType))
-        throw badRequest(`不支持的文件类型：${mimeType}`, FILE_BIZ.MIME_FORBIDDEN);
+        throw fileErrors.mimeForbidden(mimeType);
     }
     if (file.size > sizeLimit) {
-      throw badRequest(
-        `文件大小 ${file.size} 超过该类型上限 ${sizeLimit}`,
-        FILE_BIZ.SIZE_EXCEEDED,
-      );
+      throw fileErrors.sizeExceeded(file.size, sizeLimit);
     }
 
     // 2. 字节级核验 + 封面派生（图片类）——全部在内存完成，配额未被占
@@ -313,7 +302,7 @@ export class FileService {
     const stream = await this.driver.getStream(row.objectKey);
     if (!stream) {
       this.logger.warn(`文件元数据存在但物理对象缺失：${row.objectKey}（id=${row.id}）`);
-      throw notFound('文件不存在或已损坏', FILE_BIZ.NOT_FOUND);
+      throw fileErrors.notFound('文件不存在或已损坏');
     }
     return { stream, mimeType: row.mimeType, originalName: row.originalName };
   }
@@ -334,17 +323,14 @@ export class FileService {
     ]);
 
     if (!tenant)
-      throw notFound('租户不存在或已删除', '00A02');
+      throw fileErrors.tenantMissing();
 
     const used
       = BigInt(usage._sum.size ?? 0) + BigInt(usage._sum.coverSize ?? 0);
     const projected = used + BigInt(incBytes);
 
     if (projected > tenant.storageLimit) {
-      throw conflict(
-        `超出存储配额：当前 ${used} 字节，本次 ${incBytes}，上限 ${tenant.storageLimit}`,
-        FILE_BIZ.QUOTA_EXCEEDED,
-      );
+      throw fileErrors.quotaExceeded(used, incBytes, tenant.storageLimit);
     }
   }
 
@@ -357,7 +343,7 @@ export class FileService {
       where: { id, tenantId, deletedAt: null },
     });
     if (!row)
-      throw notFound('文件不存在或已删除', FILE_BIZ.NOT_FOUND);
+      throw fileErrors.notFound();
     // Prisma 返回的行结构与 FileRow 兼容（storage 字段是枚举）
     return row as unknown as FileRow;
   }

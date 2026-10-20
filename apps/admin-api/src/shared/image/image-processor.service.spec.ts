@@ -5,7 +5,7 @@ import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import sharp from 'sharp';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { IMAGE_BIZ, ImageProcessorService } from './image-processor.service.js';
+import { ImageBizCode, ImageProcessorService } from './image-processor.service.js';
 
 /**
  * 复用与默认配置一致的取值（覆盖 1600px / webp / 质量 82 / 像素上限 10000px），
@@ -62,7 +62,7 @@ describe('imageProcessorService', () => {
     it('非图片字节被拒绝——不能只凭 Content-Type 穿过 MIME 白名单', async () => {
       const spoofed = Buffer.from('<?php echo "not an image"; ?>', 'utf8');
       await expect(service.verify(spoofed)).rejects.toMatchObject({
-        code: IMAGE_BIZ.INVALID_IMAGE,
+        code: ImageBizCode.INVALID_IMAGE,
       });
     });
 
@@ -70,7 +70,7 @@ describe('imageProcessorService', () => {
       // 10001×1 的 PNG 体积很小，但宽度已超过 10000px 硬上限
       const tooWide = await makeImage(10_001, 1);
       await expect(service.verify(tooWide)).rejects.toMatchObject({
-        code: IMAGE_BIZ.INVALID_IMAGE,
+        code: ImageBizCode.INVALID_IMAGE,
       });
     });
   });

@@ -29,10 +29,10 @@ import {
 import { Throttle } from '@nestjs/throttler';
 import { memoryStorage } from 'multer';
 import { CurrentUser, RequirePermission } from '@/common/decorators/index.js';
-import { badRequest } from '@/common/exceptions/business.exception.js';
 import { ParseSnowflakePipe } from '@/common/pipes/parse-snowflake.pipe.js';
 import { OperLog } from '@/shared/audit/oper-log.decorator.js';
 import { FileResponseDto, QueryFileDto } from './dto/index.js';
+import { fileErrors } from './errors.js';
 import { FileService } from './file.service.js';
 
 /**
@@ -106,7 +106,7 @@ export class FileController {
     @Query('module') @Optional() moduleTag?: string,
   ): Promise<FileResponseDto> {
     if (!file)
-      throw badRequest('缺少 file 字段', '10A02');
+      throw fileErrors.fileRequired();
 
     return this.fileService.upload(principal, file, moduleTag);
   }
@@ -170,7 +170,7 @@ export class FileController {
 
     if (direct) {
       if (!result)
-        throw badRequest('当前驱动不支持直连下载，请改用代理下载', '10A05');
+        throw fileErrors.directUnavailable();
       return result;
     }
 

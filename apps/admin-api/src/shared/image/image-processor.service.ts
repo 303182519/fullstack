@@ -1,16 +1,29 @@
 import type { Buffer } from 'node:buffer';
-import { Injectable, Logger } from '@nestjs/common';
+import { HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import sharp from 'sharp';
-import { badRequest } from '@/common/exceptions/business.exception.js';
+import { BaseException } from '@/common/exceptions/base.exception.js';
+import { buildBizCode, MODULE_CODES } from '@/common/exceptions/module-registry.js';
 import { getConfig } from '@/config/configuration.js';
 
 /** 封面输出格式（与 config.upload.coverFormat 取值一致）。 */
 export type CoverFormat = 'webp' | 'jpeg' | 'png';
 
-/** 图片核验业务错误码（MMSNN；10 = 文件模块，与 file 模块共用同一号段）。 */
-export const IMAGE_BIZ = {
-  INVALID_IMAGE: '10A06',
+/**
+ * 图片核验业务错误码（MMSNN；90 = 文件模块号段，从 MODULE_CODES.FILE 构造）。
+ *
+ * ImageProcessorService 是文件上传管道的一环，错误码归 File 模块管。
+ */
+export const ImageBizCode = {
+  INVALID_IMAGE: buildBizCode(MODULE_CODES.FILE, 'A', 7),
+} as const;
+
+function imageError(message: string, code: string): BaseException {
+  return new BaseException({ message, status: HttpStatus.BAD_REQUEST, code });
+}
+
+export const imageErrors = {
+  invalidImage: (message: string) => imageError(message, ImageBizCode.INVALID_IMAGE),
 } as const;
 
 /** 派生封面：新字节流 + 输出格式 + 实际输出尺寸。 */
@@ -58,7 +71,7 @@ export class ImageProcessorService {
   }
 
   /**
-   * 核验字节内容确实是图片，且像素尺寸在硬上限内；不通过则抛出 400（`10A06`）。
+   * 核验字节内容确实是图片，且像素尺寸在硬上限内；不通过则抛出 400（`90A07`）。
    *
    * 后端必须自己核验——前端校验只是体验优化，绕过它直发 multipart 的成本几乎为零
    * （AGENTS.md §15 纵深防御）。
@@ -71,16 +84,15 @@ export class ImageProcessorService {
 
     if (!meta?.width || !meta.height) {
       this.logger.warn('图片核验失败：字节内容不是可解析的图片');
-      throw badRequest('文件内容不是有效图片', IMAGE_BIZ.INVALID_IMAGE);
+      throw imageErrors.invalidImage('文件内容不是有效图片');
     }
 
     if (meta.width > this.maxDimension || meta.height > this.maxDimension) {
       this.logger.warn(
         `图片像素尺寸超限：${meta.width}×${meta.height}（上限 ${this.maxDimension}px）`,
       );
-      throw badRequest(
+      throw imageErrors.invalidImage(
         `图片尺寸 ${meta.width}×${meta.height} 超过上限 ${this.maxDimension}px`,
-        IMAGE_BIZ.INVALID_IMAGE,
       );
     }
 
