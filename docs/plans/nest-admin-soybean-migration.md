@@ -709,7 +709,7 @@ enum TemplateStatus {
 - **存储抽象**：`StorageDriver` 接口（`put` / `getStream` / `delete` / `getSignedUrl`），两实现 `LocalStorageDriver` / `S3StorageDriver`；驱动由 `STORAGE_DRIVER`（`local` | `s3`）选择；落点 `apps/admin-api/src/shared/storage/`，**不抽共享包**（唯一消费方）。
 - **凭据纪律**：密钥 / 端点 / bucket 全部走 env（joi 校验），**不建配置表、不入库、不进日志**。
 - **上传约束**（服务端强制、全部 env）：`UPLOAD_MAX_BYTES=5242880`（图片）/ `UPLOAD_MAX_BYTES_OTHER=20971520`（其它白名单类型）；`UPLOAD_ALLOWED_IMAGE_TYPES` / `UPLOAD_ALLOWED_FILE_TYPES` 白名单；缓冲式上传（multer `memoryStorage`），超限在缓冲阶段中断；**上传端点必须配限流**（复用既有 throttler + Redis）。
-- **归一化**：所有图片经 `sharp` 归一化；`UPLOAD_COVER_MAX_WIDTH=1600`（不放大小图）、`UPLOAD_COVER_FORMAT=webp`（默认，可选 `jpeg` / `png`）；**保留原图**，封面写同一行 `cover_*` 列；归一化失败降级为「仅原图」。
+- **图片处理**（`shared/image/`，ADR-012 D4）：核验失败 = **拒绝**（非真实图片 / 像素超限，`10A06`）；封面派生失败 = **降级**为「仅原图」。核验用 `sharp.metadata()` 只读文件头；派生做 EXIF 旋正 + `UPLOAD_COVER_MAX_WIDTH=1600`（不放大小图）+ `UPLOAD_COVER_FORMAT=webp`（默认，可选 `jpeg` / `png`）+ `UPLOAD_COVER_QUALITY=82`；`UPLOAD_IMAGE_MAX_DIMENSION=10000` 为解码前像素硬上限；**保留原图**，封面写同一行 `cover_*` 列。
 - **配额**：`SysTenant.storageLimit` 为上限；用量 = 未删除 `SysFile` 行的 `SUM(size + coverSize)`（**不落冗余计数列**）；并发小幅超限窗口已接受（同 ADR-009 D3 口径）。
 - **删除**：软删元数据 + 物理删对象（best-effort）→ 孤儿对象补偿任务**依赖 P3b 队列**（记待办）；配额随软删自动释放。
 - **下载双通路**：默认代理（`GET /api/files/{id}/content`）；仅显式 `?direct=true` 才签发预签名 URL（TTL `STORAGE_SIGNED_URL_TTL=300`，需登录 + 权限，审计只记「签发」）；**不建 `download_count` 字段**。

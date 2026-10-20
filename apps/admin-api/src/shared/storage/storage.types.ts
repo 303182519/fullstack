@@ -1,8 +1,14 @@
 import type { Buffer } from 'node:buffer';
 import type { Readable } from 'node:stream';
+import { FileStorage } from '@fedstack/database';
 
 /** 存储驱动标识，与 Prisma 枚举 FileStorage 的取值一一对应。 */
 export type StorageDriverKind = 'local' | 's3';
+
+/** StorageDriverKind → Prisma FileStorage 枚举（写 SysFile.storage 时使用）。 */
+export function toFileStorage(kind: StorageDriverKind): FileStorage {
+  return kind === 's3' ? FileStorage.S3 : FileStorage.LOCAL;
+}
 
 /** 写入对象参数。 */
 export interface PutObjectInput {

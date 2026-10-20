@@ -14,6 +14,7 @@ import { AuthModule } from '@/modules/auth/auth.module.js';
 import { ConfigModule } from '@/modules/config/config.module.js';
 import { DeptModule } from '@/modules/dept/dept.module.js';
 import { DictModule } from '@/modules/dict/dict.module.js';
+import { FileModule } from '@/modules/file/file.module.js';
 import { MenuModule } from '@/modules/menu/menu.module.js';
 import { MonitorModule } from '@/modules/monitor/monitor.module.js';
 import { RoleModule } from '@/modules/role/role.module.js';
@@ -25,6 +26,7 @@ import { AuthCoreModule } from '@/shared/auth/auth-core.module.js';
 import { CachingModule } from '@/shared/caching/caching.module.js';
 import { PrismaModule } from '@/shared/database/prisma.module.js';
 import { PrismaService } from '@/shared/database/prisma.service.js';
+import { ImageProcessorModule } from '@/shared/image/image-processor.module.js';
 import { LoggerModule } from '@/shared/logger/logger.module.js';
 import { PermissionModule } from '@/shared/permission/permission.module.js';
 import { ScopeModule } from '@/shared/scope/scope.module.js';
@@ -53,6 +55,8 @@ import { AppService } from './app.service.js';
     CachingModule,
     // 文件存储抽象（ADR-012）：单一活动驱动由 STORAGE_DRIVER 选定；@Global
     StorageModule,
+    // 图片核验与封面派生（ADR-012 D4）：纯字节变换，不依赖库表与存储驱动；@Global
+    ImageProcessorModule,
     // 权限底座（功能权限 + 数据权限）：@Global，供全局 PermissionGuard 与各业务模块复用
     PermissionModule,
     // 认证共享底座：JwtModule + Password/Session/Captcha 服务。
@@ -73,6 +77,7 @@ import { AppService } from './app.service.js';
     DictModule,
     ConfigModule,
     MonitorModule,
+    FileModule,
     // 共享健康检查底座（@fedstack/health，见 ADR-004）：
     // Redis 检查内置；本 app 装配数据库 + 存储就绪检查
     HealthModule.forRootAsync({

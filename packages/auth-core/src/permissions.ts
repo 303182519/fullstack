@@ -53,6 +53,14 @@ export const PERMISSIONS = {
       EDIT: 'system:config:edit',
       REMOVE: 'system:config:remove',
     },
+    /** 文件管理：P3a 新增（ADR-012） */
+    FILE: {
+      QUERY: 'system:file:query',
+      ADD: 'system:file:add',
+      REMOVE: 'system:file:remove',
+      /** 下载（代理 / 直连签名）独立权限：下载即数据读取动作，与「查询元数据」区分 */
+      DOWNLOAD: 'system:file:download',
+    },
   },
   /** 系统监控：P2 新增 */
   MONITOR: {

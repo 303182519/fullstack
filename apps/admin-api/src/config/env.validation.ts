@@ -91,4 +91,8 @@ export const validationSchema = Joi.object({
   UPLOAD_COVER_MAX_WIDTH: Joi.number().integer().min(16).default(1600),
   // 封面归一化输出格式
   UPLOAD_COVER_FORMAT: Joi.string().valid('webp', 'jpeg', 'png').default('webp'),
+  // 封面输出质量（1-100）：仅 webp / jpeg 生效，png 走无损压缩
+  UPLOAD_COVER_QUALITY: Joi.number().integer().min(1).max(100).default(82),
+  // 图片像素边长硬上限（宽或高超过即拒绝）：解码前拦截，防解码期内存放大
+  UPLOAD_IMAGE_MAX_DIMENSION: Joi.number().integer().min(16).default(10_000),
 }).oxor('REDIS_URL', 'REDIS_HOST'); // Redis 连接二选一,也可都不提供

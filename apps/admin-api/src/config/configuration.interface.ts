@@ -153,6 +153,16 @@ export interface UploadConfig {
   coverMaxWidth?: number;
   /** 封面归一化输出格式 */
   coverFormat?: 'webp' | 'jpeg' | 'png';
+  /** 封面输出质量（1-100），仅 `webp` / `jpeg` 生效；`png` 走无损压缩，此项被忽略 */
+  coverQuality?: number;
+  /**
+   * 图片像素边长硬上限（宽或高任一超过即拒绝上传）。
+   *
+   * 与 `coverMaxWidth` 不同：后者是「归一化目标宽度」，这里是「解码前的绝对上限」。
+   * `maxBytes` 只约束压缩体积——一张 5 MiB 的 PNG 可解出 20000×20000（RGBA 约 1.5 GB），
+   * 不设像素上限等于把原图解码变成内存耗尽入口（ADR-012 D4）。
+   */
+  imageMaxDimension?: number;
 }
 
 export interface AppConfig {

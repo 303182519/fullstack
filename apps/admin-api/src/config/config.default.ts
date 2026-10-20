@@ -116,5 +116,9 @@ export const defaultConfig = registerAs('default', (): AppConfig => ({
     ]),
     coverMaxWidth: Number(process.env.UPLOAD_COVER_MAX_WIDTH) || 1600,
     coverFormat: process.env.UPLOAD_COVER_FORMAT || 'webp',
+    // webp / jpeg 的质量/体积甜点（ADR-012 D4）；png 走无损压缩，此值被忽略
+    coverQuality: Number(process.env.UPLOAD_COVER_QUALITY) || 82,
+    // 像素边长硬上限：解码前拒绝超大图，防「压缩体积合规但解码后内存爆炸」（ADR-012 D4）
+    imageMaxDimension: Number(process.env.UPLOAD_IMAGE_MAX_DIMENSION) || 10_000,
   },
 }));
