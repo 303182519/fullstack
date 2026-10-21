@@ -165,6 +165,37 @@ export interface UploadConfig {
   imageMaxDimension?: number;
 }
 
+/** SMTP 邮件配置（P3b，ADR-013 D10：凭据走 env，不入库） */
+export interface SmtpConfig {
+  /** SMTP 服务器地址 */
+  host?: string;
+  /** SMTP 端口（默认 465 SSL / 587 STARTTLS） */
+  port?: number;
+  /** 是否 SSL（465 端口为 true，587 为 false） */
+  secure?: boolean;
+  /** 认证用户名 */
+  user?: string;
+  /** 认证密码 */
+  pass?: string;
+  /** 发件人地址（如 noreply@example.com） */
+  from?: string;
+}
+
+/**
+ * MFA 配置（P3b，ADR-013 D8）。
+ *
+ * TOTP secret 入库前经 AES-256-GCM 加密；密钥只走 env，不入库、不进日志。
+ * 策略开关（DISABLED / OPTIONAL / REQUIRED）走 SysConfig 键 `security.mfa.mode`，
+ * 多租户遮蔽语义复用 ADR-009。
+ */
+export interface MfaConfig {
+  /**
+   * AES-256-GCM 主密钥，hex 编码 64 字符（32 字节）。
+   * 未配置时 MFA 模块启动降级（记录 warn，绑定/解绑接口抛 503）。
+   */
+  secretEncKey?: string;
+}
+
 export interface AppConfig {
   /** HTTP 服务配置 */
   server?: ServerConfig;
@@ -186,6 +217,10 @@ export interface AppConfig {
   storage?: StorageConfig;
   /** 上传面约束配置 */
   upload?: UploadConfig;
+  /** SMTP 邮件配置（P3b，ADR-013 D10：凭据走 env，不入库） */
+  smtp?: SmtpConfig;
+  /** MFA 配置（P3b，ADR-013 D8） */
+  mfa?: MfaConfig;
 }
 
 export type AppConfigForced = {

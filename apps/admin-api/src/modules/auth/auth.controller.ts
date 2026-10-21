@@ -12,9 +12,11 @@ import {
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
+  ApiExtraModels,
   ApiOkResponse,
   ApiOperation,
   ApiTags,
+  getSchemaPath,
 } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { AUTH_THROTTLE } from '@/common/constants/auth.js';
@@ -32,6 +34,8 @@ import { AuthService } from './auth.service.js';
 import {
   CaptchaResponseDto,
   LoginDto,
+  MfaChallengeDto,
+  MfaPendingDto,
   ProfileResponseDto,
   TokenResponseDto,
 } from './dto/index.js';
@@ -70,14 +74,48 @@ export class AuthController {
   @Throttle({ default: AUTH_THROTTLE.login })
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: '账号密码登录' })
-  @ApiOkResponse({ type: TokenResponseDto })
+  @ApiOperation({ summary: '账号密码登录（可能返回 MFA 待验令牌）' })
+  @ApiExtraModels(TokenResponseDto, MfaPendingDto)
+  @ApiOkResponse({
+    schema: {
+      oneOf: [
+        { $ref: getSchemaPath(TokenResponseDto) },
+        { $ref: getSchemaPath(MfaPendingDto) },
+      ],
+    },
+  })
   async login(
     @Body() dto: LoginDto,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
+  ): Promise<TokenResponseDto | MfaPendingDto> {
+    const result = await this.authService.login(dto, {
+      ip: resolveClientIp(req, DEFAULT_DEVICE),
+      device: dto.device?.trim() || resolveDevice(req),
+    });
+    if ('mfaRequired' in result) {
+      return result;
+    }
+    this.writeRefreshCookie(res, result.refreshToken);
+    return {
+      accessToken: result.accessToken,
+      tokenType: 'Bearer',
+      expiresIn: result.expiresIn,
+    };
+  }
+
+  @Public()
+  @Throttle({ default: AUTH_THROTTLE.login })
+  @Post('mfa/verify')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'MFA 二次验证（TOTP 或恢复码）' })
+  @ApiOkResponse({ type: TokenResponseDto })
+  async verifyMfa(
+    @Body() dto: MfaChallengeDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
   ): Promise<TokenResponseDto> {
-    const tokens = await this.authService.login(dto, {
+    const tokens = await this.authService.verifyMfa(dto, {
       ip: resolveClientIp(req, DEFAULT_DEVICE),
       device: dto.device?.trim() || resolveDevice(req),
     });

@@ -860,6 +860,6 @@ model SysGenColumn { ... }      // 代码生成列配置
 
 1. **已完成（P0–P2）**：认证基座、权限与组织、系统管理三期均已交付，迁移 `init_p0_auth` / `init_p1_permission` / `init_p2_system` 已落库；`packages/auth-core` 已沉淀功能权限码注册表（`ADR-010`）；契约快照 `phase-0.json` / `phase-1.json` / `phase-2.json` 已输出。
 2. **P3 规划已定稿（2026-10-19）**：P3a / P3b 范围、表结构、端点与依赖见本文 §6；决策记录 `ADR-012`（文件存储与配额）、`ADR-013`（消息中心 / 实时推送 / 队列），并修订 `ADR-003`（§7 `PubSubService` 连接分层）。
-3. **P3a 开发（下一步）**：按 §6.1 执行 Prisma 迁移（新增 `SysFile` / `SysUserMessage` / `SysNotice`），实现 `shared/storage`（`StorageDriver` 双驱动）、`modules/file`、`modules/notice`、`modules/message`（站内信）、`modules/realtime`，并在 `@fedstack/redis` 增补 `PubSubService`。
-4. **P3a 验收**：按 §6.11 校验清单执行，输出 `docs/plans/contracts/phase-3a.json`，进入 P3b。
-5. **P3b 开发与验收**：按 §6.2 迁移（`SysMessageTemplate` / `SysMessageSendLog` / `SysUserMfa`），实现模板遮蔽、邮件 / 短信 provider、BullMQ 队列（含审计落库改造与文件删除补偿）、MFA 二步登录，输出 `docs/plans/contracts/phase-3b.json`。
+3. **P3a 开发（已完成，2026-10-20）**：`SysFile` / `SysUserMessage` / `SysNotice` 迁移已落库；`shared/storage`（`StorageDriver` 双驱动，本地 getSignedUrl 返回 null 由调用方回退代理通路）、`modules/file`（上传管道 / 配额 / 软删 + best-effort 物理删除 / 代理下载与预签名）、`modules/notice`（公告 CRUD + 平台/租户两级并列合并）、`modules/user-message`（自助端点 + 已读管理）、`modules/message`（MessageCenter 骨架 + InnerMessageProvider）、`modules/realtime`（SSE + Redis pub/sub）均已实现；`@fedstack/redis` 已增补 `PubSubService`。
+4. **P3b 开发（已完成，2026-10-20，与 P3a 剩余合并开发）**：`SysMessageTemplate` / `SysMessageSendLog` / `SysUserMfa` 迁移已落库；消息模板遮蔽（复用 ADR-009）、邮件 provider（nodemailer）与短信 provider（占位抛 503，待服务商定案）、BullMQ 队列底座（`shared/queue`，含审计 oper-log 落库与文件删除补偿的入队接口）、MFA 二步登录（TOTP + 恢复码 + pending token，策略读 `security.mfa.mode` 三态枚举）均已实现；seed 菜单同步通知公告 / 消息模板 / 消息日志节点。
+5. **P3 验收**：契约快照已输出 `docs/plans/contracts/phase-3a.json` 与 `phase-3b.json`（合并开发故两份内容一致，均为合并后完整契约）。遗留待办：审计 oper-log 改队列投递与 file.service 删除补偿的实际接线（队列底座方法已备）、REQUIRED 策略未绑定用户的强制引导流程（P4）、E2E 测试。

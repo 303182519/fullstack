@@ -19,6 +19,10 @@ export const LOGIN_MSG = {
   USER_DISABLED: 'USER_DISABLED',
   /** 租户不可用（不存在 / 禁用 / 过期）；此时 tenantId 记 0 */
   TENANT_UNAVAILABLE: 'TENANT_UNAVAILABLE',
+  /** MFA 二次验证失败（TOTP / 恢复码错误） */
+  MFA_INVALID: 'MFA_INVALID',
+  /** MFA 连续失败达上限，账号维度临时锁定 */
+  MFA_LOCKED: 'MFA_LOCKED',
 } as const;
 
 export type LoginMsg = (typeof LOGIN_MSG)[keyof typeof LOGIN_MSG];

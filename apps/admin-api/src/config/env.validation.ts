@@ -95,4 +95,17 @@ export const validationSchema = Joi.object({
   UPLOAD_COVER_QUALITY: Joi.number().integer().min(1).max(100).default(82),
   // 图片像素边长硬上限（宽或高超过即拒绝）：解码前拦截，防解码期内存放大
   UPLOAD_IMAGE_MAX_DIMENSION: Joi.number().integer().min(16).default(10_000),
+
+  // SMTP 邮件配置（P3b，ADR-013 D10：凭据走 env，不入库）
+  SMTP_HOST: Joi.string(),
+  SMTP_PORT: Joi.number().port().default(465),
+  SMTP_SECURE: Joi.boolean().truthy('true', '1').falsy('false', '0').default(true),
+  SMTP_USER: Joi.string().allow(''),
+  SMTP_PASS: Joi.string().allow(''),
+  SMTP_FROM: Joi.string().allow(''),
+
+  // MFA 配置（P3b，ADR-013 D8）：AES-256-GCM 主密钥，hex 编码 64 字符 = 32 字节
+  // 生成：node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+  // 未配置时 MFA 模块降级（启动 warn，绑定/解绑接口 503）
+  MFA_SECRET_ENC_KEY: Joi.string().hex().length(64),
 }).oxor('REDIS_URL', 'REDIS_HOST'); // Redis 连接二选一,也可都不提供

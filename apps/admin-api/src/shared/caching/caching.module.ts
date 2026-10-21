@@ -1,5 +1,6 @@
 import { Global, Module } from '@nestjs/common';
 import { LoginAttemptService } from './login-attempt.service.js';
+import { MfaAttemptService } from './mfa-attempt.service.js';
 
 /**
  * 应用层缓存业务模块。
@@ -10,7 +11,7 @@ import { LoginAttemptService } from './login-attempt.service.js';
  */
 @Global()
 @Module({
-  providers: [LoginAttemptService],
-  exports: [LoginAttemptService],
+  providers: [LoginAttemptService, MfaAttemptService],
+  exports: [LoginAttemptService, MfaAttemptService],
 })
 export class CachingModule {}

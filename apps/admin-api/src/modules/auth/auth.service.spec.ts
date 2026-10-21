@@ -1,18 +1,23 @@
 import type { ConfigService } from '@nestjs/config';
 import type { JwtService } from '@nestjs/jwt';
 import type { AuthPrincipal, SessionRecord } from '@/shared/auth/auth.types.js';
-import { TenantStatus, UserStatus } from '@fedstack/database';
+import { MessageTemplateChannel, TenantStatus, UserStatus } from '@fedstack/database';
 import { hashCacheToken } from '@fedstack/redis';
 import { Logger } from '@nestjs/common';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthService } from '@/modules/auth/auth.service.js';
 import { LoginDto } from '@/modules/auth/dto/login.dto.js';
+import { MfaChallengeDto } from '@/modules/auth/dto/mfa-challenge.dto.js';
+import { MessageCenterService } from '@/modules/message/message-center.service.js';
+import { MfaService } from '@/modules/mfa/mfa.service.js';
 import { LoginLogService } from '@/shared/audit/login-log.service.js';
 import { CAPTCHA_THRESHOLD } from '@/shared/auth/auth.constants.js';
 import { CaptchaService } from '@/shared/auth/captcha.service.js';
 import { PasswordService } from '@/shared/auth/password.service.js';
 import { SessionService } from '@/shared/auth/session.service.js';
+import { CacheKeys } from '@/shared/caching/cache.constants.js';
 import { LoginAttemptService } from '@/shared/caching/login-attempt.service.js';
+import { MfaAttemptService } from '@/shared/caching/mfa-attempt.service.js';
 import { PrismaService } from '@/shared/database/prisma.service.js';
 
 const ACCESS_EXPIRES_IN = 7200;
@@ -80,6 +85,23 @@ const principal: AuthPrincipal = {
 
 const refreshClaims = { sub: '1', sid: 'sid-1', typ: 'refresh' } as const;
 
+const mfaClaims = {
+  sub: '1',
+  tid: '10',
+  un: 'alice',
+  sup: false,
+  jti: 'jti-1',
+  typ: 'mfa-pending',
+} as const;
+
+function makeMfaChallengeDto(overrides: Partial<MfaChallengeDto> = {}): MfaChallengeDto {
+  return Object.assign(
+    new MfaChallengeDto(),
+    { pendingToken: 'pending-token', code: '123456' },
+    overrides,
+  );
+}
+
 function makeLoginDto(overrides: Partial<LoginDto> = {}): LoginDto {
   return Object.assign(
     new LoginDto(),
@@ -112,6 +134,21 @@ describe('authService', () => {
     clear: vi.fn(),
   };
   const loginLog = { append: vi.fn(async () => {}) };
+  // MFA 默认未启用 + 策略 OPTIONAL：让存量登录用例走「无 MFA 直发」分支
+  const mfa = {
+    getPolicyMode: vi.fn(async () => 'OPTIONAL' as const),
+    isEnabled: vi.fn(async () => false),
+    verifyTotp: vi.fn(async () => false),
+    verifyRecoveryCode: vi.fn(async () => false),
+  };
+  const mfaAttempt = {
+    isAccountLocked: vi.fn(async () => false),
+    recordChallengeFailure: vi.fn(async () => ({ attempts: 1, exhausted: false })),
+    recordAccountFailure: vi.fn(async () => ({ attempts: 1, exhausted: false })),
+    clearAccount: vi.fn(async () => {}),
+  };
+  const messageCenter = { sendDirect: vi.fn(async () => {}) };
+  const cache = { get: vi.fn(), set: vi.fn(), del: vi.fn() };
 
   let service: AuthService;
 
@@ -129,6 +166,10 @@ describe('authService', () => {
       captcha as unknown as CaptchaService,
       loginAttempt as unknown as LoginAttemptService,
       loginLog as unknown as LoginLogService,
+      mfa as unknown as MfaService,
+      mfaAttempt as unknown as MfaAttemptService,
+      messageCenter as unknown as MessageCenterService,
+      cache as never,
       makeConfigService(),
     );
 
@@ -137,6 +178,17 @@ describe('authService', () => {
     loginAttempt.getFailures.mockResolvedValue(0);
     loginAttempt.recordFailure.mockResolvedValue({ attempts: 1, locked: false });
     loginAttempt.clear.mockResolvedValue(undefined);
+    // mockResolvedValue 的实现会跨用例残留（clearAllMocks 不清实现），每个用例前重置默认值
+    mfa.getPolicyMode.mockResolvedValue('OPTIONAL');
+    mfa.isEnabled.mockResolvedValue(false);
+    mfa.verifyTotp.mockResolvedValue(false);
+    mfa.verifyRecoveryCode.mockResolvedValue(false);
+    mfaAttempt.isAccountLocked.mockResolvedValue(false);
+    mfaAttempt.recordChallengeFailure.mockResolvedValue({ attempts: 1, exhausted: false });
+    mfaAttempt.recordAccountFailure.mockResolvedValue({ attempts: 1, exhausted: false });
+    mfaAttempt.clearAccount.mockResolvedValue(undefined);
+    cache.get.mockResolvedValue(undefined);
+    cache.del.mockResolvedValue(false);
     password.verify.mockResolvedValue(true);
     session.createSession.mockResolvedValue('sid-1');
     session.saveRefreshHash.mockResolvedValue(undefined);
@@ -370,6 +422,168 @@ describe('authService', () => {
       prisma.sysUser.findFirst.mockResolvedValue(null);
       const error = await service.profile(principal).catch(e => e);
       expect(codeOf(error)).toBe('10A08');
+    });
+  });
+
+  describe('verifyMfa', () => {
+    /** 让一个合法的 pending 挑战走到「验码」这一步 */
+    function arrangeValidChallenge() {
+      jwt.verifyAsync.mockResolvedValue(mfaClaims);
+      cache.get.mockResolvedValue('1');
+      cache.del.mockResolvedValue(true);
+      prisma.sysUser.findFirst.mockResolvedValue(activeUser);
+    }
+
+    it('jwt 校验失败时抛 10A08', async () => {
+      jwt.verifyAsync.mockRejectedValue(new Error('bad token'));
+      const error = await service.verifyMfa(makeMfaChallengeDto(), ctx).catch(e => e);
+      expect(codeOf(error)).toBe('10A08');
+    });
+
+    it('令牌类型非 mfa-pending 时抛 10A08', async () => {
+      jwt.verifyAsync.mockResolvedValue({ ...mfaClaims, typ: 'access' });
+      const error = await service.verifyMfa(makeMfaChallengeDto(), ctx).catch(e => e);
+      expect(codeOf(error)).toBe('10A08');
+    });
+
+    it('账号维度 MFA 锁定时直接拒绝且不验码', async () => {
+      jwt.verifyAsync.mockResolvedValue(mfaClaims);
+      mfaAttempt.isAccountLocked.mockResolvedValue(true);
+
+      const error = await service.verifyMfa(makeMfaChallengeDto(), ctx).catch(e => e);
+
+      expect(codeOf(error)).toBe('10A03');
+      expect(mfa.verifyTotp).not.toHaveBeenCalled();
+      expect(mfa.verifyRecoveryCode).not.toHaveBeenCalled();
+      expect(loginLog.append).toHaveBeenCalledWith(expect.objectContaining({
+        msg: 'MFA_LOCKED',
+        status: 'FAILURE',
+      }));
+    });
+
+    it('pending 已消费或过期时抛 10A08 且不验码', async () => {
+      jwt.verifyAsync.mockResolvedValue(mfaClaims);
+      cache.get.mockResolvedValue(undefined);
+
+      const error = await service.verifyMfa(makeMfaChallengeDto(), ctx).catch(e => e);
+
+      expect(codeOf(error)).toBe('10A08');
+      expect(mfa.verifyTotp).not.toHaveBeenCalled();
+      expect(mfa.verifyRecoveryCode).not.toHaveBeenCalled();
+    });
+
+    it('验证码错误时保留 pending 可重试并记录双维度失败', async () => {
+      arrangeValidChallenge();
+
+      const error = await service.verifyMfa(makeMfaChallengeDto(), ctx).catch(e => e);
+
+      expect(codeOf(error)).toBe('10A02');
+      // 未达上限不作废挑战：pending 不被消费，用户可原地重试
+      expect(cache.del).not.toHaveBeenCalled();
+      expect(mfaAttempt.recordChallengeFailure).toHaveBeenCalledWith('jti-1');
+      expect(mfaAttempt.recordAccountFailure).toHaveBeenCalledWith('10', 'alice');
+      expect(loginLog.append).toHaveBeenCalledWith(expect.objectContaining({
+        msg: 'MFA_INVALID',
+        userId: 1n,
+        status: 'FAILURE',
+      }));
+      expect(messageCenter.sendDirect).not.toHaveBeenCalled();
+    });
+
+    it('挑战内失败达上限时作废 pending', async () => {
+      arrangeValidChallenge();
+      mfaAttempt.recordChallengeFailure.mockResolvedValue({ attempts: 5, exhausted: true });
+
+      const error = await service.verifyMfa(makeMfaChallengeDto(), ctx).catch(e => e);
+
+      expect(codeOf(error)).toBe('10A02');
+      expect(cache.del).toHaveBeenCalledWith(CacheKeys.AUTH_MFA_PENDING('jti-1'));
+      expect(messageCenter.sendDirect).not.toHaveBeenCalled();
+    });
+
+    it('账号维度失败达上限时作废 pending 并发送站内信安全提醒', async () => {
+      arrangeValidChallenge();
+      mfaAttempt.recordAccountFailure.mockResolvedValue({ attempts: 10, exhausted: true });
+
+      const error = await service.verifyMfa(makeMfaChallengeDto(), ctx).catch(e => e);
+
+      expect(codeOf(error)).toBe('10A02');
+      expect(cache.del).toHaveBeenCalledWith(CacheKeys.AUTH_MFA_PENDING('jti-1'));
+      expect(messageCenter.sendDirect).toHaveBeenCalledWith(
+        MessageTemplateChannel.INNER,
+        expect.objectContaining({
+          tenantId: 10n,
+          recipientId: '1',
+          category: 'SECURITY',
+        }),
+      );
+    });
+
+    it('验证通过但 pending 已被并发消费时抛 10A08', async () => {
+      arrangeValidChallenge();
+      mfa.verifyTotp.mockResolvedValue(true);
+      cache.del.mockResolvedValue(false);
+
+      const error = await service.verifyMfa(makeMfaChallengeDto(), ctx).catch(e => e);
+
+      expect(codeOf(error)).toBe('10A08');
+      expect(session.createSession).not.toHaveBeenCalled();
+    });
+
+    it('验证通过但用户在等待期间被禁用时抛 10A06 且不消费 pending', async () => {
+      arrangeValidChallenge();
+      mfa.verifyTotp.mockResolvedValue(true);
+      prisma.sysUser.findFirst.mockResolvedValue({ ...activeUser, status: UserStatus.DISABLED });
+
+      const error = await service.verifyMfa(makeMfaChallengeDto(), ctx).catch(e => e);
+
+      expect(codeOf(error)).toBe('10A06');
+      expect(cache.del).not.toHaveBeenCalled();
+      expect(session.createSession).not.toHaveBeenCalled();
+    });
+
+    it('验证成功时先验码后消费 pending、清零账号计数并签发令牌', async () => {
+      arrangeValidChallenge();
+      mfa.verifyTotp.mockResolvedValue(true);
+
+      const tokens = await service.verifyMfa(makeMfaChallengeDto(), ctx);
+
+      // 消费顺序：验证通过之后才一次性消费 pending（防「输错即作废」）
+      const [totpOrder] = mfa.verifyTotp.mock.invocationCallOrder;
+      const [delOrder] = cache.del.mock.invocationCallOrder;
+      expect(totpOrder).toBeTypeOf('number');
+      expect(delOrder).toBeTypeOf('number');
+      if (totpOrder !== undefined && delOrder !== undefined) {
+        expect(totpOrder).toBeLessThan(delOrder);
+      }
+      expect(mfaAttempt.clearAccount).toHaveBeenCalledWith('10', 'alice');
+      expect(session.createSession).toHaveBeenCalledWith({
+        userId: '1',
+        tenantId: '10',
+        username: 'alice',
+        isSuper: false,
+        device: 'Chrome',
+        ip: '127.0.0.1',
+      });
+      expect(tokens).toEqual({
+        accessToken: ACCESS_TOKEN,
+        refreshToken: ACCESS_TOKEN,
+        expiresIn: ACCESS_EXPIRES_IN,
+      });
+    });
+
+    it('8 位恢复码走恢复码验证通道，不查 TOTP', async () => {
+      arrangeValidChallenge();
+      mfa.verifyRecoveryCode.mockResolvedValue(true);
+
+      const tokens = await service.verifyMfa(
+        makeMfaChallengeDto({ code: 'AB12CD34' }),
+        ctx,
+      );
+
+      expect(mfa.verifyTotp).not.toHaveBeenCalled();
+      expect(mfa.verifyRecoveryCode).toHaveBeenCalledWith(1n, 'AB12CD34');
+      expect(tokens.accessToken).toBe(ACCESS_TOKEN);
     });
   });
 });

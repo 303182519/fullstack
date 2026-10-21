@@ -14,6 +14,7 @@ import { KeyPrefixer } from './cache.prefixer.js';
 import { CacheService } from './cache.service.js';
 import { REDIS_CLIENT, REDIS_STORE } from './cache.tokens.js';
 import { HashCacheService } from './hash-cache.service.js';
+import { PubSubService } from './pub-sub.service.js';
 import { RedisLockService } from './redis-lock.service.js';
 import {
   buildRedisUrl,
@@ -105,6 +106,7 @@ export class RedisCacheModule implements OnApplicationBootstrap, OnModuleDestroy
         HashCacheService,
         CacheHealthIndicator,
         KeyPrefixer,
+        PubSubService,
         RedisLockService,
         SortedSetCacheService,
       ],
@@ -114,6 +116,7 @@ export class RedisCacheModule implements OnApplicationBootstrap, OnModuleDestroy
         CacheHealthIndicator,
         HashCacheService,
         KeyPrefixer,
+        PubSubService,
         RedisLockService,
         SortedSetCacheService,
         REDIS_CLIENT,

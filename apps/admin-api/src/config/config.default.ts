@@ -121,4 +121,16 @@ export const defaultConfig = registerAs('default', (): AppConfig => ({
     // 像素边长硬上限：解码前拒绝超大图，防「压缩体积合规但解码后内存爆炸」（ADR-012 D4）
     imageMaxDimension: Number(process.env.UPLOAD_IMAGE_MAX_DIMENSION) || 10_000,
   },
+  smtp: {
+    host: process.env.SMTP_HOST,
+    port: Number(process.env.SMTP_PORT) || 465,
+    secure: toBool(process.env.SMTP_SECURE, true),
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
+    from: process.env.SMTP_FROM,
+  },
+  mfa: {
+    // AES-256-GCM 主密钥（hex，64 字符）；未配置时 MFA 模块降级
+    secretEncKey: process.env.MFA_SECRET_ENC_KEY,
+  },
 }));

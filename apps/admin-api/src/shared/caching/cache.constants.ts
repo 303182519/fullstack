@@ -41,6 +41,17 @@ export const CacheKeys = {
   /** 验证码答案：value=文本，TTL=CAPTCHA_TTL_SECONDS */
   AUTH_CAPTCHA: (captchaId: string) => `auth:captcha:id=${captchaId}`,
 
+  // ---- MFA 待验令牌（P3b，ADR-013 D8）：jti 一次性消费标记，验证成功才消费 ----
+  /** MFA pending jti：value='1' 占位，TTL=MFA_PENDING_TTL_SECONDS；验证通过后 `del` 消费 */
+  AUTH_MFA_PENDING: (jti: string) => `auth:mfa:pending:jti=${jti}`,
+
+  // ---- MFA 二步验证失败计数（ADR-013 D8 演进）：挑战维度 + 账号维度双计数 ----
+  /** 单次挑战失败计数：按 jti，TTL 随 pending 令牌；达上限后作废该挑战（强制重新登录） */
+  AUTH_MFA_CHALLENGE_FAIL: (jti: string) => `auth:mfa:challengeFail:jti=${jti}`,
+  /** 账号维度失败计数：跨挑战累计，防反复登录刷 challenge 绕过挑战内计数 */
+  AUTH_MFA_ACCOUNT_FAIL: (tenantId: string, username: string) =>
+    `auth:mfa:accountFail:tenant=${tenantId}:username=${username.trim().toLowerCase()}`,
+
   // ---- 字典 / 参数消费端缓存（P2，ADR-009）：cache-aside + 写时失效 ----
   // 粒度说明：只缓存「数据行 / 值」，不缓存「遮蔽判定」——判定是一次索引点查，
   // 缓存它会让平台级写入无法精确失效所有租户副本，得不偿失。
@@ -50,4 +61,9 @@ export const CacheKeys = {
   /** 参数取值（消费端）：value=string；tenantId=null 表示平台级 */
   CONFIG_VALUE: (tenantId: string | null, configKey: string) =>
     `config:value:tenant=${tenantId ?? 'platform'}:key=${configKey}`,
+
+  // ---- 消息模板消费端缓存（P3b，ADR-013 D4）：cache-aside + 写时失效 ----
+  /** 消息模板：value=EffectiveTemplateDto；tenantId=null 表示平台级 */
+  MESSAGE_TEMPLATE: (tenantId: string | null, templateKey: string, channel: string) =>
+    `msg:template:tenant=${tenantId ?? 'platform'}:key=${templateKey}:channel=${channel}`,
 } as const;

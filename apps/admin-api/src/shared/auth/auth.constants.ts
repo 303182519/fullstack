@@ -8,7 +8,16 @@
 export const TOKEN_TYPE = {
   ACCESS: 'access',
   REFRESH: 'refresh',
+  /**
+   * MFA 待验令牌（P3b，ADR-013 D8）：
+   * 密码校验通过后、MFA 二次验证通过前的中间态凭证，仅可调用 /auth/mfa/verify。
+   * 短 TTL + jti 一次性消费（Redis 标记），通过即签发正式 access/refresh。
+   */
+  MFA_PENDING: 'mfa-pending',
 } as const;
+
+/** MFA 待验令牌有效期（秒） */
+export const MFA_PENDING_TTL_SECONDS = 300;
 
 /** refresh token 的 HttpOnly Cookie 名 */
 export const REFRESH_COOKIE_NAME = 'admin_refresh_token';

@@ -141,6 +141,34 @@ const MENU_TREE: MenuSeedNode[] = [
           { routeName: 'SystemFileDownload', menuType: MenuType.BUTTON, menuName: '文件下载', permCode: PERMISSIONS.SYSTEM.FILE.DOWNLOAD },
         ],
       },
+      {
+        routeName: 'SystemNotice',
+        menuType: MenuType.MENU,
+        menuName: '通知公告',
+        routePath: '/system/notices',
+        component: 'system/notice/index',
+        sort: 7,
+        children: [
+          { routeName: 'SystemNoticeQuery', menuType: MenuType.BUTTON, menuName: '公告查询', permCode: PERMISSIONS.SYSTEM.NOTICE.QUERY },
+          { routeName: 'SystemNoticeAdd', menuType: MenuType.BUTTON, menuName: '公告新增', permCode: PERMISSIONS.SYSTEM.NOTICE.ADD },
+          { routeName: 'SystemNoticeEdit', menuType: MenuType.BUTTON, menuName: '公告编辑', permCode: PERMISSIONS.SYSTEM.NOTICE.EDIT },
+          { routeName: 'SystemNoticeRemove', menuType: MenuType.BUTTON, menuName: '公告删除', permCode: PERMISSIONS.SYSTEM.NOTICE.REMOVE },
+        ],
+      },
+      {
+        routeName: 'SystemMessageTemplate',
+        menuType: MenuType.MENU,
+        menuName: '消息模板',
+        routePath: '/system/message-templates',
+        component: 'system/message-template/index',
+        sort: 8,
+        children: [
+          { routeName: 'SystemMessageTemplateQuery', menuType: MenuType.BUTTON, menuName: '模板查询', permCode: PERMISSIONS.SYSTEM.MESSAGE_TEMPLATE.QUERY },
+          { routeName: 'SystemMessageTemplateAdd', menuType: MenuType.BUTTON, menuName: '模板新增', permCode: PERMISSIONS.SYSTEM.MESSAGE_TEMPLATE.ADD },
+          { routeName: 'SystemMessageTemplateEdit', menuType: MenuType.BUTTON, menuName: '模板编辑', permCode: PERMISSIONS.SYSTEM.MESSAGE_TEMPLATE.EDIT },
+          { routeName: 'SystemMessageTemplateRemove', menuType: MenuType.BUTTON, menuName: '模板删除', permCode: PERMISSIONS.SYSTEM.MESSAGE_TEMPLATE.REMOVE },
+        ],
+      },
     ],
   },
   {
@@ -183,6 +211,17 @@ const MENU_TREE: MenuSeedNode[] = [
         children: [
           { routeName: 'MonitorOnlineQuery', menuType: MenuType.BUTTON, menuName: '在线用户查询', permCode: PERMISSIONS.MONITOR.ONLINE.QUERY },
           { routeName: 'MonitorOnlineRemove', menuType: MenuType.BUTTON, menuName: '强制下线', permCode: PERMISSIONS.MONITOR.ONLINE.REMOVE },
+        ],
+      },
+      {
+        routeName: 'MonitorMessageLog',
+        menuType: MenuType.MENU,
+        menuName: '消息日志',
+        routePath: '/monitor/message-logs',
+        component: 'monitor/messagelog/index',
+        sort: 4,
+        children: [
+          { routeName: 'MonitorMessageLogQuery', menuType: MenuType.BUTTON, menuName: '消息日志查询', permCode: PERMISSIONS.SYSTEM.MESSAGE_LOG.QUERY },
         ],
       },
     ],

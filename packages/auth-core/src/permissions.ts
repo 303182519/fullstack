@@ -61,6 +61,24 @@ export const PERMISSIONS = {
       /** 下载（代理 / 直连签名）独立权限：下载即数据读取动作，与「查询元数据」区分 */
       DOWNLOAD: 'system:file:download',
     },
+    /** 通知公告管理：P3a 新增（ADR-013 D2/D3） */
+    NOTICE: {
+      QUERY: 'system:notice:query',
+      ADD: 'system:notice:add',
+      EDIT: 'system:notice:edit',
+      REMOVE: 'system:notice:remove',
+    },
+    /** 消息模板管理：P3b 新增（遮蔽语义复用 ADR-009） */
+    MESSAGE_TEMPLATE: {
+      QUERY: 'system:message-template:query',
+      ADD: 'system:message-template:add',
+      EDIT: 'system:message-template:edit',
+      REMOVE: 'system:message-template:remove',
+    },
+    /** 消息投递日志：P3b 新增 */
+    MESSAGE_LOG: {
+      QUERY: 'system:message-log:query',
+    },
   },
   /** 系统监控：P2 新增 */
   MONITOR: {

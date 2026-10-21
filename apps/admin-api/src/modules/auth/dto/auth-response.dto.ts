@@ -24,6 +24,23 @@ export class TokenResponseDto {
   expiresIn: number;
 }
 
+/**
+ * MFA 待验应答（P3b，ADR-013 D8）。
+ *
+ * 密码校验通过但用户已启用 MFA 时，`/auth/login` 返回本结构代替 `TokenResponseDto`。
+ * 客户端应引导用户输入 TOTP 验证码或恢复码，调用 `/auth/mfa/verify` 完成二次验证。
+ */
+export class MfaPendingDto {
+  @ApiProperty({ description: '恒为 true，标识需要 MFA 二次验证', example: true })
+  mfaRequired: true;
+
+  @ApiProperty({ description: 'MFA 待验令牌（5 分钟有效期，一次性消费）' })
+  pendingToken: string;
+
+  @ApiProperty({ description: 'pendingToken 有效期（秒）' })
+  expiresIn: number;
+}
+
 /** 角色摘要（个人资料中展示） */
 export class RoleBriefDto {
   @ApiProperty({ description: '角色 ID' })

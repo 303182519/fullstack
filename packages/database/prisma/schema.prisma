@@ -368,8 +368,8 @@ model SysLoginLog {
 }
 
 // ==========================================
-// P3a 扩展能力（一）：文件 / 站内信 / 通知公告
-// 决策依据：ADR-012（文件存储与配额）、ADR-013（消息中心 / 实时推送）
+// P3 扩展能力：文件 / 站内信 / 通知公告 / 消息模板 / 投递日志 / MFA
+// 决策依据：ADR-012（文件存储与配额）、ADR-013（消息中心 / 实时推送 / 队列 / MFA）
 // ==========================================
 
 /// 文件。租户级二进制资产元数据；对象本体存于存储后端（本地磁盘 / S3 兼容对象存储）。
@@ -427,6 +427,70 @@ model SysUserMessage {
   @@index([userId, readAt])
   @@index([userId, createdAt])
   @@map("sys_user_message")
+}
+
+/// 消息模板。租户级模板对同 `(templateKey, channel)` 的平台级模板**整体遮蔽**（复用 ADR-009 遮蔽语义）。
+/// 内容由 MessageCenter 做变量替换后投递（ADR-013 D1/D4）。
+model SysMessageTemplate {
+  id        BigInt    @id
+  createdAt DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt DateTime? @map("deleted_at") @db.DateTime(3)
+
+  tenantId BigInt? @map("tenant_id") // null = 平台级标准模板
+
+  templateKey String                  @map("template_key") @db.VarChar(100) // 模板键，如 "notice.publish"
+  channel     MessageTemplateChannel  @map("channel") // INNER / EMAIL / SMS
+  subject     String?                 @map("subject") @db.VarChar(200) // 邮件主题；站内信/短信不用
+  content     String                  @map("content") @db.Text // 模板体，支持 {{var}} 占位
+  status      MessageTemplateStatus   @default(ACTIVE) @map("status")
+
+  // 平台级（tenantId=NULL）唯一性由服务层校验兜底（同字典/参数的既有纪律）。
+  @@unique([tenantId, templateKey, channel], name: "uniq_tenant_template_channel")
+  @@index([templateKey])
+  @@map("sys_message_template")
+}
+
+/// 消息投递日志。只增表：无 updated_at / deleted_at（投递流水不修改不删除，同 ADR-009 审计偏差）。
+/// 记录每一次通道投递的结果，含失败原因；队列重试逐次追加（ADR-013 D7）。
+model SysMessageSendLog {
+  id        BigInt   @id
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+
+  tenantId BigInt @map("tenant_id")
+
+  templateKey  String?                @map("template_key") @db.VarChar(100) // 触发模板；直发场景可空
+  channel      MessageTemplateChannel @map("channel")
+  recipient    String                 @map("recipient") @db.VarChar(255) // userId 串 / 邮箱 / 手机号
+  subject      String?                @map("subject") @db.VarChar(200)
+  content      String                 @map("content") @db.Text // 渲染后的最终内容快照
+
+  status   MessageSendStatus @map("status")
+  errorMsg String?           @map("error_msg") @db.VarChar(2000) // 失败原因摘要（模板渲染/通道异常）
+  sentAt   DateTime?         @map("sent_at") @db.DateTime(3) // 投递成功时间；失败为 null
+
+  @@index([tenantId, createdAt])
+  @@index([channel, status])
+  @@index([templateKey])
+  @@map("sys_message_send_log")
+}
+
+/// 用户 MFA。每用户至多一行；密钥与恢复码均**不落明文**（ADR-013 D8）。
+/// secretCipher 为 AES-256-GCM 密文（含 iv/tag），密钥来自 env；recoveryCodes 为 SHA-256 摘要数组。
+model SysUserMfa {
+  id        BigInt    @id
+  createdAt DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.DateTime(3)
+
+  userId   BigInt  @unique @map("user_id") // 一用户一 MFA 配置
+  tenantId BigInt  @map("tenant_id")
+
+  secretCipher  String    @map("secret_cipher") @db.VarChar(500) // AES-256-GCM 密文（base64）
+  recoveryCodes Json      @map("recovery_codes") // [{ hash: string, usedAt: DateTime? }]，摘要+使用标记
+  enabledAt     DateTime? @map("enabled_at") @db.DateTime(3) // 绑定完成时间；绑定中（未验证首码）为 null
+
+  @@index([tenantId])
+  @@map("sys_user_mfa")
 }
 
 /// 通知公告。广播型：无逐用户已读记录（ADR-013 D2）。
@@ -533,4 +597,20 @@ enum NoticeStatus {
   DRAFT     @map("draft")
   PUBLISHED @map("published")
   CLOSED    @map("closed")
+}
+
+enum MessageTemplateChannel {
+  INNER @map("inner") // 站内信
+  EMAIL @map("email")
+  SMS   @map("sms")
+}
+
+enum MessageTemplateStatus {
+  ACTIVE   @map("active")
+  DISABLED @map("disabled")
+}
+
+enum MessageSendStatus {
+  SUCCESS @map("success")
+  FAILURE @map("failure")
 }

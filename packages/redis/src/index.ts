@@ -12,6 +12,7 @@ export { CacheService } from './cache.service.js';
 export { REDIS_CLIENT } from './cache.tokens.js';
 export { HashCacheService } from './hash-cache.service.js';
 export { hashCacheToken } from './hash-token.js';
+export { PubSubService } from './pub-sub.service.js';
 export { withRedis } from './redis-fallback.js';
 export { RedisLockService } from './redis-lock.service.js';
 export { RedisCacheModule } from './redis.module.js';

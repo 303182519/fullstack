@@ -95,3 +95,43 @@ export interface RefreshTokenPayload {
   sid: string;
   typ: 'refresh';
 }
+
+/**
+ * MFA 待验令牌载荷（P3b，ADR-013 D8）。
+ *
+ * 密码校验通过后、MFA 二次验证通过前的中间态凭证；
+ * 有效期短（默认 5 分钟）+ jti 一次性消费（Redis 标记，防重放）。
+ *
+ * 该令牌**仅可调用 `/auth/mfa/verify`**——JwtAuthGuard 的 `typ === 'access'`
+ * 校验会拒绝它访问任何业务接口；`/auth/mfa/verify` 为 @Public 端点，
+ * 在控制器内显式校验签名、typ 与 jti。
+ */
+export interface MfaPendingTokenPayload {
+  /** 用户 ID（字符串形式的雪花 ID） */
+  sub: string;
+  /** 租户 ID */
+  tid: string;
+  /** 用户名（仅用于 MFA 通过后建会话，不展示） */
+  un: string;
+  /** 是否平台超管（仅用于 MFA 通过后建会话） */
+  sup: boolean;
+  /** 一次性消费 ID（UUID），Redis 中存在即未消费 */
+  jti: string;
+  /** 令牌类型标记，恒为 'mfa-pending' */
+  typ: 'mfa-pending';
+}
+
+/**
+ * 登录返回：密码校验通过后的两种可能。
+ *
+ * - `IssuedTokens`：无需 MFA，直接签发正式令牌；
+ * - `MfaPendingResult`：需要 MFA 二次验证，仅签发 pendingToken。
+ */
+export interface MfaPendingResult {
+  mfaRequired: true;
+  pendingToken: string;
+  /** pendingToken 有效期（秒） */
+  expiresIn: number;
+}
+
+export type LoginResult = IssuedTokens | MfaPendingResult;

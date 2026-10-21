@@ -16,10 +16,16 @@ import { DeptModule } from '@/modules/dept/dept.module.js';
 import { DictModule } from '@/modules/dict/dict.module.js';
 import { FileModule } from '@/modules/file/file.module.js';
 import { MenuModule } from '@/modules/menu/menu.module.js';
+import { MessageTemplateModule } from '@/modules/message-template/message-template.module.js';
+import { MessageModule } from '@/modules/message/message.module.js';
+import { MfaModule } from '@/modules/mfa/mfa.module.js';
 import { MonitorModule } from '@/modules/monitor/monitor.module.js';
+import { NoticeModule } from '@/modules/notice/notice.module.js';
+import { RealtimeModule } from '@/modules/realtime/realtime.module.js';
 import { RoleModule } from '@/modules/role/role.module.js';
 import { PackageModule } from '@/modules/tenant-package/package.module.js';
 import { TenantModule } from '@/modules/tenant/tenant.module.js';
+import { UserMessageModule } from '@/modules/user-message/user-message.module.js';
 import { UserModule } from '@/modules/user/user.module.js';
 import { AuditModule } from '@/shared/audit/audit.module.js';
 import { AuthCoreModule } from '@/shared/auth/auth-core.module.js';
@@ -29,6 +35,7 @@ import { PrismaService } from '@/shared/database/prisma.service.js';
 import { ImageProcessorModule } from '@/shared/image/image-processor.module.js';
 import { LoggerModule } from '@/shared/logger/logger.module.js';
 import { PermissionModule } from '@/shared/permission/permission.module.js';
+import { QueueModule } from '@/shared/queue/queue.module.js';
 import { ScopeModule } from '@/shared/scope/scope.module.js';
 import { StorageHealthIndicator } from '@/shared/storage/storage.health.js';
 import { StorageModule } from '@/shared/storage/storage.module.js';
@@ -78,6 +85,13 @@ import { AppService } from './app.service.js';
     ConfigModule,
     MonitorModule,
     FileModule,
+    MessageModule,
+    MessageTemplateModule,
+    MfaModule,
+    NoticeModule,
+    UserMessageModule,
+    RealtimeModule,
+    QueueModule,
     // 共享健康检查底座（@fedstack/health，见 ADR-004）：
     // Redis 检查内置；本 app 装配数据库 + 存储就绪检查
     HealthModule.forRootAsync({
