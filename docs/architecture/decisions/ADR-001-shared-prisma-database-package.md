@@ -5,6 +5,8 @@
 - 影响范围：`packages/database`（新增）、`apps/api`、`apps/admin-api`、`turbo.json`、`pnpm-workspace.yaml`
 - 相关规范：`AGENTS.md`、`.rules/database/AGENTS.md`、`.rules/backend/AGENTS.md`
 
+> **2026-10-22 规范路径迁移注记（ADR-014）**：本 ADR 引用的 `.rules/*` 规范文件已迁至 `docs/rules/*`；根 `AGENTS.md` 已瘦身为「宪法 + 规范路由索引」并重新编号，正文中的 `AGENTS.md §N` 章节号不再对应。按 ADR 不可变原则，正文保持原貌，请以根 `AGENTS.md` §10 路由索引对新位置。详见 `ADR-014`。
+
 ---
 
 ## 1. 背景（事实依据）

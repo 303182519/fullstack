@@ -5,6 +5,8 @@
 - 影响范围：`packages/redis`（新增 `PubSubService`，修订 `ADR-003`）、`apps/admin-api/src/modules/message/`（新增）、`apps/admin-api/src/modules/notice/`（新增）、`apps/admin-api/src/modules/realtime/`（新增）、`apps/admin-api/src/modules/mfa/`（新增）、`apps/admin-api/src/modules/auth/`（登录二步改造）、`apps/admin-api/src/shared/audit/`（改队列投递）、`packages/database/prisma/schema.prisma`（新增 `SysUserMessage` / `SysNotice` / `SysMessageTemplate` / `SysMessageSendLog` / `SysUserMfa`）、`packages/auth-core`（新增权限码）
 - 相关规范：`AGENTS.md`、`.rules/backend/AGENTS.md`；前置文档：`ADR-003`（共享缓存基础设施）、`ADR-007`（认证与会话）、`ADR-009`（遮蔽语义与审计）、`ADR-010`（权限码注册表）、`ADR-012`（文件存储）；路线图 `docs/plans/nest-admin-soybean-migration.md` §6
 
+> **2026-10-22 规范路径迁移注记（ADR-014）**：本 ADR 引用的 `.rules/*` 规范文件已迁至 `docs/rules/*`；根 `AGENTS.md` 已瘦身为「宪法 + 规范路由索引」并重新编号，正文中的 `AGENTS.md §N` 章节号不再对应（如 §13 数据库边界现位于 `docs/rules/stack/database.md` §2、§14 Redis 边界与 §15 凭据纪律现位于 `docs/rules/cross-cutting/`）。按 ADR 不可变原则，正文保持原貌，请以根 `AGENTS.md` §10 路由索引对新位置。详见 `ADR-014`。
+
 ---
 
 ## 1. 背景（事实依据）

@@ -5,6 +5,8 @@
 - 影响范围：`packages/auth-core`（新增）、`packages/database/src/seed.ts`、`packages/database/package.json`、`apps/admin-api/package.json`、`apps/admin-api/src/modules/`（user/role/dept/dict/config/monitor 控制器）、`apps/admin-api/src/common/decorators/require-permission.decorator.ts`；删除 `apps/admin-api/src/common/constants/permissions.ts`
 - 相关规范：`AGENTS.md`、`.rules/backend/AGENTS.md`、`.rules/database/AGENTS.md`；前置文档：`ADR-001`（共享持久化层）、`ADR-003`（抽包先例）、`ADR-008`（权限模型）、`ADR-009`（遮蔽与审计）、路线图 `docs/plans/nest-admin-soybean-migration.md`
 
+> **2026-10-22 规范路径迁移注记（ADR-014）**：本 ADR 引用的 `.rules/*` 规范文件已迁至 `docs/rules/*`；根 `AGENTS.md` 已瘦身为「宪法 + 规范路由索引」并重新编号，正文中的 `AGENTS.md §N` 章节号不再对应。按 ADR 不可变原则，正文保持原貌，请以根 `AGENTS.md` §10 路由索引对新位置。详见 `ADR-014`。
+
 ---
 
 ## 1. 背景（事实依据）

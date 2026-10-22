@@ -7,6 +7,8 @@
 
 > **2026-10-15 迁移注记（ADR-003）**：本 ADR 中的 `cache.module.ts`、`cache.service.ts`、`hash-cache.service.ts` 等通用基础设施已迁入 `packages/redis/src/`（同名文件），D2 失效扫描、D3 单 key 约束、D4 集群改造点随之收敛到包内；`login-attempt.service.ts` 与 `cache.constants.ts` 作为 admin-api 业务留在原目录。本 ADR 全部决策对包继续有效。
 
+> **2026-10-22 规范路径迁移注记（ADR-014）**：本 ADR 引用的 `.rules/*` 规范文件已迁至 `docs/rules/*`；根 `AGENTS.md` 已瘦身为「宪法 + 规范路由索引」并重新编号，正文中的 `AGENTS.md §N` 章节号不再对应。按 ADR 不可变原则，正文保持原貌，请以根 `AGENTS.md` §10 路由索引对新位置。详见 `ADR-014`。
+
 ---
 
 ## 1. 背景（事实依据）

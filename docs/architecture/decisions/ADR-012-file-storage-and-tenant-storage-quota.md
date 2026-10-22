@@ -5,6 +5,8 @@
 - 影响范围：`apps/admin-api/src/shared/storage/`（新增）、`apps/admin-api/src/shared/image/`（新增）、`apps/admin-api/src/modules/file/`（新增）、`apps/admin-api/src/config/env.validation.ts`、`packages/database/prisma/schema.prisma`（新增 `SysFile`）、`packages/auth-core`（新增权限码）、`packages/database/src/seed.ts`（菜单同步）
 - 相关规范：`AGENTS.md`、`.rules/backend/AGENTS.md`、`.rules/database/AGENTS.md`；前置文档：`ADR-005`（多租户隔离）、`ADR-006`（schema 设计纪律）、`ADR-009`（审计底座）、`ADR-010`（权限码注册表）；路线图 `docs/plans/nest-admin-soybean-migration.md` §6
 
+> **2026-10-22 规范路径迁移注记（ADR-014）**：本 ADR 引用的 `.rules/*` 规范文件已迁至 `docs/rules/*`；根 `AGENTS.md` 已瘦身为「宪法 + 规范路由索引」并重新编号，正文中的 `AGENTS.md §N` 章节号不再对应（如 §15 凭据纪律现位于 `docs/rules/cross-cutting/security-and-authorization.md`、§10「不制造第二真相源」现位于 `docs/rules/stack/frontend.md` §2）。按 ADR 不可变原则，正文保持原貌，请以根 `AGENTS.md` §10 路由索引对新位置。详见 `ADR-014`。
+
 ---
 
 ## 1. 背景（事实依据）

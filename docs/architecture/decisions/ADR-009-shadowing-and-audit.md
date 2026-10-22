@@ -4,6 +4,8 @@
 - 日期：2026-10-18（P2 实施）
 - 影响范围：`apps/admin-api/src/modules/`（dict/config/monitor）、`apps/admin-api/src/shared/audit/`、`apps/admin-api/src/shared/scope/`、`packages/auth-core`（功能权限码注册表，2026-10-19 自 `apps/admin-api/src/common/constants/permissions.ts` 迁入，见 ADR-010）、`packages/database/prisma/schema.prisma`、`packages/database/src/seed.ts`
 - 相关规范：前置文档 `ADR-005`（多租户）、`ADR-006`（schema 重设计）、`ADR-007`（认证与会话）、`ADR-008`（权限模型）；迁移路线图 `docs/plans/nest-admin-soybean-migration.md`
+
+> **2026-10-22 规范章节号迁移注记（ADR-014）**：根 `AGENTS.md` 已瘦身为「宪法 + 规范路由索引」并重新编号，本 ADR 正文中的 `AGENTS.md §13` / `§14` / `§15` 不再对应（数据库边界现位于 `docs/rules/stack/database.md` §2；Redis 边界现位于 `docs/rules/cross-cutting/failure-and-resilience.md` §2；凭据与不信任客户端纪律现位于 `docs/rules/cross-cutting/security-and-authorization.md`）。按 ADR 不可变原则，正文保持原貌，请以根 `AGENTS.md` §10 路由索引对新位置。详见 `ADR-014`。
 - 契约快照：`docs/plans/contracts/phase-2.json`
 
 ---

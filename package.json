@@ -15,7 +15,8 @@
     "test": "turbo run test",
     "clean": "turbo run clean",
     "lint": "eslint . && turbo run lint",
-    "lint:fix": "eslint . --fix && turbo run lint -- --fix"
+    "lint:fix": "eslint . --fix && turbo run lint -- --fix",
+    "docs:check": "node scripts/check-rules-index.mjs"
   },
   "devDependencies": {
     "@fedstack/eslint-config": "workspace:*",

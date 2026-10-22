@@ -4,6 +4,8 @@
 - 日期：2026-10-16（P1 实施后修订：D2/D3/D4 落地方式、§5 风险、§6 验证）
 - 影响范围：`apps/admin-api/src/modules/`（menu/dept/role/user/tenant-package）、`apps/admin-api/src/shared/permission/`、`packages/database/prisma/schema.prisma`、`apps/admin-api/src/common/decorators/`、`apps/admin-api/src/common/guards/`
 - 相关规范：`AGENTS.md`、`.rules/backend/AGENTS.md`；前置文档：`ADR-005`（多租户方案）、`ADR-006`（schema 重设计）、`ADR-007`（认证策略）、迁移路线图 `docs/plans/nest-admin-soybean-migration.md`
+
+> **2026-10-22 规范路径迁移注记（ADR-014）**：本 ADR 引用的 `.rules/*` 规范文件已迁至 `docs/rules/*`；根 `AGENTS.md` 已瘦身为「宪法 + 规范路由索引」并重新编号，正文中的 `AGENTS.md §N` 章节号不再对应。按 ADR 不可变原则，正文保持原貌，请以根 `AGENTS.md` §10 路由索引对新位置。详见 `ADR-014`。
 - 契约快照：`docs/plans/contracts/phase-1.json`
 
 ---
