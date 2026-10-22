@@ -207,11 +207,18 @@ AI 代理**禁止输出内部思考推理链路**。
 | `docs/rules/cross-cutting/api-contract-and-dto.md` | 定义或修改接口契约、DTO、前后端字段边界 |
 | `docs/rules/cross-cutting/testing-and-verification.md` | 写测试、判定校验范围、评估风险等级 |
 | `docs/rules/cross-cutting/git-and-change-management.md` | 提交前、引入依赖、需要写 ADR |
-| `docs/rules/protocols/bug.md` | BUG 排查任务 |
-| `docs/rules/protocols/feature.md` | 新功能开发任务 |
-| `docs/rules/protocols/refactor.md` | 重构任务 |
+| `docs/rules/protocols/bug.md` | BUG 排查任务（先触发 skill `diagnosing-bugs`，本协议只补仓库特有约束） |
+| `docs/rules/protocols/feature.md` | 新功能开发任务（先触发 skill `implement`，本协议只补仓库特有约束） |
+| `docs/rules/protocols/refactor.md` | 重构任务（先触发 skill `codebase-design`，本协议只补仓库特有约束） |
+
+协议类文件是**增补层**，不是完整工作流：先按对应 skill 走通用流程，再读协议补齐本仓库的技术栈与架构约束。
 
 ## 11. Agent skills
+
+### Installed skills
+
+已安装 skill 位于 `.agents/skills/`（清单与来源见根 `skills-lock.json`）。不确定该用哪一个时，先触发 skill `ask-matt` 做路由。
+本文档中提到的 skill 名由 `pnpm docs:check` 校验是否存在。
 
 ### Issue tracker
 

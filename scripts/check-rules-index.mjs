@@ -1,6 +1,7 @@
 // 校验根 AGENTS.md 的规范路由索引：
 // 1. 索引中引用的每个规范文件都必须存在（防死链）；
-// 2. docs/rules/ 下的每个规范文件都必须被索引引用（防孤儿规范）。
+// 2. docs/rules/ 下的每个规范文件都必须被索引引用（防孤儿规范）；
+// 3. 规范文档中写出的 skill 名必须在 .agents/skills/ 下真实存在（防指向已卸载 / 改名的 skill）。
 // 零依赖，仅使用 node: 内置模块。
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative, resolve, sep } from 'node:path';
@@ -10,6 +11,7 @@ import { fileURLToPath } from 'node:url';
 const root = resolve(fileURLToPath(new URL('../', import.meta.url)));
 const indexPath = join(root, 'AGENTS.md');
 const rulesRoot = join(root, 'docs', 'rules');
+const skillsRoot = join(root, '.agents', 'skills');
 
 const indexText = readFileSync(indexPath, 'utf8');
 
@@ -51,6 +53,30 @@ if (existsSync(rulesRoot)) {
   }
 }
 
+// 3. 规范文档中写出的 skill 名必须真实存在。
+// 约定写法：skill `name` / skills `name`（大小写无关）。
+const skillNames = new Set();
+const scannedDocs = [
+  indexPath,
+  ...(existsSync(rulesRoot) ? collectMarkdown(rulesRoot).map((rel) => join(root, rel)) : []),
+];
+for (const file of scannedDocs) {
+  const text = readFileSync(file, 'utf8');
+  for (const match of text.matchAll(/skills?\s+`([a-z0-9][a-z0-9-]*)`/gi)) {
+    skillNames.add(match[1].toLowerCase());
+  }
+}
+
+if (skillNames.size > 0 && !existsSync(skillsRoot)) {
+  problems.push(`规范文档引用了 skill，但未找到安装目录：.agents/skills/`);
+}
+
+for (const name of [...skillNames].sort()) {
+  if (existsSync(skillsRoot) && !existsSync(join(skillsRoot, name, 'SKILL.md'))) {
+    problems.push(`文档引用的 skill 不存在：${name}（期望 .agents/skills/${name}/SKILL.md）`);
+  }
+}
+
 if (problems.length > 0) {
   console.error('docs:check 失败：');
   for (const problem of problems) {
@@ -59,4 +85,6 @@ if (problems.length > 0) {
   process.exit(1);
 }
 
-console.log(`docs:check 通过：索引 ${referenced.size} 个规范文件，无死链、无孤儿。`);
+console.log(
+  `docs:check 通过：索引 ${referenced.size} 个规范文件（无死链、无孤儿），校验 ${skillNames.size} 个 skill 名。`,
+);

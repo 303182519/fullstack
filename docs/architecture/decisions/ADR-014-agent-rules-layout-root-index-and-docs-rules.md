@@ -100,3 +100,38 @@
 3. `node scripts/check-rules-index.mjs`：退出码 0，且报告「无死链、无孤儿」。
 4. 冒烟演练：让 agent 只读执行「修改 `packages/database` 的 schema」，确认它只加载根 + `docs/rules/stack/database.md`。
 5. **不把 `pnpm lint` 变绿作为验收标准**（基线已坏）。
+
+## 8. 后续变更（2026-10-22）：协议层瘦身为「仓库特有约束层」，与 agent skills 双层衔接
+
+布局不变（仍为 D1 三层），只改内容。
+
+### D8 协议层定位变更
+
+`docs/rules/protocols/{bug,feature,refactor}.md` 由「完整工作流」降级为**增补层**：通用推理流程交给已安装的 agent skills（`diagnosing-bugs` / `implement` / `codebase-design`，详见 §8 末说明），协议只保留两类内容——
+
+- 协议骨架：顺序性要求（先定义需求与范围、先复现再假设、先定不变约束再动手）；
+- 本仓库特有约束：状态归属判定、数据层影响评估、链路边界、架构红线、回归复核面。
+
+每份由 ~120 行降至 ~40 行。
+
+### D9 重复内容改为指针
+
+协议中已在 `AGENTS.md` 或 `docs/rules/cross-cutting/*` 存在事实源的章节（现有架构调研、API 契约、失败场景、验证范围、最小安全变更、报告格式）改为指针表，不再复制——D4 原则的延续。
+
+### D10 路由表显式声明 skill 依赖
+
+- 根 `AGENTS.md` §10 的三行协议路由写明「先触发 skill X，本协议只补仓库特有约束」。
+- §11 新增 `Installed skills` 小节：已装 skill 位于 `.agents/skills/`，清单与来源见根 `skills-lock.json`，不确定路由时先触发 `ask-matt`。
+
+### D11 `docs:check` 增加 skill 名校验
+
+`scripts/check-rules-index.mjs` 增加第三条检查：扫描 `AGENTS.md` 与 `docs/rules/**/*.md` 中形如 ``skill `name` `` 的引用，校验 `.agents/skills/<name>/SKILL.md` 存在。
+**只做单向校验**（已安装但文档未提及的不报）：41 个已装 skill 中绝大多数不应出现在规范文档里，反向校验会产生永久噪音。
+
+### 变更原因
+
+仓库已安装 31 个 mattpocock skills（`.agents/skills/`，来源见 `skills-lock.json`），但 `AGENTS.md` §11 与三份协议**均未提及**，两套工作流互不认识：agent 可能只走 skill 而漏掉 Redis / 鉴权 / 并发等仓库特有检查，也可能只读协议而不知有更强的通用流程。
+
+### 未验证项
+
+本环境无法启动 shell / node，`node scripts/check-rules-index.mjs` **未实机执行**（与 §5 既有遗留一致），新增的 skill 名正则与路径仅人工核对。
