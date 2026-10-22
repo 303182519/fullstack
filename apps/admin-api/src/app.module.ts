@@ -21,7 +21,6 @@ import { MessageModule } from '@/modules/message/message.module.js';
 import { MfaModule } from '@/modules/mfa/mfa.module.js';
 import { MonitorModule } from '@/modules/monitor/monitor.module.js';
 import { NoticeModule } from '@/modules/notice/notice.module.js';
-import { RealtimeModule } from '@/modules/realtime/realtime.module.js';
 import { RoleModule } from '@/modules/role/role.module.js';
 import { PackageModule } from '@/modules/tenant-package/package.module.js';
 import { TenantModule } from '@/modules/tenant/tenant.module.js';
@@ -37,6 +36,7 @@ import { JobsModule } from '@/shared/jobs/jobs.module.js';
 import { LoggerModule } from '@/shared/logger/logger.module.js';
 import { PermissionModule } from '@/shared/permission/permission.module.js';
 import { ScopeModule } from '@/shared/scope/scope.module.js';
+import { SseModule } from '@/shared/sse/sse.module.js';
 import { StorageHealthIndicator } from '@/shared/storage/storage.health.js';
 import { StorageModule } from '@/shared/storage/storage.module.js';
 import { ThrottlerConfigModule } from '@/shared/throttler/throttler.module.js';
@@ -58,6 +58,9 @@ import { AppService } from './app.service.js';
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => getConfig(configService).redis,
     }),
+    // SSE 流式基础设施：Redis Stream per-entity 事件发布 / 回放 / 尾读。
+    // 供 JobsController（/jobs/:id/events）和未来 Agent 模块复用。
+    SseModule.forRoot(),
     // 应用层缓存业务（登录锁定策略、业务 key 工厂）
     CachingModule,
     // 文件存储抽象（ADR-012）：单一活动驱动由 STORAGE_DRIVER 选定；@Global
@@ -90,7 +93,6 @@ import { AppService } from './app.service.js';
     MfaModule,
     NoticeModule,
     UserMessageModule,
-    RealtimeModule,
     JobsModule,
     // 共享健康检查底座（@fedstack/health，见 ADR-004）：
     // Redis 检查内置；本 app 装配数据库 + 存储就绪检查

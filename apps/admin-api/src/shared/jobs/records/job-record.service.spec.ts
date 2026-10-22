@@ -1,5 +1,6 @@
 import type { SysJobRunModel } from '@fedstack/database';
-import type { KeyPrefixer, PubSubService } from '@fedstack/redis';
+import type { KeyPrefixer } from '@fedstack/redis';
+import type { StreamEventsService } from '@/shared/sse/stream-events.service.js';
 import { JobRunStatus, JobTriggerType } from '@fedstack/database';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { PrismaService } from '@/shared/database/prisma.service.js';
@@ -41,22 +42,27 @@ function makeService() {
       create: vi.fn(),
       update: vi.fn(),
       updateMany: vi.fn(),
-      findUnique: vi.fn(),
+      // 默认返回完整行（toDomain 需要所有字段），个别测试按需 override
+      findUnique: vi.fn().mockImplementation(({ where }: { where: { id: bigint } }) =>
+        Promise.resolve(makeRow({ id: where.id })),
+      ),
       findUniqueOrThrow: vi.fn(),
       findMany: vi.fn(),
       count: vi.fn(),
     },
     $transaction: vi.fn(),
   };
-  const pubSub = { publish: vi.fn(async (_channel: string, _message: string) => true) };
   // 模拟真实 KeyPrefixer 行为（拼接 app 前缀），让频道断言贴近生产形状
   const prefixer = { prefix: vi.fn((key: string) => `admin-api:${key}`) };
+  const streamEvents = {
+    publish: vi.fn(async () => null as string | null),
+  };
   const service = new JobRecordService(
     prisma as unknown as PrismaService,
-    pubSub as unknown as PubSubService,
     prefixer as unknown as KeyPrefixer,
+    streamEvents as unknown as StreamEventsService,
   );
-  return { prisma, pubSub, prefixer, service };
+  return { prisma, prefixer, streamEvents, service };
 }
 
 describe('jobRecordService.markActive（并发安全守卫）', () => {
@@ -306,16 +312,16 @@ describe('jobRecordService.createQueued（初始状态分支）', () => {
   });
 });
 
-describe('jobRecordService 状态事件发布（ADR-013 D5，best-effort）', () => {
-  it('createQueued 后向本租户频道发布「有变化」提醒（仅 id + status）', async () => {
-    const { prisma, pubSub, service } = makeService();
+describe('jobRecordService 状态事件发布（Redis Stream per-entity，best-effort）', () => {
+  it('createQueued 后向 per-entity Stream 发布 QUEUED 事件（带完整 IJobRunView 快照）', async () => {
+    const { prisma, streamEvents, service } = makeService();
     prisma.sysJobRun.create.mockImplementation(({ data }) => Promise.resolve(makeRow({
       id: data.id,
       tenantId: data.tenantId ?? 10n,
       status: data.status,
     })));
 
-    const view = await service.createQueued({
+    await service.createQueued({
       name: 'message-send',
       queueName: 'default',
       maxAttempts: 1,
@@ -324,84 +330,82 @@ describe('jobRecordService 状态事件发布（ADR-013 D5，best-effort）', ()
     });
 
     // fire-and-forget：等待 promise 链执行
-    await vi.waitFor(() => expect(pubSub.publish).toHaveBeenCalled());
-    const [channel, raw] = pubSub.publish.mock.calls[0] as [string, string];
-    expect(channel).toBe('admin-api:rt:job:10');
-    expect(JSON.parse(raw)).toEqual({
-      type: 'job.status',
-      data: { id: view.id, status: JobRunStatus.QUEUED },
-    });
+    await vi.waitFor(() => expect(streamEvents.publish).toHaveBeenCalled());
+    // StreamEventsService.publish('job', jobId, { event, data })
+    expect(streamEvents.publish).toHaveBeenCalledWith(
+      'job',
+      expect.any(String),
+      expect.objectContaining({
+        event: expect.any(String),
+        data: expect.objectContaining({
+          id: expect.any(String),
+          status: JobRunStatus.QUEUED,
+        }),
+      }),
+    );
   });
 
-  it('平台级任务（tenantId 为空）发布到 platform 频道', async () => {
-    const { prisma, pubSub, service } = makeService();
-    prisma.sysJobRun.create.mockImplementation(({ data }) => Promise.resolve(makeRow({
-      id: data.id,
-      tenantId: null,
-      status: data.status,
-    })));
-
-    await service.createQueued({
-      name: 'message-send',
-      queueName: 'default',
-      maxAttempts: 1,
-      triggerType: JobTriggerType.SYSTEM,
-    });
-
-    await vi.waitFor(() => expect(pubSub.publish).toHaveBeenCalled());
-    expect(pubSub.publish.mock.calls[0]?.[0]).toBe('admin-api:rt:job:platform');
-  });
-
-  it('markCompleted 条件更新成功才发布事件；count=0（终态被抢占）不发布', async () => {
-    const { prisma, pubSub, service } = makeService();
+  it('markCompleted 条件更新成功才发布 Stream 事件；count=0（终态被抢占）不发布', async () => {
+    const { prisma, streamEvents, service } = makeService();
     prisma.sysJobRun.updateMany.mockResolvedValue({ count: 1 });
-    // 事件方法内补查 tenantId
-    prisma.sysJobRun.findUnique.mockResolvedValue({ tenantId: 10n });
+    // 模拟 updateMany 后 findUnique 拿到已更新的行（COMPLETED）
+    prisma.sysJobRun.findUnique.mockResolvedValue(makeRow({
+      id: 1234567890123456789n,
+      status: JobRunStatus.COMPLETED,
+      progress: 100,
+      finishedAt: new Date('2026-10-21T00:02:00Z'),
+    }));
 
     await service.markCompleted('1234567890123456789', { ok: true }, 1);
-    await vi.waitFor(() => expect(pubSub.publish).toHaveBeenCalledWith(
-      'admin-api:rt:job:10',
-      JSON.stringify({
-        type: 'job.status',
-        data: { id: '1234567890123456789', status: JobRunStatus.COMPLETED },
-      }),
-    ));
+    // 等 fire-and-forget 发布完成
+    await vi.waitFor(() => expect(streamEvents.publish).toHaveBeenCalled());
+    expect(streamEvents.publish).toHaveBeenCalledTimes(1);
+    const [type, id, envelope] = streamEvents.publish.mock.calls[0] as unknown as [string, string, { event: string; data: { status: JobRunStatus } }];
+    expect(type).toBe('job');
+    expect(id).toBe('1234567890123456789');
+    expect(envelope.event).toBe('job.completed');
+    expect(envelope.data.status).toBe(JobRunStatus.COMPLETED);
 
     const second = makeService();
     second.prisma.sysJobRun.updateMany.mockResolvedValue({ count: 0 });
     await second.service.markCompleted('1234567890123456789', null, 1);
-    // 给潜在的 fire-and-forget 一个 microtask 窗口
+    // 给 fire-and-forget 一个 microtask 窗口
     await Promise.resolve();
-    expect(second.pubSub.publish).not.toHaveBeenCalled();
+    expect(second.streamEvents.publish).not.toHaveBeenCalled();
   });
 
-  it('markCancelledIfCancellable 取消成功发布 cancelled 事件（租户来自行数据）', async () => {
-    const { prisma, pubSub, service } = makeService();
+  it('markCancelledIfCancellable 取消成功发布 CANCELLED 事件', async () => {
+    const { prisma, streamEvents, service } = makeService();
     prisma.sysJobRun.updateMany.mockResolvedValue({ count: 1 });
     prisma.sysJobRun.findUniqueOrThrow.mockResolvedValue(makeRow({ tenantId: 42n }));
+    // 模拟 updateMany 后 findUnique 拿到已取消的行（CANCELLED）
+    prisma.sysJobRun.findUnique.mockResolvedValue(makeRow({
+      id: 1234567890123456789n,
+      tenantId: 42n,
+      status: JobRunStatus.CANCELLED,
+    }));
 
     const row = await service.markCancelledIfCancellable('1234567890123456789');
 
     expect(row).not.toBeNull();
-    await vi.waitFor(() => expect(pubSub.publish).toHaveBeenCalledWith(
-      'admin-api:rt:job:42',
-      JSON.stringify({
-        type: 'job.status',
-        data: { id: '1234567890123456789', status: JobRunStatus.CANCELLED },
-      }),
-    ));
+    await vi.waitFor(() => expect(streamEvents.publish).toHaveBeenCalled());
+    expect(streamEvents.publish).toHaveBeenCalledTimes(1);
+    const [type, id, envelope] = streamEvents.publish.mock.calls[0] as unknown as [string, string, { event: string; data: { status: JobRunStatus } }];
+    expect(type).toBe('job');
+    expect(id).toBe('1234567890123456789');
+    expect(envelope.event).toBe('job.cancelled');
+    expect(envelope.data.status).toBe(JobRunStatus.CANCELLED);
   });
 
-  it('publish 返回 false（Redis 降级）不影响状态机结果', async () => {
-    const { prisma, pubSub, service } = makeService();
-    pubSub.publish.mockResolvedValue(false);
+  it('publish 失败（Stream 降级）不影响状态机结果', async () => {
+    const { prisma, streamEvents, service } = makeService();
+    streamEvents.publish.mockRejectedValue(new Error('Redis down'));
     prisma.sysJobRun.updateMany.mockResolvedValue({ count: 1 });
-    prisma.sysJobRun.findUnique.mockResolvedValue({ startedAt: null, tenantId: 10n });
 
     const ok = await service.markActive('1234567890123456789');
 
     expect(ok).toBe(true);
     // 发布降级路径执行完毕（warn 日志），主流程返回值不受干扰
-    await vi.waitFor(() => expect(pubSub.publish).toHaveBeenCalled());
+    await vi.waitFor(() => expect(streamEvents.publish).toHaveBeenCalled());
   });
 });

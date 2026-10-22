@@ -133,10 +133,4 @@ export const defaultConfig = registerAs('default', (): AppConfig => ({
     // AES-256-GCM 主密钥（hex，64 字符）；未配置时 MFA 模块降级
     secretEncKey: process.env.MFA_SECRET_ENC_KEY,
   },
-  realtime: {
-    // 单进程并发 SSE 连接上限；超限返回 503 让客户端稍后重连
-    maxConnections: Number(process.env.REALTIME_MAX_CONNECTIONS) || 1000,
-    // 心跳间隔：防止 nginx / 云 LB 空闲断连（常见空闲超时 60s）
-    heartbeatMs: Number(process.env.REALTIME_HEARTBEAT_MS) || 30_000,
-  },
 }));

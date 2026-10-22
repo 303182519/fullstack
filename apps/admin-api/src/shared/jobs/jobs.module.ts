@@ -1,5 +1,6 @@
 import { Global, Module } from '@nestjs/common';
 import { ScopeModule } from '@/shared/scope/scope.module.js';
+import { SseModule } from '@/shared/sse/sse.module.js';
 import { JobsController } from './jobs.controller.js';
 import { JobQueueModule } from './queue/job-queue.module.js';
 import { JobProcessor } from './queue/job.processor.js';
@@ -38,6 +39,8 @@ import { JobService } from './services/job.service.js';
     JobQueueModule,
     // 租户作用域解析（ADR-009）：平台超管可代管，租户管理员强制本租户
     ScopeModule,
+    // SSE 流式基础设施：StreamEventsService 供 jobs/:id/events per-entity 端点复用
+    SseModule.forRoot(),
   ],
   controllers: [JobsController],
   providers: [

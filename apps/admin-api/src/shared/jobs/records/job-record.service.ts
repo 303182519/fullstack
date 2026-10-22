@@ -9,12 +9,15 @@ import type {
   IJobRunView,
   IListJobsQuery,
 } from '../types/job.types.js';
+import type { SseEnvelope } from '@/shared/sse/sse.util.js';
 import { JobRunStatus, Prisma } from '@fedstack/database';
-import { KeyPrefixer, PubSubService } from '@fedstack/redis';
+import { KeyPrefixer } from '@fedstack/redis';
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '@/shared/database/prisma.service.js';
+import { StreamEventsService } from '@/shared/sse/stream-events.service.js';
 import { generateSnowflakeId } from '@/shared/utils/snowflake.js';
 import {
+  JOB_SSE_EVENT,
   JOB_TERMINAL_STATUSES,
 } from '../constants/job.constants.js';
 import { jobErrors } from '../errors.js';
@@ -43,8 +46,8 @@ export class JobRecordService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly pubSub: PubSubService,
     private readonly prefixer: KeyPrefixer,
+    private readonly streamEvents: StreamEventsService,
   ) {}
 
   // ── 映射：DB 行 → 领域视图 ────────────────────────────────────
@@ -96,7 +99,7 @@ export class JobRecordService {
     });
     const view = this.toDomain(row);
     // 新任务出现（queued / delayed）：通知任务中心刷新列表
-    this.publishStatusEvent(view.id, view.status, view.tenantId);
+    this.publishStatusEvent(view.id, view.status);
     return view;
   }
 
@@ -115,10 +118,10 @@ export class JobRecordService {
   ): Promise<boolean> {
     const bigintId = BigInt(jobId);
 
-    // 先查 startedAt 是否已存在——重试场景不覆盖；tenantId 顺带供事件频道派生
+    // 先查 startedAt 是否已存在——重试场景不覆盖
     const existing = await this.prisma.sysJobRun.findUnique({
       where: { id: bigintId },
-      select: { startedAt: true, tenantId: true },
+      select: { startedAt: true },
     });
 
     const result = await this.prisma.sysJobRun.updateMany({
@@ -136,11 +139,7 @@ export class JobRecordService {
     });
 
     if (result.count > 0) {
-      this.publishStatusEvent(
-        jobId,
-        JobRunStatus.ACTIVE,
-        existing?.tenantId ? existing.tenantId.toString() : null,
-      );
+      this.publishStatusEvent(jobId, JobRunStatus.ACTIVE);
     }
     return result.count > 0;
   }
@@ -302,11 +301,7 @@ export class JobRecordService {
     const row = await this.prisma.sysJobRun.findUniqueOrThrow({
       where: { id: bigintId },
     });
-    this.publishStatusEvent(
-      jobId,
-      JobRunStatus.CANCELLED,
-      row.tenantId ? row.tenantId.toString() : null,
-    );
+    this.publishStatusEvent(jobId, JobRunStatus.CANCELLED);
     return row;
   }
 
@@ -451,40 +446,54 @@ export class JobRecordService {
   // ── 工具 ───────────────────────────────────────────────────────
 
   /**
-   * 发布状态变更事件（best-effort，ADR-013 D5）。
+   * 发布状态变更事件到 Redis Stream（per-entity，best-effort）。
    *
-   * 事件只带 id + status（「该任务状态变了」的提醒），不含 payload / result 等业务数据——
-   * 前端收到后走拉取接口对齐（DB 是权威真相源），同时把信息泄漏面压到最小。
+   * 供 JobsController GET /jobs/:id/events 端点消费：每条任务有专属 Stream key
+   * `{prefix}:rt:stream:job:{jobId}`，支持 Last-Event-ID 断线续传。
+   * Stream 自动 MAXLEN 1000 + EXPIRE 24h，防止 Redis 膨胀。
    *
    * fire-and-forget：不 await、不阻塞状态机；失败（Redis 不可用等）仅 warn。
+   * DB（SysJobRun）是权威真相源，推送是辅助——客户端重连后以 Stream 回放对齐。
    *
    * @param jobId 任务记录 ID（雪花字符串）
    * @param status 本次推进到的目标状态
-   * @param tenantId 任务所属租户。已知时传入（省一次查询）；
-   *                 传 `undefined` 时方法内补查（主键索引），查不到按 platform 频道发布。
+   * @param snapshot 完整领域视图。已知时传入（省一次查询）；
+   *                 不传时方法内补查（主键索引）。
    */
   private publishStatusEvent(
     jobId: string,
     status: JobRunStatusType,
-    tenantId?: string | null,
+    snapshot?: IJobRunView,
   ): void {
     void (async () => {
-      let tenant = tenantId;
-      if (tenant === undefined) {
+      let jobView = snapshot;
+      if (!jobView) {
         const row = await this.prisma.sysJobRun.findUnique({
           where: { id: BigInt(jobId) },
-          select: { tenantId: true },
         });
-        tenant = row?.tenantId ? row.tenantId.toString() : null;
+        if (!row) {
+          // 记录刚被清理（极少见），静默退出
+          return;
+        }
+        jobView = this.toDomain(row);
       }
-      const channel = this.prefixer.prefix(`rt:job:${tenant ?? 'platform'}`);
-      const message = JSON.stringify({ type: 'job.status', data: { id: jobId, status } });
-      const ok = await this.pubSub.publish(channel, message);
-      if (!ok)
-        this.logger.warn(`任务状态事件发布降级（Redis 不可用）: jobId=${jobId} status=${status}`);
+
+      const eventName = this.resolveSseEventName(status);
+      const envelope: SseEnvelope<IJobRunView> = { event: eventName, data: jobView };
+      await this.streamEvents.publish('job', jobId, envelope);
     })().catch((err: unknown) => {
-      this.logger.warn(`任务状态事件发布失败: jobId=${jobId} status=${status}`, err);
+      this.logger.warn(`任务 Stream 发布失败: jobId=${jobId} status=${status}`, err);
     });
+  }
+
+  /** JobRunStatus → SSE event name 映射 */
+  private resolveSseEventName(status: JobRunStatusType): string {
+    switch (status) {
+      case JobRunStatus.COMPLETED: return JOB_SSE_EVENT.COMPLETED;
+      case JobRunStatus.FAILED: return JOB_SSE_EVENT.FAILED;
+      case JobRunStatus.CANCELLED: return JOB_SSE_EVENT.CANCELLED;
+      default: return JOB_SSE_EVENT.UPDATED;
+    }
   }
 
   /**
