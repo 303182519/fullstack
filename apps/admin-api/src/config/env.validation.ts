@@ -108,4 +108,9 @@ export const validationSchema = Joi.object({
   // 生成：node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
   // 未配置时 MFA 模块降级（启动 warn，绑定/解绑接口 503）
   MFA_SECRET_ENC_KEY: Joi.string().hex().length(64),
+
+  // 实时推送（SSE，P3b，ADR-013 D5/D6）：单进程口径，多实例总上限 = 实例数 × maxConnections
+  REALTIME_MAX_CONNECTIONS: Joi.number().integer().min(1).default(1000),
+  // SSE 心跳间隔（毫秒）：防 nginx / 云 LB 空闲断连（常见空闲超时 60s）
+  REALTIME_HEARTBEAT_MS: Joi.number().integer().min(1000).default(30_000),
 }).oxor('REDIS_URL', 'REDIS_HOST'); // Redis 连接二选一,也可都不提供

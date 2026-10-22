@@ -33,9 +33,9 @@ import { CachingModule } from '@/shared/caching/caching.module.js';
 import { PrismaModule } from '@/shared/database/prisma.module.js';
 import { PrismaService } from '@/shared/database/prisma.service.js';
 import { ImageProcessorModule } from '@/shared/image/image-processor.module.js';
+import { JobsModule } from '@/shared/jobs/jobs.module.js';
 import { LoggerModule } from '@/shared/logger/logger.module.js';
 import { PermissionModule } from '@/shared/permission/permission.module.js';
-import { QueueModule } from '@/shared/queue/queue.module.js';
 import { ScopeModule } from '@/shared/scope/scope.module.js';
 import { StorageHealthIndicator } from '@/shared/storage/storage.health.js';
 import { StorageModule } from '@/shared/storage/storage.module.js';
@@ -91,7 +91,7 @@ import { AppService } from './app.service.js';
     NoticeModule,
     UserMessageModule,
     RealtimeModule,
-    QueueModule,
+    JobsModule,
     // 共享健康检查底座（@fedstack/health，见 ADR-004）：
     // Redis 检查内置；本 app 装配数据库 + 存储就绪检查
     HealthModule.forRootAsync({

@@ -11,8 +11,10 @@ import { buildBizCode, MODULE_CODES } from '@/common/exceptions/module-registry.
 export const MessageBizCode = {
   /** 模板未找到或已禁用 */
   TEMPLATE_NOT_FOUND: buildBizCode(MODULE_CODES.USER_MESSAGE, 'A', 1),
-  /** 通道未实现（P3a 仅 INNER） */
+  /** 通道未实现 */
   CHANNEL_UNSUPPORTED: buildBizCode(MODULE_CODES.USER_MESSAGE, 'A', 2),
+  /** 通道投递失败（provider 返回 success=false） */
+  SEND_FAILED: buildBizCode(MODULE_CODES.USER_MESSAGE, 'A', 3),
 } as const;
 
 function messageError(
@@ -35,5 +37,15 @@ export const messageErrors = {
       `消息通道未实现：${channel}`,
       HttpStatus.NOT_IMPLEMENTED,
       MessageBizCode.CHANNEL_UNSUPPORTED,
+    ),
+  /**
+   * provider 返回 success=false 时抛出。
+   * 调用时机：writeLog 之后——先记录投递流水（含 errorMsg），再让异常传播触发重试/任务失败。
+   */
+  sendFailed: (channel: string, errorMsg?: string | null) =>
+    messageError(
+      errorMsg ? `消息投递失败: channel=${channel} reason=${errorMsg}` : `消息投递失败: channel=${channel}`,
+      HttpStatus.BAD_GATEWAY,
+      MessageBizCode.SEND_FAILED,
     ),
 } as const;

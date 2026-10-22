@@ -64,9 +64,8 @@ export class MessageCenterService {
     });
 
     if (!result.success) {
-      this.logger.warn(
-        `消息投递失败: channel=${channel} recipient=${payload.recipientId} error=${result.errorMsg}`,
-      );
+      // 先记流水再抛异常——任务中心重试时每次投递尝试都有完整记录
+      throw messageErrors.sendFailed(channel, result.errorMsg);
     }
   }
 
@@ -117,9 +116,8 @@ export class MessageCenterService {
     });
 
     if (!result.success) {
-      this.logger.warn(
-        `模板消息投递失败: templateKey=${templateKey} channel=${channel} recipient=${payload.recipientId} error=${result.errorMsg}`,
-      );
+      // 先记流水再抛异常——任务中心重试时每次投递尝试都有完整记录
+      throw messageErrors.sendFailed(channel, result.errorMsg);
     }
   }
 

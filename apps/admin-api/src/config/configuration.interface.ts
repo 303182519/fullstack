@@ -196,6 +196,19 @@ export interface MfaConfig {
   secretEncKey?: string;
 }
 
+/**
+ * 实时推送（SSE）连接面配置（P3b，ADR-013 D5/D6）。
+ *
+ * 口径为**单进程**上限：多实例部署时总上限 = 实例数 × maxConnections，
+ * 与数据库连接池同理需要预留余量。
+ */
+export interface RealtimeConfig {
+  /** 单进程并发 SSE 连接上限，超限返回 503 让客户端稍后重连 */
+  maxConnections?: number;
+  /** SSE 心跳间隔（毫秒），防止代理空闲断连 */
+  heartbeatMs?: number;
+}
+
 export interface AppConfig {
   /** HTTP 服务配置 */
   server?: ServerConfig;
@@ -221,6 +234,8 @@ export interface AppConfig {
   smtp?: SmtpConfig;
   /** MFA 配置（P3b，ADR-013 D8） */
   mfa?: MfaConfig;
+  /** 实时推送（SSE）连接面配置（P3b，ADR-013 D5/D6） */
+  realtime?: RealtimeConfig;
 }
 
 export type AppConfigForced = {

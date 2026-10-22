@@ -45,7 +45,7 @@ interface MenuSeedNode {
  *   - system:dict:*   → 字典管理按钮组
  *   - system:config:* → 参数设置按钮组
  *   - system:file:*   → 文件管理按钮组（P3a，ADR-012）
- *   - monitor:*       → 系统监控三个页面的按钮组
+ *   - monitor:*       → 系统监控页面按钮组（含 monitor:job:* 任务中心，P3b）
  */
 const MENU_TREE: MenuSeedNode[] = [
   {
@@ -222,6 +222,18 @@ const MENU_TREE: MenuSeedNode[] = [
         sort: 4,
         children: [
           { routeName: 'MonitorMessageLogQuery', menuType: MenuType.BUTTON, menuName: '消息日志查询', permCode: PERMISSIONS.SYSTEM.MESSAGE_LOG.QUERY },
+        ],
+      },
+      {
+        routeName: 'MonitorJob',
+        menuType: MenuType.MENU,
+        menuName: '任务中心',
+        routePath: '/monitor/jobs',
+        component: 'monitor/job/index',
+        sort: 5,
+        children: [
+          { routeName: 'MonitorJobQuery', menuType: MenuType.BUTTON, menuName: '任务查询', permCode: PERMISSIONS.MONITOR.JOB.QUERY },
+          { routeName: 'MonitorJobEdit', menuType: MenuType.BUTTON, menuName: '任务操作', permCode: PERMISSIONS.MONITOR.JOB.EDIT },
         ],
       },
     ],

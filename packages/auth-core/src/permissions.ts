@@ -93,6 +93,11 @@ export const PERMISSIONS = {
       QUERY: 'monitor:online:query',
       REMOVE: 'monitor:online:remove',
     },
+    /** 异步任务中心：P3b 新增（EDIT 覆盖「取消」与「死信补偿」两类操作） */
+    JOB: {
+      QUERY: 'monitor:job:query',
+      EDIT: 'monitor:job:edit',
+    },
   },
 } as const;
 

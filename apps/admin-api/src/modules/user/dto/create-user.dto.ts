@@ -54,6 +54,7 @@ export class CreateUserDto {
 
   @ApiPropertyOptional({ description: '性别', enum: ASSIGNABLE_GENDER })
   @IsOptional()
+  // 白名单，防御未来 enum 扩展导致的未知值
   @IsIn(ASSIGNABLE_GENDER)
   gender?: Gender;
 
