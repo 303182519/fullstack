@@ -16,10 +16,10 @@ import type {
   RequestInstance,
   RequestInstanceCommon,
   ResponseType,
-} from '../type';
+} from '../src/type';
 
 import { describe, expectTypeOf, it } from 'vitest';
-import { createFlatRequest, createRequest } from '../index';
+import { createFlatRequest, createRequest } from '../src/index';
 
 // ==================== MappedType ====================
 describe('mappedType', () => {

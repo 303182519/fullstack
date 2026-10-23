@@ -1,0 +1,23 @@
+{
+  "name": "@fedstack/config",
+  "type": "module",
+  "version": "0.0.1",
+  "private": true,
+  "description": "共享开发配置：Vitest 测试基础配置常量与 base 对象，供各包 thin vitest.config.ts 消费（裸 TS 源码直出，无构建）",
+  "license": "UNLICENSED",
+  "sideEffects": false,
+  "exports": {
+    "./vitest": "./src/vitest.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "eslint": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

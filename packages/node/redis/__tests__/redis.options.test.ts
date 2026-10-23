@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildRedisUrl,
   validateRedisModuleOptions,
-} from './redis.options.js';
+} from '../src/redis.options.js';
 
 describe('buildRedisUrl', () => {
   it('显式 url 优先于离散参数', () => {

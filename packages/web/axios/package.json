@@ -2,7 +2,6 @@
   "name": "@fedstack/axios",
   "type": "module",
   "version": "0.0.1",
-  "private": true,
   "description": "类型安全的 HTTP 客户端：基于 axios，支持 createRequest / createFlatRequest 两种风格、业务错误钩子链、请求 ID、取消管理、axios-retry 重试、响应类型推导",
   "license": "UNLICENSED",
   "sideEffects": false,
@@ -20,6 +19,7 @@
     }
   },
   "files": [
+    "README.md",
     "dist"
   ],
   "publishConfig": {
@@ -52,6 +52,7 @@
     "qs": "catalog:"
   },
   "devDependencies": {
+    "@fedstack/config": "workspace:*",
     "@fedstack/eslint-config": "workspace:*",
     "@rslib/core": "catalog:",
     "@types/qs": "catalog:",

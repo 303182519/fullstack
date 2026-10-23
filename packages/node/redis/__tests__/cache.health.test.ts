@@ -1,6 +1,6 @@
 import type { RedisClientType } from '@keyv/redis';
 import { describe, expect, it, vi } from 'vitest';
-import { CacheHealthIndicator } from './cache.health.js';
+import { CacheHealthIndicator } from '../src/cache.health.js';
 
 function createClient(overrides: Partial<{
   isOpen: boolean;

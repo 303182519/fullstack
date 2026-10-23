@@ -529,6 +529,9 @@ importers:
         specifier: workspace:*
         version: link:../redis
     devDependencies:
+      '@fedstack/config':
+        specifier: workspace:*
+        version: link:../../tooling/config
       '@fedstack/eslint-config':
         specifier: workspace:*
         version: link:../../tooling/eslint-config
@@ -562,6 +565,9 @@ importers:
 
   packages/node/redis:
     devDependencies:
+      '@fedstack/config':
+        specifier: workspace:*
+        version: link:../../tooling/config
       '@fedstack/eslint-config':
         specifier: workspace:*
         version: link:../../tooling/eslint-config
@@ -608,6 +614,21 @@ importers:
         specifier: 'catalog:'
         version: 6.0.3
 
+  packages/tooling/config:
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 24.19.2
+      eslint:
+        specifier: 'catalog:'
+        version: 10.12.0(jiti@2.7.0)
+      typescript:
+        specifier: 'catalog:'
+        version: 6.0.3
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.11(@types/node@24.19.2)(@vitest/coverage-v8@4.1.11)(vite@8.3.4(@types/node@24.19.2)(jiti@2.7.0)(yaml@2.9.1))
+
   packages/tooling/eslint-config:
     dependencies:
       '@antfu/eslint-config':
@@ -647,6 +668,9 @@ importers:
         specifier: 'catalog:'
         version: 6.16.1
     devDependencies:
+      '@fedstack/config':
+        specifier: workspace:*
+        version: link:../../tooling/config
       '@fedstack/eslint-config':
         specifier: workspace:*
         version: link:../../tooling/eslint-config

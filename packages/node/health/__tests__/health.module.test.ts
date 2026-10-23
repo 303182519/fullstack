@@ -5,8 +5,8 @@ import { ServiceUnavailableException } from '@nestjs/common';
 import { PrismaHealthIndicator } from '@nestjs/terminus';
 import { Test } from '@nestjs/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { HealthController } from './health.controller.js';
-import { HealthModule } from './health.module.js';
+import { HealthController } from '../src/health.controller.js';
+import { HealthModule } from '../src/health.module.js';
 
 // 模拟 @fedstack/redis 的全局 RedisCacheModule：global + 导出 CacheHealthIndicator，
 // 与 admin-api 真实装配同构（对象字面量构造，避免 spec 文件引入装饰器语法）

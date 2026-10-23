@@ -2,7 +2,7 @@
 import type { AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 import { describe, expect, it } from 'vitest';
 
-import { isHttpSuccess, transformArrayBufferToJson, transformBlobToJson, transformResponse } from '../shared';
+import { isHttpSuccess, transformArrayBufferToJson, transformBlobToJson, transformResponse } from '../src/shared';
 
 // ==================== 辅助工具 ====================
 function createMockConfig(overrides?: Partial<InternalAxiosRequestConfig>) {

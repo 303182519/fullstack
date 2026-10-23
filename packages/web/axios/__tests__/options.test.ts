@@ -2,7 +2,7 @@
 import type { AxiosResponse } from 'axios';
 import { describe, expect, it } from 'vitest';
 
-import { createAxiosConfig, createDefaultOptions, createRetryOptions } from '../options';
+import { createAxiosConfig, createDefaultOptions, createRetryOptions } from '../src/options';
 
 // ==================== 测试辅助函数 ====================
 const customCheck = (response: AxiosResponse) => response.data.code === 0;

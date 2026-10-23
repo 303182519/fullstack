@@ -3,7 +3,7 @@ import { AxiosError } from 'axios';
 import { delay, http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
-import { BACKEND_ERROR_CODE, createFlatRequest, createRequest, REQUEST_ID_KEY } from '../index';
+import { BACKEND_ERROR_CODE, createFlatRequest, createRequest, REQUEST_ID_KEY } from '../src/index';
 
 // ==================== 类型定义 ====================
 

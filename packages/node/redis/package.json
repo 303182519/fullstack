@@ -29,6 +29,7 @@
     "rxjs": "^7.0.0"
   },
   "devDependencies": {
+    "@fedstack/config": "workspace:*",
     "@fedstack/eslint-config": "workspace:*",
     "@keyv/redis": "catalog:",
     "@nestjs/cache-manager": "catalog:",

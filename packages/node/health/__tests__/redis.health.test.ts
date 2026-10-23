@@ -1,7 +1,7 @@
 import type { CacheHealthIndicator, CacheHealthStatus } from '@fedstack/redis';
 import { HealthIndicatorService } from '@nestjs/terminus';
 import { describe, expect, it, vi } from 'vitest';
-import { RedisHealthIndicator } from './redis.health.js';
+import { RedisHealthIndicator } from '../src/redis.health.js';
 
 function createIndicator(cacheHealth: CacheHealthIndicator | null) {
   return new RedisHealthIndicator(new HealthIndicatorService(), cacheHealth);

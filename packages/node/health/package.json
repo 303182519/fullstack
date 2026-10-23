@@ -29,6 +29,7 @@
     "@fedstack/redis": "workspace:*"
   },
   "devDependencies": {
+    "@fedstack/config": "workspace:*",
     "@fedstack/eslint-config": "workspace:*",
     "@nestjs/common": "catalog:",
     "@nestjs/terminus": "catalog:",

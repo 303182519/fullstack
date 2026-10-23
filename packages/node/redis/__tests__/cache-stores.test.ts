@@ -1,7 +1,7 @@
 import type { RedisClientType } from '@keyv/redis';
 import KeyvRedis from '@keyv/redis';
 import { describe, expect, it } from 'vitest';
-import { createCacheStores } from './cache-stores.js';
+import { createCacheStores } from '../src/cache-stores.js';
 
 describe('createCacheStores', () => {
   it('未配置 Redis：降级为内存 store（非 KeyvRedis）', () => {
