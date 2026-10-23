@@ -1,0 +1,63 @@
+{
+  "name": "@fedstack/axios",
+  "type": "module",
+  "version": "0.0.1",
+  "private": true,
+  "description": "类型安全的 HTTP 客户端：基于 axios，支持 createRequest / createFlatRequest 两种风格、业务错误钩子链、请求 ID、取消管理、axios-retry 重试、响应类型推导",
+  "license": "UNLICENSED",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "main": "./src/index.ts",
+  "module": "./src/index.ts",
+  "types": "./src/index.ts",
+  "typesVersions": {
+    "*": {
+      "*": [
+        "./src/*"
+      ]
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "main": "./dist/index.js",
+    "module": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+      ".": {
+        "import": {
+          "types": "./dist/index.d.ts",
+          "default": "./dist/index.js"
+        }
+      }
+    },
+    "access": "public"
+  },
+  "scripts": {
+    "build": "rslib build",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "clean": "node -e \"fs.rmSync('dist', { recursive: true, force: true })\""
+  },
+  "dependencies": {
+    "axios": "catalog:",
+    "axios-retry": "catalog:",
+    "nanoid": "catalog:",
+    "qs": "catalog:"
+  },
+  "devDependencies": {
+    "@fedstack/eslint-config": "workspace:*",
+    "@rslib/core": "catalog:",
+    "@types/qs": "catalog:",
+    "eslint": "catalog:",
+    "msw": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

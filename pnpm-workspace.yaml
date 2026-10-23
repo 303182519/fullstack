@@ -7,6 +7,10 @@ minimumReleaseAgeExcludePrune: true
 minimumReleaseAgeExclude:
   - typescript
   - eslint
+  # rslib/rsbuild 1.0 生态 2026-09-03 GA 后 patch 版本密集发布，每次都等 1 天阻塞
+  - '@rslib/core'
+  - '@rsbuild/core'
+  - 'rsbuild-plugin-dts'
 # 禁用降级依赖
 trustPolicy: no-downgrade
 # trustPolicy 白名单：semver@6.3.1 发布于 provenance 普及之前，属合法旧包，
@@ -126,6 +130,21 @@ catalog:
   # ── 消息通知（ADR-013 D7/D10）──
   # nodemailer v10 自带 d.ts，无需 @types/nodemailer
   nodemailer: ^10.1.7
+
+  # ════════════════ 前端 Web 层（packages/web/*，ADR-015）════════════════
+
+  # ── HTTP 客户端（@fedstack/axios）──
+  axios: ^1.20.0
+  axios-retry: ^4.5.0
+  nanoid: ^6.0.2
+  qs: ^6.16.1
+  '@types/qs': ^6.15.1
+
+  # ── 构建工具（rslib，web 层专用 bundler）──
+  '@rslib/core': ^1.0.4
+
+  # ── 测试（msw v2+，与 fetch adapter 配合绕过 axios http adapter 兼容性问题）──
+  msw: ^3.0.3
 
   # ════════════════ 前端（admin，预留）════════════════
   # react / react-dom / zustand / @tanstack/react-query 等随 admin 开发进入本区，勿混入后端区。
