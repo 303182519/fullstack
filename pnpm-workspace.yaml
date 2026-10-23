@@ -19,7 +19,8 @@ shellEmulator: true
 
 packages:
   - 'apps/*'
-  - 'packages/*'
+  # packages 按运行时层分组（shared/node/web/tooling，见 ADR-015），glob 匹配层目录下的包
+  - 'packages/*/*'
 
 # 统一依赖版本：catalog 作为单一真相源，所有包通过 "catalog:" 引用，
 # 避免 Monorepo 内多版本漂移。升级依赖只需改这一处。

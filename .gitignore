@@ -21,6 +21,6 @@ website/doc_build/
 !apps/admin/.env.production
 
 # Prisma 生成产物
-packages/database/generated/prisma/
+packages/node/database/generated/prisma/
 
 *.log

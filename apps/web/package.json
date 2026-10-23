@@ -1,0 +1,13 @@
+{
+  "name": "@fedstack/web",
+  "type": "module",
+  "version": "0.1.0",
+  "private": true,
+  "description": "基于 React19 构建的用户前端项目",
+   "scripts": {
+  },
+  "dependencies": {
+  },
+  "devDependencies": {
+  }
+}

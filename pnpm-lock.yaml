@@ -199,7 +199,7 @@ importers:
     devDependencies:
       '@fedstack/eslint-config':
         specifier: workspace:*
-        version: link:packages/eslint-config
+        version: link:packages/tooling/eslint-config
       eslint:
         specifier: 'catalog:'
         version: 9.39.5(jiti@2.7.0)
@@ -222,16 +222,16 @@ importers:
         version: 3.1152.0
       '@fedstack/auth-core':
         specifier: workspace:*
-        version: link:../../packages/auth-core
+        version: link:../../packages/shared/auth-core
       '@fedstack/database':
         specifier: workspace:*
-        version: link:../../packages/database
+        version: link:../../packages/node/database
       '@fedstack/health':
         specifier: workspace:*
-        version: link:../../packages/health
+        version: link:../../packages/node/health
       '@fedstack/redis':
         specifier: workspace:*
-        version: link:../../packages/redis
+        version: link:../../packages/node/redis
       '@keyv/redis':
         specifier: 'catalog:'
         version: 5.1.6(keyv@5.6.0)
@@ -340,7 +340,7 @@ importers:
     devDependencies:
       '@fedstack/eslint-config':
         specifier: workspace:*
-        version: link:../../packages/eslint-config
+        version: link:../../packages/tooling/eslint-config
       '@nestjs/cli':
         specifier: 'catalog:'
         version: 12.0.8(@types/node@24.19.2)(prettier@3.9.10)
@@ -394,10 +394,10 @@ importers:
     dependencies:
       '@fedstack/database':
         specifier: workspace:*
-        version: link:../../packages/database
+        version: link:../../packages/node/database
       '@fedstack/health':
         specifier: workspace:*
-        version: link:../../packages/health
+        version: link:../../packages/node/health
       '@nestjs/common':
         specifier: 'catalog:'
         version: 12.1.2(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -437,7 +437,7 @@ importers:
     devDependencies:
       '@fedstack/eslint-config':
         specifier: workspace:*
-        version: link:../../packages/eslint-config
+        version: link:../../packages/tooling/eslint-config
       '@nestjs/cli':
         specifier: 'catalog:'
         version: 12.0.8(@types/node@24.19.2)(prettier@3.9.10)
@@ -478,20 +478,13 @@ importers:
         specifier: 'catalog:'
         version: 4.1.11(@types/node@24.19.2)(@vitest/coverage-v8@4.1.11)(vite@8.3.4(@types/node@24.19.2)(jiti@2.7.0)(yaml@2.9.1))
 
-  packages/auth-core:
-    devDependencies:
-      '@types/node':
-        specifier: 'catalog:'
-        version: 24.19.2
-      typescript:
-        specifier: 'catalog:'
-        version: 6.0.3
+  apps/web: {}
 
-  packages/database:
+  packages/node/database:
     dependencies:
       '@fedstack/auth-core':
         specifier: workspace:*
-        version: link:../auth-core
+        version: link:../../shared/auth-core
       '@prisma/adapter-mariadb':
         specifier: 'catalog:'
         version: 7.9.1
@@ -509,31 +502,7 @@ importers:
         specifier: 'catalog:'
         version: 6.0.3
 
-  packages/eslint-config:
-    dependencies:
-      '@antfu/eslint-config':
-        specifier: 'catalog:'
-        version: 9.5.1(@eslint-react/eslint-plugin@5.26.1(eslint@10.12.0(jiti@2.7.0))(typescript@6.0.3))(@typescript-eslint/typescript-estree@8.71.1(typescript@6.0.3))(@typescript-eslint/utils@8.71.1(eslint@10.12.0(jiti@2.7.0))(typescript@6.0.3))(@vue/compiler-sfc@3.5.43)(eslint-plugin-format@2.0.1(eslint@10.12.0(jiti@2.7.0)))(eslint-plugin-react-refresh@0.5.7(eslint@10.12.0(jiti@2.7.0)))(eslint@10.12.0(jiti@2.7.0))(ts-declaration-location@1.0.7(typescript@6.0.3))(typescript@6.0.3)(vitest@4.1.11)
-      '@eslint-react/eslint-plugin':
-        specifier: 'catalog:'
-        version: 5.26.1(eslint@10.12.0(jiti@2.7.0))(typescript@6.0.3)
-      eslint:
-        specifier: 'catalog:'
-        version: 10.12.0(jiti@2.7.0)
-      eslint-plugin-format:
-        specifier: 'catalog:'
-        version: 2.0.1(eslint@10.12.0(jiti@2.7.0))
-      eslint-plugin-react-hooks:
-        specifier: 'catalog:'
-        version: 7.1.1(eslint@10.12.0(jiti@2.7.0))
-      eslint-plugin-react-refresh:
-        specifier: 'catalog:'
-        version: 0.5.7(eslint@10.12.0(jiti@2.7.0))
-      typescript:
-        specifier: 'catalog:'
-        version: 6.0.3
-
-  packages/health:
+  packages/node/health:
     dependencies:
       '@fedstack/redis':
         specifier: workspace:*
@@ -541,7 +510,7 @@ importers:
     devDependencies:
       '@fedstack/eslint-config':
         specifier: workspace:*
-        version: link:../eslint-config
+        version: link:../../tooling/eslint-config
       '@nestjs/common':
         specifier: 'catalog:'
         version: 12.1.2(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -570,11 +539,11 @@ importers:
         specifier: 'catalog:'
         version: 4.1.11(@types/node@24.19.2)(@vitest/coverage-v8@4.1.11)(vite@8.3.4(@types/node@24.19.2)(jiti@2.7.0)(yaml@2.9.1))
 
-  packages/redis:
+  packages/node/redis:
     devDependencies:
       '@fedstack/eslint-config':
         specifier: workspace:*
-        version: link:../eslint-config
+        version: link:../../tooling/eslint-config
       '@keyv/redis':
         specifier: 'catalog:'
         version: 5.1.6(keyv@5.6.0)
@@ -608,6 +577,39 @@ importers:
       vitest:
         specifier: 'catalog:'
         version: 4.1.11(@types/node@24.19.2)(@vitest/coverage-v8@4.1.11)(vite@8.3.4(@types/node@24.19.2)(jiti@2.7.0)(yaml@2.9.1))
+
+  packages/shared/auth-core:
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 24.19.2
+      typescript:
+        specifier: 'catalog:'
+        version: 6.0.3
+
+  packages/tooling/eslint-config:
+    dependencies:
+      '@antfu/eslint-config':
+        specifier: 'catalog:'
+        version: 9.5.1(@eslint-react/eslint-plugin@5.26.1(eslint@10.12.0(jiti@2.7.0))(typescript@6.0.3))(@typescript-eslint/typescript-estree@8.71.1(typescript@6.0.3))(@typescript-eslint/utils@8.71.1(eslint@10.12.0(jiti@2.7.0))(typescript@6.0.3))(@vue/compiler-sfc@3.5.43)(eslint-plugin-format@2.0.1(eslint@10.12.0(jiti@2.7.0)))(eslint-plugin-react-refresh@0.5.7(eslint@10.12.0(jiti@2.7.0)))(eslint@10.12.0(jiti@2.7.0))(ts-declaration-location@1.0.7(typescript@6.0.3))(typescript@6.0.3)(vitest@4.1.11)
+      '@eslint-react/eslint-plugin':
+        specifier: 'catalog:'
+        version: 5.26.1(eslint@10.12.0(jiti@2.7.0))(typescript@6.0.3)
+      eslint:
+        specifier: 'catalog:'
+        version: 10.12.0(jiti@2.7.0)
+      eslint-plugin-format:
+        specifier: 'catalog:'
+        version: 2.0.1(eslint@10.12.0(jiti@2.7.0))
+      eslint-plugin-react-hooks:
+        specifier: 'catalog:'
+        version: 7.1.1(eslint@10.12.0(jiti@2.7.0))
+      eslint-plugin-react-refresh:
+        specifier: 'catalog:'
+        version: 0.5.7(eslint@10.12.0(jiti@2.7.0))
+      typescript:
+        specifier: 'catalog:'
+        version: 6.0.3
 
 packages:
 
@@ -5164,9 +5166,6 @@ packages:
     peerDependencies:
       zod: ^3.25.0 || ^4.0.0
 
-  zod@4.6.5:
-    resolution: {integrity: sha512-v5l/aFXZQeai4awLbOpSoHecE9UiMrnfx75tEXLjNonXVARxQ5mOeipTjROUchszUNCqnE+hqAMujRsRHsut2Q==}
-
   zod@4.6.6:
     resolution: {integrity: sha512-4UmzQUF5fxvfcYHlbjBmejU+w+hbDnWFx4aS8kBx7nPBHcO2SqPbpAG8snbdg+Xse4pRefR98hgjFgIMCI/UhA==}
 
@@ -7762,8 +7761,8 @@ snapshots:
       '@babel/parser': 7.29.9
       eslint: 10.12.0(jiti@2.7.0)
       hermes-parser: 0.25.1
-      zod: 4.6.5
-      zod-validation-error: 4.0.2(zod@4.6.5)
+      zod: 4.6.6
+      zod-validation-error: 4.0.2(zod@4.6.6)
     transitivePeerDependencies:
       - supports-color
 
@@ -10030,11 +10029,9 @@ snapshots:
       grammex: 3.1.13
       graphmatch: 1.1.1
 
-  zod-validation-error@4.0.2(zod@4.6.5):
+  zod-validation-error@4.0.2(zod@4.6.6):
     dependencies:
-      zod: 4.6.5
-
-  zod@4.6.5: {}
+      zod: 4.6.6
 
   zod@4.6.6: {}
 

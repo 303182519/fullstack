@@ -477,7 +477,7 @@ P2 已实施完毕，实际交付以本节为准；§5.2 为实施前设计草�
 - `modules/monitor/`：操作日志/登录日志分页查询 + 在线用户列表（`GET /api/online-users`）、踢单（`DELETE /api/online-users/{sessionId}`）、按用户全设备下线（`POST /api/online-users/force-logout`）
 - `shared/audit/`：`@OperLog` 装饰器 + 全局拦截器（敏感字段掩码、result 截断 2KB、响应后异步落库）、登录日志埋点服务（登录成败均记录，msg 存枚举 token）
 - `shared/scope/`：`ScopeResolverService` 作用域注入——租户管理员恒定本租户；平台超管默认平台级，可带 `?tenantId=` 代管
-- `packages/database/prisma/seed.ts`：35 节点菜单树 + 每存量租户内置 `admin` 角色（`isSystem=true`）全量绑定菜单，幂等 upsert
+- `packages/node/database/prisma/seed.ts`：35 节点菜单树 + 每存量租户内置 `admin` 角色（`isSystem=true`）全量绑定菜单，幂等 upsert
 
 **与设计稿 §5.2 的偏差**：
 
@@ -768,7 +768,7 @@ enum TemplateStatus {
 
 ### 6.9 权限码与契约
 
-- 新增权限码注册进 `@fedstack/auth-core`，并由 `packages/database/src/seed.ts` **import 同一注册表**同步菜单按钮（不得二次硬编码，见 `ADR-010`）。
+- 新增权限码注册进 `@fedstack/auth-core`，并由 `packages/node/database/src/seed.ts` **import 同一注册表**同步菜单按钮（不得二次硬编码，见 `ADR-010`）。
 - 计划新增：`SYSTEM.FILE.{QUERY,ADD,REMOVE,DOWNLOAD}`、`SYSTEM.NOTICE.{QUERY,ADD,EDIT,REMOVE}`、`SYSTEM.MESSAGE_TEMPLATE.{QUERY,ADD,EDIT,REMOVE}`（P3b）、`MONITOR.MESSAGE_LOG.QUERY`（P3b）。实际编码以注册表为准。
 - 契约快照：`docs/plans/contracts/phase-3a.json` / `phase-3b.json`。
 
@@ -858,7 +858,7 @@ model SysGenColumn { ... }      // 代码生成列配置
 
 ## 10. 下一步行动
 
-1. **已完成（P0–P2）**：认证基座、权限与组织、系统管理三期均已交付，迁移 `init_p0_auth` / `init_p1_permission` / `init_p2_system` 已落库；`packages/auth-core` 已沉淀功能权限码注册表（`ADR-010`）；契约快照 `phase-0.json` / `phase-1.json` / `phase-2.json` 已输出。
+1. **已完成（P0–P2）**：认证基座、权限与组织、系统管理三期均已交付，迁移 `init_p0_auth` / `init_p1_permission` / `init_p2_system` 已落库；`packages/shared/auth-core` 已沉淀功能权限码注册表（`ADR-010`）；契约快照 `phase-0.json` / `phase-1.json` / `phase-2.json` 已输出。
 2. **P3 规划已定稿（2026-10-19）**：P3a / P3b 范围、表结构、端点与依赖见本文 §6；决策记录 `ADR-012`（文件存储与配额）、`ADR-013`（消息中心 / 实时推送 / 队列），并修订 `ADR-003`（§7 `PubSubService` 连接分层）。
 3. **P3a 开发（已完成，2026-10-20）**：`SysFile` / `SysUserMessage` / `SysNotice` 迁移已落库；`shared/storage`（`StorageDriver` 双驱动，本地 getSignedUrl 返回 null 由调用方回退代理通路）、`modules/file`（上传管道 / 配额 / 软删 + best-effort 物理删除 / 代理下载与预签名）、`modules/notice`（公告 CRUD + 平台/租户两级并列合并）、`modules/user-message`（自助端点 + 已读管理）、`modules/message`（MessageCenter 骨架 + InnerMessageProvider）、`modules/realtime`（SSE + Redis pub/sub）均已实现；`@fedstack/redis` 已增补 `PubSubService`。
 4. **P3b 开发（已完成，2026-10-20，与 P3a 剩余合并开发）**：`SysMessageTemplate` / `SysMessageSendLog` / `SysUserMfa` 迁移已落库；消息模板遮蔽（复用 ADR-009）、邮件 provider（nodemailer）与短信 provider（占位抛 503，待服务商定案）、BullMQ 队列底座（`shared/queue`，含审计 oper-log 落库与文件删除补偿的入队接口）、MFA 二步登录（TOTP + 恢复码 + pending token，策略读 `security.mfa.mode` 三态枚举）均已实现；seed 菜单同步通知公告 / 消息模板 / 消息日志节点。
