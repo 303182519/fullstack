@@ -20,9 +20,4 @@ export default defineConfig({
       dts: true,
     },
   ],
-  source: {
-    entry: {
-      index: ['./src/**', '!src/__tests__/**'],
-    },
-  },
 });
