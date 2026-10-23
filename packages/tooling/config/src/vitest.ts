@@ -1,4 +1,15 @@
 import type { CoverageOptions, InlineConfig } from 'vitest/node';
+import { defineConfig } from 'vitest/config';
+
+/**
+ * Re-export defineConfig 强制消费方通过同一 vitest 实例解析类型。
+ *
+ * pnpm 会为每个直接依赖 vitest 的 workspace 包计算独立 peer context hash，
+ * 导致 import { defineConfig } from 'vitest/config' 和 import baseTestConfig
+ * 产生的 InlineConfig 类型来自不同 .d.ts 实例，私有属性不可跨模块兼容。
+ * 统一从本模块导入后，两者共享同一 vitest store hash。
+ */
+export { defineConfig };
 
 /**
  * Vitest 共享测试配置
@@ -11,13 +22,13 @@ import type { CoverageOptions, InlineConfig } from 'vitest/node';
 // ────────────────────────── 基础常量 ──────────────────────────
 
 /** 测试文件匹配模式（相对包根，统一布局：包根 __tests__/ 目录） */
-export const TEST_PATTERNS = ['__tests__/**/*.test.ts'];
+export const TEST_PATTERNS = ['__tests__/**/*.test.ts', '__tests__/**/*.test.tsx'];
 
 /** 覆盖率统计的源码范围 */
-export const SOURCE_PATTERNS = ['src/**/*.ts'];
+export const SOURCE_PATTERNS = ['src/**/*.ts', 'src/**/*.tsx'];
 
 /** 覆盖率排除文件 */
-export const COVERAGE_EXCLUDE = ['**/*.test.ts', '**/index.ts', '**/*.d.ts', '**/vitest.setup.ts'];
+export const COVERAGE_EXCLUDE = ['**/*.test.ts', '**/*.test.tsx', '**/index.ts', '**/*.d.ts', '**/vitest.setup.ts'];
 
 // ────────────────────────── 基础配置 ──────────────────────────
 
