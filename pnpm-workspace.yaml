@@ -145,6 +145,16 @@ catalog:
   node-forge: ^1.4.0
   '@types/node-forge': ^1.3.14
 
+  # ── 日志（@fedstack/logger）──
+  '@loglayer/transport': ^3.3.0
+  # RN 端存储依赖：logger 包 optional peer + dev 双轨（peer 写版本范围，dev 走 catalog）
+  '@react-native-async-storage/async-storage': ^3.0.2
+  # fake-indexeddb 仅测试使用（真测 WebStorageAdapter 的 IndexedDB 行为）
+  fake-indexeddb: ^6.2.6
+  idb: ^8.0.4
+  loglayer: ^9.4.0
+  serialize-error: ^13.0.2
+
   # ── 构建工具（rslib，web 层专用 bundler）──
   '@rslib/core': ^1.0.4
 
