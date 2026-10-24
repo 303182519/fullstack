@@ -118,19 +118,21 @@ describe('storageTransport', () => {
     expect(messages).toContain('msg-59');
   });
 
-  it('data 中的 Error 应被序列化到 error 字段，_context 应提取为 context', async () => {
+  it('应使用顶层独立的 context / metadata / error 构建记录，不解析合并后的 data', async () => {
     const adapter = createMemoryAdapter();
     const transport = createTransport(adapter);
 
+    // 与 loglayer v9 实际派发形状一致：context / metadata 平铺在 data 根上，
+    // error 位于 data[schema.errorFieldName]；顶层同时携带独立的 context / metadata / error
     transport.shipToLogger({
       logLevel: 'error',
       messages: ['operation failed'],
       hasData: true,
-      data: {
-        err: new Error('timeout'),
-        _context: { module: 'auth' },
-        userId: '123',
-      },
+      data: { module: 'auth', userId: '123', err: new Error('timeout') },
+      context: { module: 'auth' },
+      metadata: { userId: '123' },
+      error: new Error('timeout'),
+      schema: { errorFieldName: 'err' },
     });
 
     await transport.flush();
@@ -139,9 +141,42 @@ describe('storageTransport', () => {
     expect(record.level).toBe('error');
     expect(record.error?.message).toBe('timeout');
     expect(record.context).toEqual({ module: 'auth' });
-    // 上游既有行为：Error 被序列化到 error 字段后，原始 Error 对象仍保留在 data 中（不移除）
-    expect(record.data?.userId).toBe('123');
-    expect(record.data?.err).toBeInstanceOf(Error);
+    // data 只保留 metadata，不混入 context 字段，也不残留原始 Error 对象
+    expect(record.data).toEqual({ userId: '123' });
+  });
+
+  it('无附加数据时记录的 data / context / error 均为 undefined', async () => {
+    const adapter = createMemoryAdapter();
+    const transport = createTransport(adapter);
+
+    transport.shipToLogger({
+      logLevel: 'info',
+      messages: ['hello'],
+      hasData: false,
+    });
+
+    await transport.flush();
+
+    const record = adapter.records[0];
+    expect(record.data).toBeUndefined();
+    expect(record.context).toBeUndefined();
+    expect(record.error).toBeUndefined();
+  });
+
+  it('withError 传入非 Error 值时应兜底序列化为 message 字段', async () => {
+    const adapter = createMemoryAdapter();
+    const transport = createTransport(adapter);
+
+    transport.shipToLogger({
+      logLevel: 'error',
+      messages: ['failed'],
+      hasData: true,
+      error: 'plain failure',
+    });
+
+    await transport.flush();
+
+    expect(adapter.records[0].error).toEqual({ message: 'plain failure' });
   });
 
   it('dispose 应冲刷残余缓冲并停止定时器', async () => {

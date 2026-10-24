@@ -55,9 +55,9 @@ export class StorageTransport extends LoggerlessTransport {
 
   /** 接收日志消息（返回类型 any[] 与 LoggerlessTransport 基类抽象签名一致） */
   shipToLogger(params: LogLayerTransportParams): any[] {
-    const { logLevel, messages, data, hasData } = params;
+    const { logLevel, messages, metadata, context, error } = params;
 
-    const record = this.createLogRecord(logLevel as LogLevel, messages, hasData ? data : undefined);
+    const record = this.createLogRecord(logLevel as LogLevel, messages, { metadata, context, error });
 
     this.buffer.push(record);
     this.trimBufferOverflow();
@@ -70,8 +70,18 @@ export class StorageTransport extends LoggerlessTransport {
     return messages;
   }
 
-  /** 创建日志记录 */
-  private createLogRecord(level: LogLevel, messages: unknown[], data?: Record<string, unknown>): LogRecord {
+  /**
+   * 创建日志记录
+   *
+   * 不解析合并后的 data：未配置 contextFieldName / metadataFieldName 时 context 与
+   * metadata 平铺在 data 根上无法区分来源，error 的 key 又由 errorFieldName 配置决定。
+   * 统一使用 params 顶层独立的 context / metadata / error，与 schema 配置无关。
+   */
+  private createLogRecord(
+    level: LogLevel,
+    messages: unknown[],
+    parts: { metadata?: Record<string, any> | null; context?: Record<string, any> | null; error?: unknown },
+  ): LogRecord {
     const message = messages
       .map((m) => {
         if (typeof m === 'string')
@@ -82,33 +92,15 @@ export class StorageTransport extends LoggerlessTransport {
       })
       .join(' ');
 
-    // 从 data 中提取错误和上下文
-    let error: Record<string, any> | undefined;
-    let context: Record<string, any> | undefined;
-    let logData: Record<string, any> | undefined;
+    const { metadata, context, error } = parts;
 
-    if (data) {
-      // 检查是否有错误对象
-      for (const key of Object.keys(data)) {
-        if (data[key] instanceof Error) {
-          error = serializeError(data[key] as Error);
-          break;
-        }
-      }
-
-      // 提取上下文（LogLayer 的 withContext 会将上下文放在 data 中）
-      const { _context, ...rest } = data as {
-        _context?: Record<string, any>;
-        [key: string]: any;
-      };
-      if (_context) {
-        context = _context;
-      }
-
-      // 剩余的作为日志数据
-      if (Object.keys(rest).length > 0) {
-        logData = rest;
-      }
+    let errorField: Record<string, any> | undefined;
+    if (error instanceof Error) {
+      errorField = serializeError(error);
+    }
+    else if (error !== null && error !== undefined) {
+      // withError 运行时接受任意类型，非 Error 值兜底保留
+      errorField = typeof error === 'object' ? error as Record<string, any> : { message: String(error) };
     }
 
     return {
@@ -116,9 +108,9 @@ export class StorageTransport extends LoggerlessTransport {
       timestamp: Date.now(),
       level,
       message,
-      data: logData,
-      context,
-      error,
+      data: metadata && Object.keys(metadata).length > 0 ? metadata : undefined,
+      context: context && Object.keys(context).length > 0 ? context : undefined,
+      error: errorField,
     };
   }
 
