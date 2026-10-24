@@ -102,5 +102,10 @@ export function handleError(
   if (codes.expiredToken.includes(backendErrorCode)) {
     return;
   }
+  // 调用方声明自己展示（表单字段级报错）：跳过兜底 toast。
+  // 放在最后而不是函数开头，是为了让登出 / 弹窗登出 / 续签三条流程照常执行。
+  if (error.config?.skipErrorMsg) {
+    return;
+  }
   showErrorMsg(adapter, request.state, message);
 }

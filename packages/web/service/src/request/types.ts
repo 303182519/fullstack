@@ -17,6 +17,16 @@ declare module 'axios' {
      * 重新 merge 时会被丢掉，标记等于没打。
      */
     isTokenRefreshRetry?: boolean;
+    /**
+     * 跳过兜底错误提示（toast）
+     *
+     * 调用方要自己展示这条错误时使用，典型是表单字段级报错（409 用户名重复）。
+     *
+     * 只影响 `handleError` 里的兜底展示，不影响登出、弹窗登出、token 续签这三条流程；
+     * 也不改变 reject 行为——promise 该失败还是失败。开关是逐请求的，打开后该请求的**所有**
+     * 错误都不再有人弹提示，调用方必须覆盖每个错误分支。
+     */
+    skipErrorMsg?: boolean;
   }
 }
 

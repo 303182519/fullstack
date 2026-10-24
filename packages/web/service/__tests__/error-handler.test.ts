@@ -225,6 +225,27 @@ describe('backEndFail', () => {
     const result = await backEndFail(response, instance, request, adapter, TEST_CODES);
     expect(result).toBeNull();
   });
+
+  it('skipErrorMsg 不影响登出码自己的提示与跳转', async () => {
+    const adapter = createMockAdapter();
+    const request = createMockRequest();
+    const instance = { request: vi.fn() } as any;
+    const response = createMockResponse('8888', 'err', { skipErrorMsg: true });
+    await backEndFail(response, instance, request, adapter, TEST_CODES);
+    expect(adapter.showErrorMessage).toHaveBeenCalledWith('request.logoutMsg');
+    expect(adapter.resetAuth).toHaveBeenCalled();
+    expect(adapter.redirectToLogin).toHaveBeenCalled();
+  });
+
+  it('skipErrorMsg 不影响续签后重发', async () => {
+    const adapter = createMockAdapter();
+    const request = createMockRequest();
+    const instance = { request: vi.fn().mockResolvedValue({ data: { bizCode: '0000', code: 200 } }) } as any;
+    const response = createMockResponse('9999', 'expired', { skipErrorMsg: true });
+    await backEndFail(response, instance, request, adapter, TEST_CODES);
+    expect(adapter.fetchRefreshToken).toHaveBeenCalled();
+    expect(instance.request).toHaveBeenCalled();
+  });
 });
 
 describe('handleError', () => {
@@ -354,5 +375,30 @@ describe('handleError', () => {
     } as AxiosError<any>;
     handleError(error, request, adapter, TEST_CODES);
     expect(adapter.showErrorMessage).toHaveBeenCalledWith('some msg', expect.any(Function));
+  });
+
+  it('skips the toast when the request opted out with skipErrorMsg', () => {
+    const adapter = createMockAdapter();
+    const request = createMockRequest();
+    const error = {
+      code: 'ERR_BAD_REQUEST',
+      config: { skipErrorMsg: true },
+      message: 'Request failed with status code 409',
+      response: { status: 409, data: { code: 409, message: '用户名已存在' } },
+    } as AxiosError<any>;
+    handleError(error, request, adapter, TEST_CODES);
+    expect(adapter.showErrorMessage).not.toHaveBeenCalled();
+  });
+
+  it('skipErrorMsg 打开时网络错误也不弹提示', () => {
+    const adapter = createMockAdapter();
+    const request = createMockRequest();
+    const error = {
+      code: 'ERR_NETWORK',
+      config: { skipErrorMsg: true },
+      message: 'Network Error',
+    } as AxiosError<any>;
+    handleError(error, request, adapter, TEST_CODES);
+    expect(adapter.showErrorMessage).not.toHaveBeenCalled();
   });
 });

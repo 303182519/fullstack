@@ -4,7 +4,7 @@
 
 > 一句话：`@fedstack/axios` 解决「怎么发请求」，这个包解决「请求出了各种状况怎么办」——业务错误分流、token 过期自动续签、错误消息去重、接口加密，全部在一个地方收口。
 
-**这份文档面向第一次接触这个包的读者**：每个概念都从「没有它会多痛」讲起，配一个能直接抄的例子。想查 API 的老手直接跳到 [API 参考](#api-参考)。
+**这份文档面向第一次接触这个包的读者**：每个概念都从「没有它会多痛」讲起，配一个能直接抄的例子。想先看「和 React Query 一起用长什么样」，直接跳到 [与 React Query 集成](#与-react-query-集成一条完整业务链路)；想查 API 的老手直接跳到 [API 参考](#api-参考)。
 
 ## 目录
 
@@ -17,6 +17,7 @@
   - [token 自动续签](#4-token-自动续签)
   - [错误消息去重](#5-错误消息去重)
   - [QueryClient 统一配置](#6-queryclient-统一配置)
+- [与 React Query 集成：一条完整业务链路](#与-react-query-集成一条完整业务链路)
 - [接口传输加密](#接口传输加密)
 - [最佳使用方式](#最佳使用方式)
 - [API 参考](#api-参考)
@@ -66,6 +67,8 @@
 ## 快速上手
 
 场景设定：你在写一个 antd + TanStack Router 的 admin 后台，有**登录页**和**用户列表页**，后端返回统一信封（下一节会讲什么是信封）。目标：让用户列表页发出第一个请求。
+
+> 下文出现的 `apps/admin/src/...` 是示意路径，照你自己的应用目录改名即可。
 
 ### 前提
 
@@ -131,8 +134,8 @@ export const antdAdapter: RequestAdapter = {
 
 | 方法                | 包在什么时候调它                                                                                                   | 没有它会怎样                       |
 | ------------------- | ------------------------------------------------------------------------------------------------------------------ | ---------------------------------- |
-| `showErrorMessage`  | 业务错误兜底弹 toast                                                                                               | 报错了用户一无所知                 |
-| `showErrorModal`    | 「强制下线」类错误需要弹窗确认                                                                                     | 弹窗和 toast 量级不分              |
+| `showErrorMessage`  | 兜底错误提示、登出提示、网络错误提示（完整触发条件见 [错误触发决策表](#错误触发决策表)）                           | 报错了用户一无所知                 |
+| `showErrorModal`    | 只有 `modalLogout` 类错误（强制下线）需要弹窗确认                                                                  | 弹窗和 toast 量级不分              |
 | `getToken`          | **每个请求发出前**拼 `Authorization: Bearer <token>` 头（`Bearer` 是 HTTP 认证方案的固定前缀，表示「持此令牌者」） | 你得在每个 api 调用处手动加 token  |
 | `getRefreshToken`   | token 过期去续签时                                                                                                 | —                                  |
 | `setAuth`           | 续签成功，写回新 token                                                                                             | —                                  |
@@ -196,13 +199,14 @@ export function fetchUserList() {
 ```ts
 // apps/admin/src/service/queryClient.ts
 import { createQueryClient } from '@fedstack/service';
+import { reportError } from '@/utils/report-error';
 
 export const queryClient = createQueryClient({
   queryCache: {
-    onError: (error) => {
-      if (import.meta.env.DEV) {
-        console.error('Query error:', error);
-      }
+    onError(error, query) {
+      // 只做可观测（上报 / 打点），不要在这里弹提示：
+      // 请求层已经弹过一次，再弹就是重复（原因见下一章）
+      reportError(error, { queryKey: query.queryKey });
     },
   },
 });
@@ -222,7 +226,7 @@ createRoot(document.getElementById('root')!).render(
 );
 ```
 
-至此请求层接入完成。下面逐个讲清背后的概念，让你知道每一步到底买到了什么。
+至此请求层接入完成。下一章用「登录 → 列表 → 新增 → 登出」把两边怎么配合完整走一遍。
 
 ## 核心概念
 
@@ -320,11 +324,37 @@ const isSuccess = String(response.data.bizCode ?? response.data.code) === '200';
 }
 ```
 
-因为 `8888` 配在 `codes.logout` 里，包会：调 `adapter.showErrorMessage('登录已过期')` → 调 `adapter.resetAuth()` 清掉本地 token → 调 `adapter.redirectToLogin('/system/user?...')` 跳回登录页并带上回跳地址。你的 `fetchUserList()` 调用方收到一个 rejected promise，但不需要任何处理—— toast 已经弹过了。
+因为 `8888` 配在 `codes.logout` 里，包会：调 `adapter.showErrorMessage('登录已过期')` → 调 `adapter.resetAuth()` 清掉本地 token → 调 `adapter.redirectToLogin('/system/user?...')` 跳回登录页并带上回跳地址。你的 `fetchUserList()` 调用方收到一个 rejected promise，但不需要任何处理——toast 已经弹过了。
+
+> 💡 **登出提示不复用后端 message**：`logout` 码弹的是 `adapter.t('request.logoutMsg')` 这句内置文案，不是后端返回的 `message`。想用后端文案就把它放进 `modalLogout`（弹窗展示后端 message），或者自己处理错误。（`modalLogout` 弹窗展示的是后端 `message`。）
 
 > 💡 **弹过的提示不会弹第二次**：登出/弹窗登出码的提示由分流逻辑负责，兜底的 onError 会跳过它们；`expiredToken` 码也完全不弹（正在静默续签，弹错误反而误导）。
 
 > ⚠️ 登出和续签失败都由本包调 `adapter.resetAuth()` 清凭据，`redirectToLogin` 只负责「跳到哪」。平台**不必**在路由守卫里再清一遍（清了也无妨，约定上它是幂等的）。
+
+#### 想自己展示错误：`skipErrorMsg`
+
+有些错误不该弹全局 toast，典型的是**表单字段级报错**：
+
+```ts
+export function createUser(params: CreateUserParams) {
+  return request<{ id: string }>({
+    url: '/system/user',
+    method: 'post',
+    data: params,
+    // 这条请求的错误由表单自己展示（输入框下方红字）
+    skipErrorMsg: true,
+  });
+}
+```
+
+它只做一件事：跳过 `handleError` 里的兜底 toast。三个边界必须记清：
+
+- **不影响认证流程**：登出码、弹窗登出码、token 续签该怎么做还怎么做，开关只作用于「其余失败码 / 网络错误」的兜底展示。
+- **不改变 reject**：promise 该失败还是失败，调用方拿到的错误对象一字不差。
+- **是逐请求的全量静默**：打开后这条请求的**所有**错误都不再有人弹提示，你必须覆盖每个错误分支（见 [新增用户：409 表单冲突](#6-新增用户409-表单冲突)）。
+
+完整触发条件见 [错误触发决策表](#错误触发决策表)。
 
 ### 4. token 自动续签
 
@@ -399,6 +429,8 @@ onClose 回调 → 出栈 → 下次同样的错误能再弹
 
 这个栈也挂在实例上暴露出来（`request.state.errMsgStack`），调试时可以直接查看当前有哪些消息在展示。
 
+> 💡 **去重的时间窗有限**：栈位在消息关闭时释放，之后同样的错误会再次弹出。配合 React Query 的 `retry`（默认失败后重发 2 次），同一个查询最多可能弹 2 次——第 3 次尝试发生在约 3 秒后，正好在 antd toast 默认关闭时间之后。细节和取舍见 [重试与去重的时序](#重试与去重的时序)。
+
 ### 6. QueryClient 统一配置
 
 **痛点**：每个项目的 React Query 默认值各配各的——这个项目 `staleTime: 0` 导致切换路由就重新请求，那个项目忘了关 `refetchOnWindowFocus`，切个窗口全页面重新加载。
@@ -441,6 +473,398 @@ export const queryClient = createQueryClient({
 `defaultOptions` 与内置默认值**浅合并**：`queries` 里的字段逐项覆盖，不会因为传了 `queries` 就把整个 queries 默认块替换掉。
 
 `createQueryClient` 同时挂在主入口和 `@fedstack/service/query` 子入口：只有 QueryClient 需求的场景引子路径，依赖面更窄。默认配置常量（`DEFAULT_QUERY_CONFIG` / `DEFAULT_MUTATION_CONFIG`）也从 `./query` 导出，方便你比对「我覆盖了哪些」。
+
+## 与 React Query 集成：一条完整业务链路
+
+这一章回答三个最容易卡住的问题：
+
+1. 请求层和 React Query 各管什么，边界在哪？
+2. 一个页面从登录到登出，代码到底怎么写？
+3. `queryCache.onError` 明明也能收到错误，为什么不能在那儿弹提示？
+
+场景沿用快速上手：**登录页 + 用户列表页 + 新增用户弹窗**。技术栈是 antd + TanStack Router + TanStack Query v5。
+
+### 0. 先分清两层职责
+
+| 能力                     | 请求层（本包）      | React Query                      |
+| ------------------------ | ------------------- | -------------------------------- |
+| token 注入 / 续签        | ✅ 自动             | ❌                               |
+| 四类业务码分流           | ✅ 自动             | ❌                               |
+| 用户可见错误提示         | ✅ 唯一出口（去重） | ❌ 不要在这里弹                  |
+| 缓存 / 失效 / 预取       | ❌                  | ✅                               |
+| 失败重试 / 并发请求合并  | ❌                  | ✅                               |
+| `loading` / `error` 状态 | ❌                  | ✅                               |
+| 错误上报 / 打点          | ❌                  | ✅ `queryCache.onError` 推荐位置 |
+
+一句话记住：**请求层负责「让用户知道出事了」，React Query 负责「数据怎么存、什么时候再取」**。两边都做同一件事，就是重复。
+
+### 1. 目录摆法
+
+```text
+src/
+├── service/                    # 请求层：包只在这里被装配一次
+│   ├── adapter.ts              # 平台 Adapter
+│   ├── request/index.ts        # createAppRequest 实例
+│   ├── queryClient.ts          # createQueryClient 实例
+│   └── api/
+│       ├── auth/index.ts       # fetchLogin / fetchRefreshToken
+│       └── user.ts             # fetchUserList / createUser
+└── features/                   # 业务层：只关心 queryOptions 和 useQuery/useMutation
+    ├── auth/login-form.tsx
+    └── user/
+        ├── queries.ts          # userKeys + userQueries
+        ├── user-list.tsx
+        └── user-create-form.tsx
+```
+
+`service/api/*` 只放「怎么发请求」，`features/*/queries.ts` 只放「缓存键、取数策略、失效规则」。业务组件不直接 import `request`。
+
+### 2. QueryClient：`onError` 是可观测钩子，不是第二个提示入口
+
+你已经发现 `queryCache.onError` 也能收到错误——这是正常的，因为它观察的是**同一个 rejected promise**。请求失败后的完整链路是：
+
+```text
+request() 发出
+   │
+   ▼
+响应返回 → isBackendSuccess 判定
+   │ 失败
+   ▼
+onBackendFail（本包）：登出 / 弹窗登出 / 续签重试
+   │ 返回 null，继续往下
+   ▼
+onError（本包）：showErrorMsg 去重 → adapter.showErrorMessage → 弹 toast
+   │
+   ▼
+promise reject
+   │
+   ▼
+React Query 记录 error，按 retry 配置重发（query 默认 2 次）
+   │
+   ▼
+重试用尽 → QueryCache.onError（你配置的回调）
+```
+
+所以 `queryCache.onError` 的定位是 **可观测**：
+
+```ts
+// apps/admin/src/service/queryClient.ts
+import { createQueryClient } from '@fedstack/service';
+import { reportError } from '@/utils/report-error';
+
+export const queryClient = createQueryClient({
+  queryCache: {
+    onError(error, query) {
+      reportError(error, { queryKey: query.queryKey });
+    },
+  },
+  mutationCache: {
+    onError(error, _variables, _context, mutation) {
+      reportError(error, { mutationKey: mutation.options.mutationKey });
+    },
+  },
+});
+```
+
+`mutationCache.onError` 同理：请求层已经弹过提示，这里只上报。
+
+### 3. 用 `queryOptions` 定义取数
+
+把 `queryKey` 和 `queryFn` 收在一处，组件、预取、失效都用同一份定义：
+
+```ts
+// src/service/api/user.ts
+import { request } from '../request';
+
+export interface UserInfo {
+  id: string;
+  nickname: string;
+  email: string;
+}
+
+export interface UserListParams {
+  page: number;
+  pageSize: number;
+}
+
+export interface UserListResult {
+  list: UserInfo[];
+  total: number;
+}
+
+export function fetchUserList(params: UserListParams) {
+  return request<UserListResult>({ url: '/system/user/list', params });
+}
+
+export interface CreateUserParams {
+  username: string;
+  nickname: string;
+  email: string;
+}
+
+export function createUser(params: CreateUserParams) {
+  return request<{ id: string }>({
+    url: '/system/user',
+    method: 'post',
+    data: params,
+    // 表单自己展示字段级错误，见第 6 节
+    skipErrorMsg: true,
+  });
+}
+
+export function fetchUserDetail(id: string) {
+  return request<UserInfo>({ url: `/system/user/${id}` });
+}
+```
+
+```ts
+// src/features/user/queries.ts
+import { queryOptions } from '@tanstack/react-query';
+import { fetchUserDetail, fetchUserList } from '@/service/api/user';
+
+export const userKeys = {
+  all: ['system', 'user'] as const,
+  lists: () => [...userKeys.all, 'list'] as const,
+  list: (params: { page: number }) => [...userKeys.lists(), params] as const,
+};
+
+export const userQueries = {
+  list: (params: { page: number }) =>
+    queryOptions({
+      queryKey: userKeys.list(params),
+      queryFn: () => fetchUserList({ page: params.page, pageSize: 20 }),
+    }),
+  detail: (id: string) =>
+    queryOptions({
+      queryKey: [...userKeys.all, 'detail', id] as const,
+      queryFn: () => fetchUserDetail(id),
+    }),
+};
+```
+
+`userKeys` 单独抽出来是为了失效和预取能复用前缀：
+
+```ts
+queryClient.invalidateQueries({ queryKey: userKeys.lists() });
+queryClient.prefetchQuery(userQueries.detail('1'));
+```
+
+### 4. 列表页：错误提示不用你管
+
+```tsx
+// src/features/user/user-list.tsx
+import { useQuery } from '@tanstack/react-query';
+import { Empty, Table } from 'antd';
+import { userQueries } from './queries';
+
+export function UserList({ page }: { page: number }) {
+  const { data, isPending, isError } = useQuery(userQueries.list({ page }));
+
+  if (isPending) {
+    return <Table loading />;
+  }
+  // 错误提示已经由请求层弹过，这里只决定页面显示什么
+  if (isError || !data) {
+    return <Empty description="加载失败，请稍后重试" />;
+  }
+  return <Table rowKey="id" dataSource={data.list} />;
+}
+```
+
+这里**没有 try/catch，也没有 `message.error`**。`isError` 只用来渲染空态，用户已经看到一个 toast 了。
+
+### 5. 登录：成功后清掉上一个账号的缓存
+
+```ts
+// src/service/api/auth/index.ts
+import { request } from '../../request';
+
+export interface LoginParams {
+  username: string;
+  password: string;
+}
+
+export interface LoginTokens {
+  token: string;
+  refreshToken: string;
+}
+
+export function fetchLogin(params: LoginParams) {
+  return request<LoginTokens>({
+    url: '/auth/login',
+    method: 'post',
+    data: params,
+    encrypt: true, // 只有配置了加密才需要，见「接口传输加密」
+  });
+}
+```
+
+```tsx
+// src/features/auth/login-form.tsx
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { router } from '@/features/router';
+import { antdAdapter } from '@/service/adapter';
+import { fetchLogin } from '@/service/api/auth';
+
+export function useLogin() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: fetchLogin,
+    onSuccess(tokens) {
+      // 只有 adapter 知道 token 存在哪，业务层不要直接碰存储
+      antdAdapter.setAuth(tokens);
+      // 换账号必须清缓存：否则新账号会看到上一个账号的列表数据
+      queryClient.clear();
+      router.navigate({ to: '/system/user' });
+    },
+  });
+}
+```
+
+登录失败（密码错、账号锁定）由请求层弹 toast，表单不用额外处理。如果登录表单需要字段级报错，按第 6 节的方式加 `skipErrorMsg`。
+
+### 6. 新增用户：409 表单冲突
+
+后端对重名返回真实的 HTTP 409：
+
+```json
+{ "code": 409, "data": null, "message": "用户名已存在" }
+```
+
+不加处理的话，用户会同时看到「toast + 输入框红字」两条反馈。给这条请求加 `skipErrorMsg: true`（见第 3 节 api 定义），然后由表单接管展示：
+
+```tsx
+// src/features/user/user-create-form.tsx
+import type { BackendEnvelope } from '@fedstack/service';
+import type { CreateUserParams } from '@/service/api/user';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { Form, message } from 'antd';
+import { isAxiosError } from 'axios';
+import { createUser } from '@/service/api/user';
+import { userKeys } from './queries';
+
+export function UserCreateForm({ onDone }: { onDone: () => void }) {
+  const [form] = Form.useForm();
+  const queryClient = useQueryClient();
+
+  const createUserMutation = useMutation({
+    mutationFn: createUser,
+    onSuccess() {
+      queryClient.invalidateQueries({ queryKey: userKeys.lists() });
+      onDone();
+    },
+  });
+
+  function handleFinish(values: CreateUserParams) {
+    createUserMutation.mutate(values, {
+      onError(error) {
+        if (isAxiosError<BackendEnvelope>(error) && error.response?.status === 409) {
+          // 需求命中：标到具体字段上，不再弹 toast
+          form.setFields([{ name: 'username', errors: [error.response.data.message] }]);
+          return;
+        }
+        // skipErrorMsg 关掉了全局提示，其余错误必须在这里补上，
+        // 否则网络断开、500 都会变成「点了保存但页面毫无反应」
+        const text = isAxiosError<BackendEnvelope>(error)
+          ? error.response?.data?.message || error.message
+          : '操作失败，请稍后重试';
+        message.error(text);
+      },
+    });
+  }
+
+  return (
+    <Form form={form} onFinish={handleFinish}>
+      {/* 表单项略 */}
+    </Form>
+  );
+}
+```
+
+**`skipErrorMsg` 的代价就是这个 `else` 分支**：开关是逐请求的全量静默，打开后所有错误都得你自己展示。只在「调用方能覆盖全部错误分支」的请求上用它（表单提交、后台轮询），不要图省事全项目铺开。
+
+### 7. token 续签在 React Query 下是什么表现
+
+一句话：**React Query 完全看不到续签**。
+
+```text
+查询请求 → 后端返回 bizCode 9999
+   │
+   ▼
+请求层：续签（全应用共享一次）→ 用新 token 重发
+   │
+   ▼
+重发成功 → 调用方拿到正常数据 → React Query 认为这次查询成功
+```
+
+这带来两个直接结论：
+
+- 续签**不消耗** React Query 的 `retry` 次数（续签成功时 promise 根本没失败）。
+- 页面代码不需要任何 `onError` 分支判断「是不是 token 过期」。
+
+只有一种情况会进入 React Query 的错误通道：**refresh token 也过期了**。此时请求层会 `resetAuth()` + 跳登录页，promise 随后 reject。页面马上要卸载，React Query 的重试已无意义——如果观察到登出瞬间还有额外请求，把这个 query 的 `retry` 调成 `1` 或 `false` 即可。
+
+### 8. 登出
+
+```ts
+// src/features/auth/logout.ts
+import { useQueryClient } from '@tanstack/react-query';
+import { router } from '@/features/router';
+import { antdAdapter } from '@/service/adapter';
+
+export function useLogout() {
+  const queryClient = useQueryClient();
+
+  return function logout() {
+    antdAdapter.resetAuth();
+    // 离开账号前清空所有缓存，避免下次登录短暂看到上一个人的数据
+    queryClient.clear();
+    router.navigate({ to: '/login' });
+  };
+}
+```
+
+清除顺序建议固定为：**清凭据 → 清缓存 → 跳转**。先清缓存再清凭据会让在途请求带着旧 token 继续跑。
+
+### 错误触发决策表
+
+这张表回答「到底哪种错误会触发哪个 adapter 方法」：
+
+| 错误来源                                                    | 分流位置      | 调用的 adapter 方法                                                          | 用户看到                                        | 调用方收到               |
+| ----------------------------------------------------------- | ------------- | ---------------------------------------------------------------------------- | ----------------------------------------------- | ------------------------ |
+| `logout` 码（HTTP 200 + bizCode，或真实 HTTP 状态码）       | `backEndFail` | `showErrorMessage(t('request.logoutMsg'))` + `resetAuth` + `redirectToLogin` | 一条内置文案 toast，回登录页                    | reject（无需处理）       |
+| `modalLogout` 码且 message 不在去重栈                       | `backEndFail` | `showErrorModal`（展示后端 message）→ 确认后登出                             | 弹窗，确认后回登录页                            | reject（无需处理）       |
+| `modalLogout` 码且 message 已在去重栈                       | `backEndFail` | 无（弹窗已经在展示）                                                         | 已有一个弹窗                                    | reject                   |
+| `expiredToken` 码，续签成功                                 | `backEndFail` | 无（静默续签后重发）                                                         | 无感知                                          | resolve（拿到重试结果）  |
+| `expiredToken` 码，续签失败                                 | `backEndFail` | 无（`handleError` 也跳过）→ 已由续签流程 `resetAuth` + `redirectToLogin`     | 直接回登录页                                    | reject                   |
+| 其他业务码（HTTP 200 + bizCode），如 1234                   | `handleError` | `showErrorMessage(后端 message)`                                             | 一条 toast                                      | reject                   |
+| 真实 HTTP 失败码（409 / 500 / 502…）                        | `handleError` | `showErrorMessage(后端 message，缺失时用 axios 文案)`                        | 一条 toast                                      | reject                   |
+| 网络断开 / 超时 / 请求被取消                                | `handleError` | `showErrorMessage(axios 文案)`                                               | 一条 toast（取消是 `canceled`，会被去重成一条） | reject                   |
+| 任意上述兜底类错误，且该请求带 `skipErrorMsg: true`         | `handleError` | 无                                                                           | 无                                              | reject（调用方自行展示） |
+| 登出 / 弹窗登出 / 续签流程，且该请求带 `skipErrorMsg: true` | `backEndFail` | 照常执行，不受开关影响                                                       | 同第一行 / 第二行                               | 同第一行 / 第二行        |
+
+两条容易忽略的细节：
+
+- `logout` 码弹的是 `t('request.logoutMsg')` 内置文案，**不是**后端 `message`；想展示后端文案请用 `modalLogout`。
+- `skipErrorMsg` 只关掉最后一道兜底，认证类流程（登出、弹窗、续签）永远照常执行——这是有意的，静默开关不该让用户停在一个已失效的会话里。
+
+### 重试与去重的时序
+
+把 React Query 的默认 `retry: 2` 和请求层的 5 秒去重栈叠在一起看：
+
+```text
+t=0s   第 1 次请求失败 → 弹 toast「服务器开小差了」→ 入栈
+t=1s   RQ 第 1 次重试失败 → 文案相同 → 命中栈，丢弃
+t=3s   toast 超时关闭 → onClose 出栈
+t=3s   RQ 第 2 次重试失败 → 栈已空 → 又弹一条（可能）
+```
+
+结论与取舍：
+
+- **偶尔出现第二条不是 bug**，是「去重窗口」和「重试节奏」正好错开。
+- 页面里**多个**查询同时失败时，去重栈保证只有一条提示（它们的失败几乎同一时刻）。
+- 不想看到第二条，有三个正当手段：调低该 query 的 `retry`；把后台轮询类请求标成 `skipErrorMsg: true`；或者只在页面级错误态里展示，不依赖 toast。
+- 不要把 `retry` 调成很大来「等去重窗口」——每次重试都是一次真实网络请求。
 
 ## 接口传输加密
 
@@ -571,17 +995,20 @@ VITE_API_CRYPTO_PUBLIC_KEY="-----BEGIN PUBLIC KEY-----\nMIIBIjANBg...\n-----END 
 
 ### Do / Don't
 
-| ❌ 不要                                                        | ✅ 要                                                                                |
-| -------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| 在组件里 `axios.create()` 自己的实例                           | 统一走 `request`，认证头和错误分流才会生效                                           |
-| 业务代码 catch 后手动 `message.error`                          | 交给分流兜底弹；只有要做特殊处理（表单高亮、静默轮询）才自己 catch                   |
-| WebSocket / SSE 拿到过期码时自己调 `adapter.fetchRefreshToken` | 调包导出的 `refreshToken(adapter)`，和 HTTP 共享同一次刷新                           |
-| 在 RN 的 adapter 里直接 `AsyncStorage.getItem`（异步）         | 启动时先读进内存，`getToken` 同步取值                                                |
-| 给每个 api 函数手动加 `Authorization` 头                       | 什么都不用加，请求拦截器自动注入                                                     |
-| 上传文件的 FormData 接口标 `encrypt: true`                     | 去掉标记，加密只支持 JSON 请求体                                                     |
-| 打开 `retry` 但不配幂等判断                                    | 带上 `axios-retry` 的 `isNetworkOrIdempotentRequestError`，否则下单/支付会被重复提交 |
-| 在路由守卫里再清一遍 token 才跳登录页                          | 交给包调 `resetAuth()`；`redirectToLogin` 只管跳转                                   |
-| 靠记性好给续签请求加 `isRefreshToken`                          | 把 `refreshTokenUrl` 填对，url 对不上的特殊场景才补标记                              |
+| ❌ 不要                                                        | ✅ 要                                                                                         |
+| -------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| 在组件里 `axios.create()` 自己的实例                           | 统一走 `request`，认证头和错误分流才会生效                                                    |
+| 业务代码 catch 后手动 `message.error`                          | 交给分流兜底弹；要自己展示（表单字段级）时给该请求加 `skipErrorMsg: true`，并覆盖所有错误分支 |
+| 在 `queryCache.onError` / `mutationCache.onError` 里弹提示     | 那里只做上报；用户可见提示的唯一出口是请求层                                                  |
+| 登录成功后直接跳转、不清缓存                                   | `antdAdapter.setAuth()` 之后 `queryClient.clear()`，避免串号                                  |
+| WebSocket / SSE 拿到过期码时自己调 `adapter.fetchRefreshToken` | 调包导出的 `refreshToken(adapter)`，和 HTTP 共享同一次刷新                                    |
+| 在 RN 的 adapter 里直接 `AsyncStorage.getItem`（异步）         | 启动时先读进内存，`getToken` 同步取值                                                         |
+| 给每个 api 函数手动加 `Authorization` 头                       | 什么都不用加，请求拦截器自动注入                                                              |
+| 给 `skipErrorMsg` 请求只写 409 分支                            | 其余分支（网络错误、500）也要有兜底展示，否则失败会完全静默                                   |
+| 上传文件的 FormData 接口标 `encrypt: true`                     | 去掉标记，加密只支持 JSON 请求体                                                              |
+| 打开 `retry` 但不配幂等判断                                    | 带上 `axios-retry` 的 `isNetworkOrIdempotentRequestError`，否则下单/支付会被重复提交          |
+| 在路由守卫里再清一遍 token 才跳登录页                          | 交给包调 `resetAuth()`；`redirectToLogin` 只管跳转                                            |
+| 靠记性好给续签请求加 `isRefreshToken`                          | 把 `refreshTokenUrl` 填对，url 对不上的特殊场景才补标记                                       |
 
 ## API 参考
 
@@ -617,6 +1044,17 @@ request.cancelAllRequest();
 console.log(request.state.errMsgStack);
 ```
 
+#### 请求级配置（写在每次调用上）
+
+除了 axios 原生配置，本包在 `AxiosRequestConfig` 上扩展了两个字段：
+
+| 字段             | 作用                                                        | 谁该用                                 |
+| ---------------- | ----------------------------------------------------------- | -------------------------------------- |
+| `skipErrorMsg`   | 跳过兜底错误提示（不影响登出/弹窗登出/续签，不改变 reject） | 调用方自己展示错误的请求，如表单提交   |
+| `isRefreshToken` | 显式标记这个请求是续签请求本身                              | 续签 url 与 `refreshTokenUrl` 对不上时 |
+
+`isTokenRefreshRetry` 是内部字段，业务代码不要设置。
+
 #### 默认行为一览
 
 | 行为       | 默认实现                                                                | 可覆盖             |
@@ -635,15 +1073,16 @@ console.log(request.state.errMsgStack);
 
 ```ts
 import type { DefaultOptions } from '@tanstack/react-query';
+import { MutationCache, QueryCache } from '@tanstack/react-query';
 
 interface CreateQueryClientOptions {
   defaultOptions?: DefaultOptions; // 覆盖默认值（与内置值浅合并）
-  mutationCache?: { onError?: unknown }; // MutationCache 配置（onError / onSuccess / onSettled / onMutate）
-  queryCache?: { onError?: unknown }; // QueryCache 配置（onError / onSuccess / onSettled）
+  mutationCache?: ConstructorParameters<typeof MutationCache>[0]; // MutationCache 配置
+  queryCache?: ConstructorParameters<typeof QueryCache>[0]; // QueryCache 配置
 }
 ```
 
-（`mutationCache` / `queryCache` 的实际类型就是 React Query 两个 Cache 构造函数的参数类型，这里简写示意；默认值明细见「QueryClient 统一配置」。）
+`queryCache.onError(error, query)` 在**该 query 重试用尽后**调用一次；`mutationCache.onError(error, variables, context, mutation)` 在 mutation 失败后调用。两者都应只做可观测/上报，提示交给请求层——原因见 [与 React Query 集成](#与-react-query-集成一条完整业务链路)。
 
 ### 入口形态
 
