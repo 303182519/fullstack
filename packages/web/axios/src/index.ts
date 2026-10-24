@@ -205,3 +205,5 @@ export function createFlatRequest<
 
 export { BACKEND_ERROR_CODE, REQUEST_ID_KEY };
 export type { AxiosError, CreateAxiosDefaults };
+// 纯类型重导出：retry 配置经 RequestOption 暴露给消费方，名字也一并给出，免得下游为 IAxiosRetryConfig 重复声明实体依赖
+export type { IAxiosRetryConfig } from 'axios-retry';
