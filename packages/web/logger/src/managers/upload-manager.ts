@@ -1,13 +1,16 @@
-import type { IStorageAdapter, LogUploadRequest, LogUploadResponse, RequestHeaders, UploadResult } from '../types';
+import type { IStorageAdapter, LogUploadRequest, LogUploadResponse, Platform, RequestHeaders, UploadResult } from '../types';
 import { DEFAULT_UPLOAD_BATCH_SIZE, UPLOAD_TIMESTAMP_STORAGE_KEY } from '../constants';
+import { getPersistedValue, setPersistedValue } from '../utils/kv-storage';
 
 interface UploadManagerConfig {
   /** 设备 ID */
   deviceId: string;
-  /** 日志上传端点 */
+  /** 上传端点 */
   endpoint: string;
   /** 存储适配器 */
   adapter: IStorageAdapter;
+  /** 平台类型（决定上传进度的持久化方式） */
+  platform: Platform;
   /** 批量上传大小 */
   batchSize?: number;
   /** 附加请求头（如鉴权 token），静态对象或动态函数 */
@@ -25,6 +28,9 @@ export class UploadManager {
   /** 存储适配器 */
   private adapter: IStorageAdapter;
 
+  /** 平台类型 */
+  private platform: Platform;
+
   /** 批量上传大小 */
   private batchSize: number;
 
@@ -34,11 +40,15 @@ export class UploadManager {
   /** 是否正在上传 */
   private isUploading = false;
 
+  /** 上传进度是否已从平台存储恢复 */
+  private timestampLoaded = false;
+
   /**
    * 上一次成功上传的时间戳。
    *
-   * 初始化时从 localStorage 恢复（仅 Web 端持久化），进程重启后不会重复上传历史日志；
-   * RN/小程序无 localStorage，退化为内存值（每次启动从 0 开始全量上传）。
+   * 首次上传前从平台 KV 存储懒加载恢复（web → localStorage，RN → AsyncStorage，
+   * 小程序 → 五端 storage），进程/冷启动后不会重复上传历史日志；
+   * 读取失败退化为 0（从 0 开始全量上传，服务端按日志 id 幂等去重兜底）。
    */
   private lastUploadedTimestamp = 0;
 
@@ -46,27 +56,25 @@ export class UploadManager {
     this.deviceId = config.deviceId;
     this.endpoint = config.endpoint;
     this.adapter = config.adapter;
+    this.platform = config.platform;
     this.batchSize = config.batchSize ?? DEFAULT_UPLOAD_BATCH_SIZE;
     this.headers = config.headers;
-    this.lastUploadedTimestamp = UploadManager.loadPersistedTimestamp();
   }
 
-  /** 读取持久化的上传进度，无 localStorage 环境返回 0 */
-  private static loadPersistedTimestamp(): number {
-    if (typeof localStorage === 'undefined') {
-      return 0;
-    }
-    const raw = localStorage.getItem(UPLOAD_TIMESTAMP_STORAGE_KEY);
-    const value = raw ? Number(raw) : 0;
-    return Number.isFinite(value) && value > 0 ? value : 0;
-  }
-
-  /** 持久化上传进度（无 localStorage 环境静默跳过） */
-  private persistTimestamp(): void {
-    if (typeof localStorage === 'undefined') {
+  /** 从平台 KV 存储恢复上传进度（幂等，仅首次上传前执行一次） */
+  private async ensureTimestampLoaded(): Promise<void> {
+    if (this.timestampLoaded) {
       return;
     }
-    localStorage.setItem(UPLOAD_TIMESTAMP_STORAGE_KEY, String(this.lastUploadedTimestamp));
+    this.timestampLoaded = true;
+    const raw = await getPersistedValue(this.platform, UPLOAD_TIMESTAMP_STORAGE_KEY);
+    const value = raw ? Number(raw) : 0;
+    this.lastUploadedTimestamp = Number.isFinite(value) && value > 0 ? value : 0;
+  }
+
+  /** 持久化上传进度到平台 KV 存储（写入失败静默忽略） */
+  private async persistTimestamp(): Promise<void> {
+    await setPersistedValue(this.platform, UPLOAD_TIMESTAMP_STORAGE_KEY, String(this.lastUploadedTimestamp));
   }
 
   /** 上传所有历史日志 */
@@ -79,6 +87,9 @@ export class UploadManager {
     let totalUploaded = 0;
 
     try {
+      // 首次上传前恢复持久化的上传进度
+      await this.ensureTimestampLoaded();
+
       // 获取所有日志
       const allLogs = await this.adapter.read(this.lastUploadedTimestamp);
 
@@ -109,7 +120,7 @@ export class UploadManager {
           const lastLog = batch[batch.length - 1];
           if (lastLog) {
             this.lastUploadedTimestamp = lastLog.timestamp;
-            this.persistTimestamp();
+            await this.persistTimestamp();
           }
         }
         else {

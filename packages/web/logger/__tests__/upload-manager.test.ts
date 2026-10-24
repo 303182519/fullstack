@@ -5,6 +5,7 @@ import { setupServer } from 'msw/node';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { UPLOAD_TIMESTAMP_STORAGE_KEY, UploadManager } from '../src/index';
 import { createMemoryAdapter, makeRecord } from './memory-adapter';
+import { createMockMpFs, createWxLikeGlobal } from './mock-mp-runtime';
 
 // ==================== localStorage 内存桩 ====================
 
@@ -61,6 +62,7 @@ describe('uploadManager', () => {
       deviceId: 'dev-1',
       endpoint: UPLOAD_URL,
       adapter,
+      platform: 'web',
       batchSize: 100,
     });
 
@@ -90,6 +92,7 @@ describe('uploadManager', () => {
       deviceId: 'dev-1',
       endpoint: UPLOAD_URL,
       adapter,
+      platform: 'web',
       batchSize: 100,
       headers: () => ({ Authorization: `Bearer token-${++tokenSeq}` }),
     });
@@ -110,6 +113,7 @@ describe('uploadManager', () => {
       deviceId: 'dev-1',
       endpoint: UPLOAD_URL,
       adapter,
+      platform: 'web',
       batchSize: 100,
     });
 
@@ -118,19 +122,20 @@ describe('uploadManager', () => {
     // 每批成功后写入 localStorage，最终值 = 最后一批最后一条日志的时间戳
     expect(localStorageStore.get(UPLOAD_TIMESTAMP_STORAGE_KEY)).toBe(String(lastTimestamp));
 
-    // 模拟重启：新实例从持久化进度恢复，不再全量重复上传
+    // 模拟重启：新实例首次上传前从平台存储懒加载恢复进度，不再全量重复上传
     const manager2 = new UploadManager({
       deviceId: 'dev-1',
       endpoint: UPLOAD_URL,
       adapter,
+      platform: 'web',
       batchSize: 100,
     });
-    expect(manager2.getStatus().lastUploadedTimestamp).toBe(lastTimestamp);
 
     // read 的 startTime 是闭区间（>=），边界上的最后一条日志会被重传 1 条；
     // 服务端可按日志 id 幂等去重（每条记录携带唯一 nanoid）
     const result = await manager2.uploadAll();
     expect(result).toEqual({ success: true, uploadedCount: 1 });
+    expect(manager2.getStatus().lastUploadedTimestamp).toBe(lastTimestamp);
   });
 
   it('某批失败时应停止后续批次并返回已上传数量', async () => {
@@ -151,6 +156,7 @@ describe('uploadManager', () => {
       deviceId: 'dev-1',
       endpoint: UPLOAD_URL,
       adapter,
+      platform: 'web',
       batchSize: 100,
     });
 
@@ -170,7 +176,7 @@ describe('uploadManager', () => {
     );
 
     const adapter = createMemoryAdapter();
-    const manager = new UploadManager({ deviceId: 'dev-1', endpoint: UPLOAD_URL, adapter });
+    const manager = new UploadManager({ deviceId: 'dev-1', endpoint: UPLOAD_URL, adapter, platform: 'web' });
 
     const result = await manager.uploadAll();
 
@@ -185,9 +191,48 @@ describe('uploadManager', () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
 
     const { adapter } = seedLogs(10);
-    const manager = new UploadManager({ deviceId: 'dev-1', endpoint: UPLOAD_URL, adapter });
+    const manager = new UploadManager({ deviceId: 'dev-1', endpoint: UPLOAD_URL, adapter, platform: 'web' });
 
     const result = await manager.uploadAll();
     expect(result.success).toBe(false);
+  });
+
+  it('mini-program 平台应通过小程序 storage 持久化进度并在冷启动后恢复', async () => {
+    const wxStore = new Map<string, string>();
+    vi.stubGlobal('wx', createWxLikeGlobal(createMockMpFs().fs, wxStore));
+    server.use(
+      http.post(UPLOAD_URL, () => HttpResponse.json({ success: true, receivedCount: 100 })),
+    );
+
+    const { adapter, lastTimestamp } = seedLogs(150);
+    const manager = new UploadManager({
+      deviceId: 'dev-1',
+      endpoint: UPLOAD_URL,
+      adapter,
+      platform: 'mini-program',
+      batchSize: 100,
+    });
+
+    await manager.uploadAll();
+
+    // 进度写入小程序 storage 而非 localStorage
+    expect(wxStore.get(UPLOAD_TIMESTAMP_STORAGE_KEY)).toBe(String(lastTimestamp));
+    expect(localStorageStore.get(UPLOAD_TIMESTAMP_STORAGE_KEY)).toBeUndefined();
+
+    // 模拟冷启动：新实例首次上传前从小程序 storage 恢复进度
+    const manager2 = new UploadManager({
+      deviceId: 'dev-1',
+      endpoint: UPLOAD_URL,
+      adapter,
+      platform: 'mini-program',
+      batchSize: 100,
+    });
+    const result = await manager2.uploadAll();
+
+    // 闭区间边界重传 1 条，服务端按日志 id 幂等去重
+    expect(result).toEqual({ success: true, uploadedCount: 1 });
+    expect(manager2.getStatus().lastUploadedTimestamp).toBe(lastTimestamp);
+
+    vi.unstubAllGlobals();
   });
 });

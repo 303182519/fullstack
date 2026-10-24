@@ -1,7 +1,7 @@
 import type { LogLayerTransport } from 'loglayer';
 import type { IStorageAdapter, LoggerConfig, LoggerInstance, Platform, UploadResult } from './types';
 import { ConsoleTransport, LogLayer } from 'loglayer';
-import { RNStorageAdapter, WebStorageAdapter } from './adapters';
+import { MPStorageAdapter, RNStorageAdapter, WebStorageAdapter } from './adapters';
 import { CleanupManager, UploadManager, WhitelistManager } from './managers';
 import { StorageTransport } from './transports';
 import { getOrCreateDeviceId } from './utils';
@@ -13,6 +13,8 @@ function createStorageAdapter(platform: Platform): IStorageAdapter {
       return new WebStorageAdapter();
     case 'react-native':
       return new RNStorageAdapter();
+    case 'mini-program':
+      return new MPStorageAdapter();
     default:
       return new WebStorageAdapter();
   }
@@ -86,6 +88,7 @@ export async function createLogger(config: LoggerConfig = {}): Promise<LoggerIns
         deviceId,
         endpoint: uploadEndpoint,
         adapter,
+        platform,
         batchSize: uploadBatchSize,
         headers,
       });

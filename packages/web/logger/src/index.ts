@@ -1,5 +1,6 @@
 // 适配器导出
-export { BaseStorageAdapter, RNStorageAdapter, WebStorageAdapter } from './adapters';
+export type { MPStorageAdapterConfig } from './adapters';
+export { BaseStorageAdapter, MPStorageAdapter, RNStorageAdapter, WebStorageAdapter } from './adapters';
 
 // 常量导出
 export {
@@ -46,7 +47,8 @@ export type {
 } from './types';
 
 // 工具函数导出
-export { getOrCreateDeviceId } from './utils';
+export type { MPFileSystemLike, MPRuntime, MPStorageLike, MPVendor } from './utils';
+export { detectMPRuntime, getOrCreateDeviceId, getPersistedValue, setPersistedValue } from './utils';
 
 // 重导出 LogLayer 相关类型
 export type { LogLevel } from 'loglayer';

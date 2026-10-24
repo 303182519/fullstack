@@ -255,11 +255,20 @@ logger.info('Hello');
 
 ## 平台支持
 
-| 平台         | 存储介质               | 状态                                       |
-| ------------ | ---------------------- | ------------------------------------------ |
-| Web          | IndexedDB              | ✅ 完整支持                                |
-| React Native | AsyncStorage（v3 API） | ✅ 适配器已实现，需自行安装 peer 依赖      |
-| 小程序       | 文件系统（JSONL 分片） | ⏳ 设备 ID 已支持，存储适配器 Phase 2 提供 |
+| 平台         | 存储介质                 | 状态                                                      |
+| ------------ | ------------------------ | --------------------------------------------------------- |
+| Web          | IndexedDB                | ✅ 完整支持                                               |
+| React Native | AsyncStorage（v3 API）   | ✅ 适配器已实现，需自行安装 peer 依赖                     |
+| 小程序       | 文件系统（JSONL 日分片） | ✅ 已实现（wx/my/tt/swan/qq 五端，tt/swan/qq 未真机验证） |
+
+### 小程序端的存储行为
+
+- **日分片文件**：日志写在 `{USER_DATA_PATH}/fedstack_logs/yyyy-MM-dd.jsonl`（本地时区），每行一条 JSON。文件名只用来按天快速定位文件，时间范围过滤精确到毫秒，临界时间不会读错。
+- **五端归一化**：运行时按 wx → my → tt → swan → qq 顺序探测全局对象，支付宝的 options 对象形态（`my.getStorageSync({ key })`）自动包装成微信形态。tt/swan/qq 按各端官方文档的微信兼容 API 形态实现，**未做真机验证**，接入时请先在该端冒烟一次。
+- **写满保护**：用户文件目录限额（微信 10MB）写满导致 append 失败时，自动删除最旧一天的日志文件并重试一次；仍失败则交给上层缓冲区重试机制兜底，不会 crash。
+- **探测失败不炸业务**：在不受支持的环境（如 Web 里误配 `platform: 'mini-program'`）中，适配器 `console.warn` 一次后退化为无存储模式，控制台日志不受影响。
+- **上传进度持久化**：冷启动后从小程序 storage 恢复上次上传进度（键 `fedstack_logger_last_uploaded`），不会全量重传。
+- **可注入文件系统**：`new MPStorageAdapter({ fs, rootPath })` 注入自定义文件系统实现（测试 mock、加密包装等），再经 `createLogger({ storageAdapter })` 传入。
 
 > 迁移自上游时我们把持久化存储键从 `skyroc_*` 重命名为 `fedstack_*`（IndexedDB 库名 `fedstack_logs`、设备 ID 键 `fedstack_device_id` 等），与上游数据不互通，老数据不会自动迁移。
 
