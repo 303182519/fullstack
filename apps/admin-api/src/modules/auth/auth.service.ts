@@ -299,10 +299,15 @@ export class AuthService {
    * 也不能签发无会话的令牌。
    */
   async refresh(refreshToken: string | undefined): Promise<IssuedTokens> {
+    // 流程概览：
+    //   验签 → 校验令牌类型与会话 ID → 查会话 → 计算旧令牌哈希
+    //   → 签发新令牌 → 滑动会话 TTL → CAS 原子旋转（旧令牌在此作废）→ 返回新令牌
     if (!refreshToken) {
       throw authErrors.invalidRefreshToken();
     }
 
+    // 验签 + 有效期校验：过期、篡改、签名不匹配一律按「令牌无效」处理，
+    // 不区分具体失败原因，避免向客户端泄露校验细节
     let claims: RefreshTokenPayload;
     try {
       claims = await this.jwtService.verifyAsync<RefreshTokenPayload>(refreshToken);
@@ -311,12 +316,15 @@ export class AuthService {
       throw authErrors.invalidRefreshToken();
     }
 
-    // 校验 refresh token 格式
+    // 校验令牌类型与关键载荷：typ 必须是 refresh（防 access / mfa-pending 令牌冒用刷新接口）；
+    // sub 与 sid 缺一不可——sid 是后续查会话的唯一入口
     const sessionId = claims.sid;
     if (claims.typ !== TOKEN_TYPE.REFRESH || !claims.sub || !sessionId) {
       throw authErrors.invalidRefreshToken();
     }
 
+    // 查会话（以 sid 为准，不看令牌内容）：missing = 会话不存在（已登出/已过期/被踢），
+    // 令牌无意义直接拒；unavailable = Redis 故障，属正确性敏感路径，上抛让前端稍后重试
     const lookup = await this.session.lookupSession(sessionId);
     if (lookup.status === 'missing') {
       throw authErrors.invalidRefreshToken();
@@ -326,9 +334,11 @@ export class AuthService {
     }
 
     const record = lookup.record;
+    // 旧令牌哈希：CAS 的比对基准。Redis 只存摘要不存明文，库泄露不等于令牌泄露
     const expectedHash = hashCacheToken(refreshToken);
 
-    // 1. 先签发新令牌（纯本地计算，无副作用；失败不影响会话状态）
+    // 步骤 1：先签发新令牌（纯本地计算，无副作用）
+    // 顺序要求：必须早于提交点。此时失败不会改动任何会话状态，客户端可拿旧令牌重试
     const tokens = await this.issueTokens({
       userId: record.userId,
       tenantId: record.tenantId,
@@ -337,10 +347,14 @@ export class AuthService {
       sessionId,
     });
 
-    // 2. 滑动会话 TTL（提交点之前的预写；失败则旧 token 仍有效、可重试）
+    // 步骤 2：滑动会话 TTL（提交点之前的「预写」）
+    // 只续期会话主体，不碰 refresh 摘要；这里失败则旧令牌仍然有效，重试即可
     await this.session.touchSession(record);
 
-    // 3. 唯一提交点：原子比对旧哈希，匹配才覆盖为新哈希；并发重放/陈旧 token 此处被拒
+    // 步骤 3：唯一提交点——Lua CAS 原子完成「比对旧哈希 + 写入新哈希」
+    // 比对通过 = 本次请求持有当前有效的 refresh token，赢家；比对失败 = 令牌已被轮换
+    // （并发重放或陈旧令牌），直接拒绝。新令牌含随机 jti，保证与旧令牌字符串不同，
+    // 覆盖后旧令牌立即失效（否则同一秒内签发会得到相同字符串，旋转形同虚设）
     const rotated = await this.session.casRotateRefresh(
       sessionId,
       expectedHash,
@@ -350,6 +364,7 @@ export class AuthService {
       throw authErrors.invalidRefreshToken();
     }
 
+    // 走到这里说明旧令牌已作废、新令牌已生效，返回给客户端保存
     return tokens;
   }
 
