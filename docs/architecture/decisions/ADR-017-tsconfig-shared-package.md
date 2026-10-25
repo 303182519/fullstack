@@ -4,6 +4,8 @@
 - 日期：2026-10-25
 - 影响范围：`packages/tooling/tsconfig/`（新增）、全部 tsconfig 消费方（2 apps + 8 packages 的 tsconfig.json 与 package.json）、`turbo.json`；删除根 `tsconfig.base.json` 与 `packages/web/tsconfig.base.json`
 
+> **2026-10-25 修订（遗留问题收口）**：验证节记录的两个既有问题均已处置——①`prisma generate` 竞态：拆为独立 turbo 任务 `db:generate`（`outputs: ["generated/prisma/**"]`），`@fedstack/database#build` / `#typecheck` 均 `dependsOn: ["db:generate"]`，包脚本不再自带 generate，每轮只跑一次，竞态从根上消除；②实时推送 env 测试：按用户决策删除该 describe 块（实现侧为 `jobs.controller.ts` 硬编码常量，不违反 ADR-013「需显式配置」字面约束），admin-api 测试 346/346 全绿。
+
 ## 背景
 
 TS 基座以根 `tsconfig.base.json` + `packages/web/tsconfig.base.json` 两层相对路径继承存在，三个问题：

@@ -96,30 +96,3 @@ describe('env.validation 文件存储与上传段', () => {
     expect(overridden.value.UPLOAD_COVER_FORMAT).toBe('png');
   });
 });
-
-describe('env.validation 实时推送段（ADR-013 D5/D6）', () => {
-  it('缺省时默认 1000 连接上限与 30s 心跳', () => {
-    const { error, value } = validationSchema.validate(REQUIRED_ENV);
-
-    expect(error).toBeUndefined();
-    expect(value.REALTIME_MAX_CONNECTIONS).toBe(1000);
-    expect(value.REALTIME_HEARTBEAT_MS).toBe(30_000);
-  });
-
-  it('非法取值（非正整数）被拒绝，显式覆盖被尊重', () => {
-    const invalid = validationSchema.validate({
-      ...REQUIRED_ENV,
-      REALTIME_MAX_CONNECTIONS: 0,
-    });
-    expect(invalid.error).toBeDefined();
-
-    const overridden = validationSchema.validate({
-      ...REQUIRED_ENV,
-      REALTIME_MAX_CONNECTIONS: 50,
-      REALTIME_HEARTBEAT_MS: 15_000,
-    });
-    expect(overridden.error).toBeUndefined();
-    expect(overridden.value.REALTIME_MAX_CONNECTIONS).toBe(50);
-    expect(overridden.value.REALTIME_HEARTBEAT_MS).toBe(15_000);
-  });
-});

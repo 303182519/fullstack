@@ -18,11 +18,18 @@
       "outputs": ["dist/**"]
     },
     "@fedstack/database#build": {
-      "dependsOn": ["^build"],
-      "outputs": ["dist/**", "generated/prisma/**"]
+      "dependsOn": ["^build", "db:generate"],
+      "outputs": ["dist/**"]
+    },
+    "db:generate": {
+      "outputs": ["generated/prisma/**"]
     },
     "typecheck": {
       "dependsOn": ["^build"],
+      "outputs": []
+    },
+    "@fedstack/database#typecheck": {
+      "dependsOn": ["^build", "db:generate"],
       "outputs": []
     },
     "test": {
