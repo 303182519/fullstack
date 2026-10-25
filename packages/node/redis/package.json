@@ -31,6 +31,7 @@
   "devDependencies": {
     "@fedstack/config": "workspace:*",
     "@fedstack/eslint-config": "workspace:*",
+    "@fedstack/tsconfig": "workspace:*",
     "@keyv/redis": "catalog:",
     "@nestjs/cache-manager": "catalog:",
     "@nestjs/common": "catalog:",

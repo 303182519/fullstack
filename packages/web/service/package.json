@@ -71,6 +71,7 @@
   "devDependencies": {
     "@fedstack/config": "workspace:*",
     "@fedstack/eslint-config": "workspace:*",
+    "@fedstack/tsconfig": "workspace:*",
     "@rslib/core": "catalog:",
     "@tanstack/react-query": "catalog:",
     "@types/node": "catalog:",

@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "//": "Web 侧 preset：bundler 模块解析 + DOM lib + 声明产物（rslib dts 消费）；packages/web 层包继承",
+  "extends": "./base.json",
+  "compilerOptions": {
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    // 指定模块系统：交给 bundler/rslib 处理，源码 import 不带 .js 扩展名（构建产物自动补全）。
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    // rslib dts:true 读取本配置产出 .d.ts。
+    "declaration": true
+  }
+}

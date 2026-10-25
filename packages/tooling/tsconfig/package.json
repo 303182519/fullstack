@@ -1,0 +1,13 @@
+{
+  "name": "@fedstack/tsconfig",
+  "type": "module",
+  "version": "0.0.0",
+  "private": true,
+  "description": "fedstack 共享 TypeScript 配置：base/node/web 三 preset，各包经包名 extends 继承（ADR-017）",
+  "license": "UNLICENSED",
+  "exports": {
+    "./base.json": "./base.json",
+    "./node.json": "./node.json",
+    "./web.json": "./web.json"
+  }
+}

@@ -1,5 +1,5 @@
 {
-  "extends": "../../../tsconfig.base.json",
+  "extends": "@fedstack/tsconfig/node.json",
   "compilerOptions": {
     "rootDir": ".",
     "types": ["node"],

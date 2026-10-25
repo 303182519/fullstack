@@ -28,6 +28,7 @@
     "@prisma/client": "catalog:"
   },
   "devDependencies": {
+    "@fedstack/tsconfig": "workspace:*",
     "@types/node": "catalog:",
     "prisma": "catalog:",
     "typescript": "catalog:"
