@@ -36,6 +36,7 @@ function makeRedis() {
     expire: vi.fn(),
     del: vi.fn(),
     getDel: vi.fn(),
+    eval: vi.fn(),
   };
 }
 
@@ -135,19 +136,50 @@ describe('sessionService', () => {
     });
   });
 
-  describe('rotateSession', () => {
-    it('重写会话与 refresh 摘要并重置集合 TTL', async () => {
+  describe('touchSession', () => {
+    it('重写会话主体并重置集合 TTL，但不触碰 refresh 摘要', async () => {
       redis.set.mockResolvedValue('OK');
       redis.expire.mockResolvedValue(true);
       const record = makeRecord('sid');
 
-      const next = await service.rotateSession(record, 'refresh-token');
+      const next = await service.touchSession(record);
 
       expect(next.expiresAt).not.toBe(record.expiresAt);
-      expect(redis.set).toHaveBeenCalledTimes(2);
-      expect(redis.set.mock.calls[1]?.[0]).toBe(CacheKeys.AUTH_REFRESH('sid'));
-      expect(redis.set.mock.calls[1]?.[1]).toBe(hashCacheToken('refresh-token'));
+      // 仅写会话主体一次；refresh 摘要由 casRotateRefresh 原子负责
+      expect(redis.set).toHaveBeenCalledTimes(1);
+      expect(redis.set.mock.calls[0]?.[0]).toBe(CacheKeys.AUTH_SESSION('sid'));
       expect(redis.expire).toHaveBeenCalledWith(CacheKeys.AUTH_USER_SESSIONS('1'), TTL_SECONDS);
+    });
+  });
+
+  describe('casRotateRefresh', () => {
+    it('旧哈希匹配时写入新哈希并返回 true', async () => {
+      redis.eval.mockResolvedValue(1);
+
+      const ok = await service.casRotateRefresh('sid', 'old-hash', 'new-refresh');
+
+      expect(ok).toBe(true);
+      const [, opts] = redis.eval.mock.calls[0] ?? [];
+      expect(opts.keys).toEqual([CacheKeys.AUTH_REFRESH('sid')]);
+      expect(opts.arguments).toEqual([
+        'old-hash',
+        hashCacheToken('new-refresh'),
+        String(TTL_SECONDS),
+      ]);
+    });
+
+    it('旧哈希不匹配（已被轮换/重放）时返回 false 且不写入', async () => {
+      redis.eval.mockResolvedValue(0);
+
+      const ok = await service.casRotateRefresh('sid', 'old-hash', 'new-refresh');
+
+      expect(ok).toBe(false);
+    });
+
+    it('redis 未配置时上抛 503（正确性敏感不降级）', async () => {
+      const nullService = new SessionService(null, makePrefixer(), makeConfigService());
+      const error = await nullService.casRotateRefresh('sid', 'old', 'new').catch(e => e);
+      expect(codeOf(error)).toBe('10B01');
     });
   });
 

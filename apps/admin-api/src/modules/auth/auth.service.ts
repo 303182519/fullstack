@@ -288,9 +288,15 @@ export class AuthService {
   /**
    * 刷新：滑动过期 + 令牌旋转。
    *
-   * 旋转校验：Redis 中存的 refresh 摘要是「该会话当前唯一有效」的令牌；
-   * 若请求带来的 refresh 与存储摘要不一致（含被旋转淘汰的旧令牌），一律拒绝。
-   * Redis 不可用时不上抛降级——刷新属正确性敏感操作，宁可让前端重新登录，也不能签发无会话的令牌。
+   * 旋转语义：refresh token 一次性——用掉即轮换，旧令牌立即失效。
+   * 为避免「读旧哈希 → 签发 → 覆盖新哈希」三段式的 TOCTOU 竞态，采用单 key
+   * Lua CAS（{@link SessionService.casRotateRefresh}）作为唯一提交点：
+   *   1. 先签发新令牌（纯本地计算，无副作用）；
+   *   2. 滑动会话 TTL（提交点之前的预写；失败则旧 token 仍有效、可重试）；
+   *   3. CAS 比对旧哈希，匹配才覆盖新哈希——并发重放/陈旧 token 在此被拒。
+   *
+   * Redis 不可用时不上抛降级——刷新属正确性敏感操作，宁可让前端重新登录，
+   * 也不能签发无会话的令牌。
    */
   async refresh(refreshToken: string | undefined): Promise<IssuedTokens> {
     if (!refreshToken) {
@@ -305,6 +311,7 @@ export class AuthService {
       throw authErrors.invalidRefreshToken();
     }
 
+    // 校验 refresh token 格式
     const sessionId = claims.sid;
     if (claims.typ !== TOKEN_TYPE.REFRESH || !claims.sub || !sessionId) {
       throw authErrors.invalidRefreshToken();
@@ -319,11 +326,9 @@ export class AuthService {
     }
 
     const record = lookup.record;
-    const storedHash = await this.session.readRefreshHash(sessionId);
-    if (!storedHash || storedHash !== hashCacheToken(refreshToken)) {
-      throw authErrors.invalidRefreshToken();
-    }
+    const expectedHash = hashCacheToken(refreshToken);
 
+    // 1. 先签发新令牌（纯本地计算，无副作用；失败不影响会话状态）
     const tokens = await this.issueTokens({
       userId: record.userId,
       tenantId: record.tenantId,
@@ -331,7 +336,20 @@ export class AuthService {
       isSuper: record.isSuper,
       sessionId,
     });
-    await this.session.rotateSession(record, tokens.refreshToken);
+
+    // 2. 滑动会话 TTL（提交点之前的预写；失败则旧 token 仍有效、可重试）
+    await this.session.touchSession(record);
+
+    // 3. 唯一提交点：原子比对旧哈希，匹配才覆盖为新哈希；并发重放/陈旧 token 此处被拒
+    const rotated = await this.session.casRotateRefresh(
+      sessionId,
+      expectedHash,
+      tokens.refreshToken,
+    );
+    if (!rotated) {
+      throw authErrors.invalidRefreshToken();
+    }
+
     return tokens;
   }
 
@@ -523,6 +541,7 @@ export class AuthService {
     const refreshPayload: RefreshTokenPayload = {
       sub: principal.userId,
       sid: principal.sessionId,
+      jti: crypto.randomUUID(),
       typ: TOKEN_TYPE.REFRESH,
     };
 

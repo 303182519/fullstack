@@ -93,6 +93,8 @@ export interface AccessTokenPayload {
 export interface RefreshTokenPayload {
   sub: string;
   sid: string;
+  /** 一次性编号（UUID），保证同一秒内多次刷新签发的 token 必然不同，旋转才能真正失效旧令牌 */
+  jti: string;
   typ: 'refresh';
 }
 

@@ -133,21 +133,15 @@ export class SessionService {
     );
   }
 
-  /** 读会话当前有效 refresh 令牌摘要（sha256）。正确性敏感，失败上抛。 */
-  async readRefreshHash(sessionId: string): Promise<string | undefined> {
-    const client = this.requireClient();
-    const raw = await client.get(this.refreshKey(sessionId));
-    return raw ?? undefined;
-  }
-
   /**
-   * 滑动过期 + 令牌旋转：重置 session / refresh / 集合三处 TTL，并覆盖为新 refresh 摘要。
+   * 滑动过期：重写会话主体并重置集合 TTL。
+   *
+   * **不**触碰 refresh 摘要——那一步由 {@link casRotateRefresh} 原子完成。
+   * 本方法是 CAS 提交点之前的「预写」：若它失败，旧 refresh token 仍然有效、
+   * 客户端可重试；不会出现「签发了新 token 但旧 token 未失效」的半状态。
    * 正确性敏感，失败上抛。
    */
-  async rotateSession(
-    record: SessionRecord,
-    refreshToken: string,
-  ): Promise<SessionRecord> {
+  async touchSession(record: SessionRecord): Promise<SessionRecord> {
     const client = this.requireClient();
     const next: SessionRecord = {
       ...record,
@@ -156,13 +150,43 @@ export class SessionService {
     await client.set(this.sessionKey(record.sessionId), JSON.stringify(next), {
       EX: this.ttlSeconds,
     });
-    await client.set(
-      this.refreshKey(record.sessionId),
-      hashCacheToken(refreshToken),
-      { EX: this.ttlSeconds },
-    );
     await client.expire(this.userSessionsKey(record.userId), this.ttlSeconds);
     return next;
+  }
+
+  /**
+   * 令牌旋转的**唯一提交点**：单 key Lua CAS。
+   *
+   * CAS = Compare-And-Swap / Compare-And-Set ，
+   * 中文叫「比较并交换」或「比较并设置」，是一种 原子操作 。
+   * 仅当 refresh 摘要等于 `expectedHash` 时，才覆盖为新 refresh 摘要并重设 TTL；
+   * 返回 true 的请求是并发中的赢家，返回 false 表示该 refresh token 已被轮换
+   * （并发重放或陈旧 token），调用方应抛「refresh token 无效」。
+   *
+   * 为什么用 Lua 而不是 GET+SET：读与写之间存在 TOCTOU 窗口，两个并发刷新会
+   * 双双通过校验、双双覆盖，导致重放检测失效与客户端令牌被提前作废。
+   * 脚本只碰 refresh 一个 key，避免跨 slot（Redis Cluster 兼容，无需 hash tag）。
+   * 正确性敏感，失败上抛。
+   */
+  async casRotateRefresh(
+    sessionId: string,
+    expectedHash: string,
+    newRefreshToken: string,
+  ): Promise<boolean> {
+    const client = this.requireClient();
+    const newHash = hashCacheToken(newRefreshToken);
+    const lua = `
+      if redis.call('GET', KEYS[1]) == ARGV[1] then
+        redis.call('SET', KEYS[1], ARGV[2], 'EX', ARGV[3])
+        return 1
+      end
+      return 0
+    `;
+    const result = await client.eval(lua, {
+      keys: [this.refreshKey(sessionId)],
+      arguments: [expectedHash, newHash, String(this.ttlSeconds)],
+    }) as number;
+    return result === 1;
   }
 
   /** 登出：删除会话主体 + refresh 摘要 + 集合成员。正确性敏感，失败上抛。 */

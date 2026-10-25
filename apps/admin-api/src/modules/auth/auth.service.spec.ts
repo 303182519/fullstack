@@ -122,8 +122,8 @@ describe('authService', () => {
     createSession: vi.fn(),
     saveRefreshHash: vi.fn(),
     lookupSession: vi.fn(),
-    readRefreshHash: vi.fn(),
-    rotateSession: vi.fn(),
+    touchSession: vi.fn(),
+    casRotateRefresh: vi.fn(),
     removeSession: vi.fn(),
   };
   const captcha = { generate: vi.fn(), consume: vi.fn() };
@@ -192,6 +192,8 @@ describe('authService', () => {
     password.verify.mockResolvedValue(true);
     session.createSession.mockResolvedValue('sid-1');
     session.saveRefreshHash.mockResolvedValue(undefined);
+    session.touchSession.mockResolvedValue(sessionRecord);
+    session.casRotateRefresh.mockResolvedValue(true);
     jwt.signAsync.mockResolvedValue(ACCESS_TOKEN);
   });
 
@@ -324,11 +326,13 @@ describe('authService', () => {
         sup: false,
         typ: 'access',
       });
-      expect(jwt.signAsync.mock.calls[1]?.[0]).toEqual({
+      expect(jwt.signAsync.mock.calls[1]?.[0]).toMatchObject({
         sub: '1',
         sid: 'sid-1',
         typ: 'refresh',
       });
+      // jti 为随机 UUID，保证同一秒内签发的 refresh token 必然不同
+      expect(jwt.signAsync.mock.calls[1]?.[0].jti).toMatch(/^[0-9a-f-]{36}$/);
     });
   });
 
@@ -377,31 +381,42 @@ describe('authService', () => {
       expect(codeOf(error)).toBe('10B01');
     });
 
-    it('refresh 摘要缺失时抛 10A11', async () => {
+    it('cAS 失败（token 已被轮换/并发重放）时抛 10A11', async () => {
       jwt.verifyAsync.mockResolvedValue(refreshClaims);
       session.lookupSession.mockResolvedValue({ status: 'ok', record: sessionRecord });
-      session.readRefreshHash.mockResolvedValue(undefined);
+      session.casRotateRefresh.mockResolvedValue(false);
+
       const error = await service.refresh(REFRESH_TOKEN).catch(e => e);
+
       expect(codeOf(error)).toBe('10A11');
+      expect(session.touchSession).toHaveBeenCalledWith(sessionRecord);
+      expect(session.casRotateRefresh).toHaveBeenCalledWith(
+        'sid-1',
+        hashCacheToken(REFRESH_TOKEN),
+        ACCESS_TOKEN,
+      );
     });
 
-    it('refresh 摘要不匹配时抛 10A11', async () => {
+    it('刷新成功时先滑动 TTL 再 CAS 旋转并签发新令牌', async () => {
       jwt.verifyAsync.mockResolvedValue(refreshClaims);
       session.lookupSession.mockResolvedValue({ status: 'ok', record: sessionRecord });
-      session.readRefreshHash.mockResolvedValue('other-hash');
-      const error = await service.refresh(REFRESH_TOKEN).catch(e => e);
-      expect(codeOf(error)).toBe('10A11');
-    });
-
-    it('刷新成功时旋转会话并签发新令牌', async () => {
-      jwt.verifyAsync.mockResolvedValue(refreshClaims);
-      session.lookupSession.mockResolvedValue({ status: 'ok', record: sessionRecord });
-      session.readRefreshHash.mockResolvedValue(hashCacheToken(REFRESH_TOKEN));
-      session.rotateSession.mockResolvedValue(sessionRecord);
 
       const tokens = await service.refresh(REFRESH_TOKEN);
 
-      expect(session.rotateSession).toHaveBeenCalledWith(sessionRecord, ACCESS_TOKEN);
+      // 顺序：touchSession（预写）→ casRotateRefresh（提交点）
+      const [touchOrder] = session.touchSession.mock.invocationCallOrder;
+      const [casOrder] = session.casRotateRefresh.mock.invocationCallOrder;
+      expect(touchOrder).toBeTypeOf('number');
+      expect(casOrder).toBeTypeOf('number');
+      if (touchOrder !== undefined && casOrder !== undefined) {
+        expect(touchOrder).toBeLessThan(casOrder);
+      }
+      expect(session.touchSession).toHaveBeenCalledWith(sessionRecord);
+      expect(session.casRotateRefresh).toHaveBeenCalledWith(
+        'sid-1',
+        hashCacheToken(REFRESH_TOKEN),
+        ACCESS_TOKEN,
+      );
       expect(tokens).toEqual({
         accessToken: ACCESS_TOKEN,
         refreshToken: ACCESS_TOKEN,
