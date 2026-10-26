@@ -19,5 +19,5 @@
     "noEmit": true,
     "verbatimModuleSyntax": true
   },
-  "include": ["src", "env.d.ts"]
+  "include": ["src", "env.d.ts", "rsbuild.config.ts"]
 }

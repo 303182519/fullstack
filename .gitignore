@@ -15,10 +15,12 @@ website/doc_build/
 !.env.example
 !.env.e2e.example
 
-# Admin 是浏览器应用，三套环境只包含会进入前端产物的公开构建配置
-!apps/admin/.env.development
+# Admin 是浏览器应用，这几套环境只包含会进入前端产物的公开构建配置
+# 仅含 PUBLIC_ 前缀变量，不含任何密钥；私密值必须放 .env.local（仍被忽略）
+!apps/admin/.env
+!apps/admin/.env.dev
 !apps/admin/.env.test
-!apps/admin/.env.production
+!apps/admin/.env.prod
 
 # Prisma 生成产物
 packages/node/database/generated/prisma/
