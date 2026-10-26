@@ -14,7 +14,7 @@
     },
     "build": {
       "dependsOn": ["^build"],
-      "env": ["APP_ENV", "API_BASE_URL"],
+      "inputs": ["$TURBO_DEFAULT$", ".env*"],
       "outputs": ["dist/**"]
     },
     "@fedstack/database#build": {

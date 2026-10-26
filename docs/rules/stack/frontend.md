@@ -15,6 +15,11 @@
 - Zustand
 - 生产环境浏览器运行时
 
+相关 skill（skills 均装在仓库根 `.agents/skills/`）：
+
+- 构建配置与排障：先触发 skill `rsbuild-best-practices`
+- React 客户端性能改写与评审：先触发 skill `vercel-react-best-practices`（其中 `server-*` 等 Next.js 专属规则不适用本仓）
+
 ## 2. 状态架构
 
 前端分为三大核心状态分类：

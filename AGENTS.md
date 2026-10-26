@@ -220,6 +220,10 @@ AI 代理**禁止输出内部思考推理链路**。
 已安装 skill 位于 `.agents/skills/`（清单与来源见根 `skills-lock.json`）。不确定该用哪一个时，先触发 skill `ask-matt` 做路由。
 本文档中提到的 skill 名由 `pnpm docs:check` 校验是否存在。
 
+**安装位置**：skill 只装在仓库根 `.agents/skills/`，由根 `skills-lock.json` 单一记录。子包（`apps/*`、`packages/*`）不得自建 `.agents/` 或 `skills-lock.json`——子包内的 skill 不会进入以仓库根为工作区的会话，且无法被 `pnpm docs:check` 校验。该约束无法机械校验，靠 code review 把关。
+
+**Web 层 skill 作用域**：`rsbuild-best-practices` 适用于 rsbuild / Rspack 构建配置、排障与产物优化，覆盖 web 层（`apps/admin`、`apps/game`、`packages/web/*`）；`vercel-react-best-practices` 适用于 React 客户端性能改写与评审，其中 `server-*` 等 Next.js 专属规则不适用本仓（本仓为 React SPA，无 Next.js）。二者均不改动 vendored 内容：改 `SKILL.md` 的 `description` 会让 `skills-lock.json` 的 `computedHash` 失真，导致安装器更新时覆盖或冲突。
+
 ### Issue tracker
 
 Issues 与 specs 以本地 Markdown 文件存放在 `.scratch/` 下。See `docs/agents/issue-tracker.md`.

@@ -135,3 +135,24 @@
 ### 未验证项
 
 本环境无法启动 shell / node，`node scripts/check-rules-index.mjs` **未实机执行**（与 §5 既有遗留一致），新增的 skill 名正则与路径仅人工核对。
+
+## 9. 后续变更（2026-10-26）：skill 统一装根，包级 `AGENTS.md` 记为 D3 例外
+
+布局不变（仍为 D1 三层），只补两条由「`apps/admin` 用 rsbuild 模板建包」触发的规则。
+
+### D12 skill 只装在仓库根
+
+- skill 一律安装在根 `.agents/skills/`，由根 `skills-lock.json` 单一记录；子包（`apps/*`、`packages/*`）不得自建 `.agents/` 或 `skills-lock.json`。
+- **触发事实**：`apps/admin` 建包时安装器在该子包下生成了 `.agents/skills/`（`rsbuild-best-practices`、`vercel-react-best-practices`）与 `apps/admin/skills-lock.json`，只写了 `.agents` 一份，未同步 `.trae` / `.claude` / `.codebuddy` 镜像；以仓库根为工作区的会话中，这两个 skill 未出现在可用 skill 清单内。
+- **否决「就地保留在子包」**：子包内的 skill 在根会话不可见，且 `scripts/check-rules-index.mjs` 的 `skillsRoot` 硬编码为根 `.agents/skills`，子包内的 skill 一旦被规范文档引用即判死链。处理方式：在仓库根重装这两个 skill，删除子包副本与子包 lock。
+- **否决「改脚本支持多位置」**：为两个 skill 引入多位置解析与第二个 skills 事实源，成本大于收益，且与 D3 / D6 的单一事实源取向冲突。
+
+### D13 脚手架模板自带的包级 `AGENTS.md` 视为 D3 例外
+
+- 现有 4 份包级 `AGENTS.md`（`apps/admin`、`packages/web/{axios,logger,service}`）均为脚手架模板产物，内容只含命令与文档链接，不含规范条款，不构成第二套规范来源，**予以保留**。
+- 边界：包级 `AGENTS.md` 只允许放命令与文档链接；任何规范条款必须写入根 `AGENTS.md` 或 `docs/rules/`，由根 §10 路由索引统一指向。
+- 该例外无法由 `pnpm docs:check` 机械校验（脚本只查索引路径与 skill 名），靠 code review 把关；若不记录，会出现「按 D3 删除 → 模板再次生成」的反复。
+
+### 未验证项（本次）
+
+本环境无法启动 shell，`pnpm docs:check`、安装器与子包副本删除**需人工执行**；`docs/rules/stack/frontend.md` 新增的 skill 引用在上移落地前会让 `docs:check` 报「文档引用的 skill 不存在」，属预期中间态。

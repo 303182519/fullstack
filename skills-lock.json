@@ -169,6 +169,12 @@
       "skillPath": "skills/engineering/retro/SKILL.md",
       "computedHash": "634c5d661a1ee1dc5f6ff9c78b158a419290d6f51475269c6af9d1a5d6533349"
     },
+    "rsbuild-best-practices": {
+      "source": "rstackjs/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/rsbuild-best-practices/SKILL.md",
+      "computedHash": "370b2405efb009d4bc4b7f009c8ea2661a375abe59a0d873fe9af619bfc80733"
+    },
     "scaffold-exercises": {
       "source": "vinvcn/mattpocock-skills-zh-CN",
       "sourceType": "github",
@@ -222,6 +228,12 @@
       "sourceType": "github",
       "skillPath": "skills/engineering/triage/SKILL.md",
       "computedHash": "a61632af9e1c732c7ee001b236dd177d95a11241b088558c43f2ce37d7b655a0"
+    },
+    "vercel-react-best-practices": {
+      "source": "vercel-labs/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/react-best-practices/SKILL.md",
+      "computedHash": "3219a1944e404ffc14d1d9d6aef6dd2e3855b81387ee0a044ccbfe14d34c2357"
     },
     "wait-what": {
       "source": "vinvcn/mattpocock-skills-zh-CN",
