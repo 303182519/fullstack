@@ -1,12 +1,14 @@
 {
   "name": "@fedstack/admin",
-  "version": "0.0.1",
-  "description": "基于 React19 构建的企业级后台管理系统",
-  "private": true,
   "type": "module",
+  "version": "0.0.1",
+  "private": true,
+  "description": "基于 React19 构建的企业级后台管理系统",
   "scripts": {
     "build": "rsbuild build",
     "dev": "rsbuild",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
     "preview": "rsbuild preview"
   },
   "dependencies": {
@@ -14,6 +16,7 @@
     "react-dom": "catalog:"
   },
   "devDependencies": {
+    "@fedstack/eslint-config": "workspace:*",
     "@fedstack/tsconfig": "workspace:*",
     "@rsbuild/core": "catalog:",
     "@rsbuild/plugin-react": "catalog:",
@@ -21,6 +24,7 @@
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
+    "eslint": "catalog:",
     "tailwindcss": "catalog:",
     "typescript": "catalog:"
   }

@@ -2,22 +2,22 @@
   "$schema": "https://json.schemastore.org/tsconfig",
   "extends": "@fedstack/tsconfig/web.json",
   "compilerOptions": {
-    /* rsbuild 应用不产出 d.ts，tsc 仅类型检查 */
-    "noEmit": true,
     /* React 19 JSX 运行时 */
     "jsx": "react-jsx",
-    /* rsbuild 专属全局类型（defineConfig/env.d.ts 等） */
-    "types": ["@rsbuild/core/types", "node"],
     /* bundler 生态下的模块导入纪律 */
     "moduleDetection": "force",
-    "verbatimModuleSyntax": true,
-    "resolveJsonModule": true,
-    /* 仅 noEmit 场景有效：rslib 包不会设此项（需要产出 .d.ts） */
-    "allowImportingTsExtensions": true,
     /* 模板遗留 */
     "useDefineForClassFields": true,
+    "resolveJsonModule": true,
+    /* rsbuild 专属全局类型（defineConfig/env.d.ts 等） */
+    "types": ["@rsbuild/core/types", "node"],
+    /* 仅 noEmit 场景有效：rslib 包不会设此项（需要产出 .d.ts） */
+    "allowImportingTsExtensions": true,
     "noUnusedLocals": true,
-    "noUnusedParameters": true
+    "noUnusedParameters": true,
+    /* rsbuild 应用不产出 d.ts，tsc 仅类型检查 */
+    "noEmit": true,
+    "verbatimModuleSyntax": true
   },
-  "include": ["src"]
+  "include": ["src", "env.d.ts"]
 }
