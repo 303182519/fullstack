@@ -1,13 +1,26 @@
 {
   "name": "@fedstack/admin",
-  "type": "module",
-  "version": "0.1.0",
-  "private": true,
+  "version": "0.0.1",
   "description": "基于 React19 构建的企业级后台管理系统",
-   "scripts": {
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "rsbuild build",
+    "dev": "rsbuild",
+    "preview": "rsbuild preview"
   },
   "dependencies": {
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
   },
   "devDependencies": {
+    "@rsbuild/core": "^2.2.14",
+    "@rsbuild/plugin-react": "^2.1.1",
+    "@rsbuild/plugin-tailwindcss": "^2.0.3",
+    "@types/node": "^24.19.2",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^6.0.3"
   }
 }

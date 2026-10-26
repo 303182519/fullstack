@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "skills": {
+    "rsbuild-best-practices": {
+      "source": "rstackjs/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/rsbuild-best-practices/SKILL.md",
+      "computedHash": "370b2405efb009d4bc4b7f009c8ea2661a375abe59a0d873fe9af619bfc80733"
+    },
+    "vercel-react-best-practices": {
+      "source": "vercel-labs/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/react-best-practices/SKILL.md",
+      "computedHash": "3219a1944e404ffc14d1d9d6aef6dd2e3855b81387ee0a044ccbfe14d34c2357"
+    }
+  }
+}
