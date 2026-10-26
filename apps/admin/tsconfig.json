@@ -1,21 +1,21 @@
 {
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "extends": "@fedstack/tsconfig/web.json",
   "compilerOptions": {
-    "lib": ["DOM", "ES2020"],
-    "jsx": "react-jsx",
-    "target": "ES2020",
+    /* rsbuild 应用不产出 d.ts，tsc 仅类型检查 */
     "noEmit": true,
-    "skipLibCheck": true,
+    /* React 19 JSX 运行时 */
+    "jsx": "react-jsx",
+    /* rsbuild 专属全局类型（defineConfig/env.d.ts 等） */
     "types": ["@rsbuild/core/types", "node"],
-    "useDefineForClassFields": true,
-
-    /* modules */
+    /* bundler 生态下的模块导入纪律 */
     "moduleDetection": "force",
-    "moduleResolution": "bundler",
     "verbatimModuleSyntax": true,
     "resolveJsonModule": true,
+    /* 仅 noEmit 场景有效：rslib 包不会设此项（需要产出 .d.ts） */
     "allowImportingTsExtensions": true,
-
-    /* type checking */
+    /* 模板遗留 */
+    "useDefineForClassFields": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true
   },
