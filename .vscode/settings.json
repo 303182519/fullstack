@@ -57,5 +57,45 @@
       "args": []
     }
   },
-  "terminal.integrated.defaultProfile.windows": "Git Bash"
+  "terminal.integrated.defaultProfile.windows": "Git Bash",
+  // tailwindcss
+  "files.associations": {
+    "*.css": "tailwindcss"
+  },
+  "tailwindCSS.lint.suggestCanonicalClasses": "ignore",
+  "tailwindCSS.classAttributes": [
+    "class",
+    "className",
+    "headerClassName",
+    "contentContainerClassName",
+    "columnWrapperClassName",
+    "endFillColorClassName",
+    "imageClassName",
+    "tintColorClassName",
+    "ios_backgroundColorClassName",
+    "thumbColorClassName",
+    "trackColorOnClassName",
+    "trackColorOffClassName",
+    "selectionColorClassName",
+    "cursorColorClassName",
+    "underlineColorAndroidClassName",
+    "placeholderTextColorClassName",
+    "selectionHandleColorClassName",
+    "colorsClassName",
+    "progressBackgroundColorClassName",
+    "titleColorClassName",
+    "underlayColorClassName",
+    "colorClassName",
+    "drawerBackgroundColorClassName",
+    "statusBarBackgroundColorClassName",
+    "backdropColorClassName",
+    "backgroundColorClassName",
+    "ListFooterComponentClassName",
+    "ListHeaderComponentClassName"
+  ],
+  "tailwindCSS.experimental.classRegex": [
+    ["cva\\(([^)]*)\\)", "[\"'`]([^\"'`]*).*?[\"'`]"],
+    ["tv\\(([^)]*)\\)", "[\"'`]([^\"'`]*).*?[\"'`]"]
+  ],
+  "tailwindCSS.classFunctions": ["useResolveClassNames"]
 }
