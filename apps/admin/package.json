@@ -21,7 +21,6 @@
     "@fedstack/tsconfig": "workspace:*",
     "@rsbuild/core": "catalog:",
     "@rsbuild/plugin-react": "catalog:",
-    "@rsbuild/plugin-tailwindcss": "catalog:",
     "@tanstack/router-plugin": "catalog:",
     "@types/node": "catalog:",
     "@types/react": "catalog:",

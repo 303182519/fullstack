@@ -1,6 +1,5 @@
 import { defineConfig } from '@rsbuild/core';
 import { pluginReact } from '@rsbuild/plugin-react';
-import { pluginTailwindcss } from '@rsbuild/plugin-tailwindcss';
 
 // 页面名称数组
 const pages = [
@@ -53,6 +52,5 @@ export default defineConfig({
     pluginReact({
       reactCompiler: true,
     }),
-    pluginTailwindcss(),
   ],
 });

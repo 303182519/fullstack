@@ -189,7 +189,6 @@ catalog:
   # ── 3.6 构建（rslib + rsbuild，web 层专用）──
   '@rsbuild/core': ^2.2.14
   '@rsbuild/plugin-react': ^2.1.1
-  '@rsbuild/plugin-tailwindcss': ^2.0.3
   '@rslib/core': ^1.0.4
   # TanStack Router 构建期插件（Rspack/Rsbuild 集成 + 路由树代码生成）
   '@tanstack/router-plugin': ^1.168.48
