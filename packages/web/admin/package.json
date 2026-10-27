@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "antd": "catalog:",
+    "defu": "catalog:",
     "react-error-boundary": "catalog:"
   },
   "devDependencies": {
