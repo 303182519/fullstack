@@ -13,7 +13,8 @@
   },
   "dependencies": {
     "react": "catalog:",
-    "react-dom": "catalog:"
+    "react-dom": "catalog:",
+    "react-error-boundary": "catalog:"
   },
   "devDependencies": {
     "@fedstack/eslint-config": "workspace:*",
@@ -21,6 +22,7 @@
     "@rsbuild/core": "catalog:",
     "@rsbuild/plugin-react": "catalog:",
     "@rsbuild/plugin-tailwindcss": "catalog:",
+    "@tanstack/router-plugin": "catalog:",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",

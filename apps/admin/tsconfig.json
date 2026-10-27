@@ -8,6 +8,11 @@
     "moduleDetection": "force",
     /* 模板遗留 */
     "useDefineForClassFields": true,
+    "paths": {
+      "@/*": ["./src/*"],
+      "~/*": ["./*"],
+      "@shell/*": ["../../packages/web/admin/*"]
+    },
     "resolveJsonModule": true,
     /* rsbuild 专属全局类型（defineConfig/env.d.ts 等） */
     "types": ["@rsbuild/core/types", "node"],
