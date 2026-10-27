@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "extends": "@fedstack/tsconfig/web.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "rootDir": "./src",
+    "paths": {
+      "@shell/*": ["./src/*"]
+    },
+    "types": []
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["dist", "node_modules", "__tests__/**"]
+}

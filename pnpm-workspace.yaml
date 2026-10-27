@@ -18,6 +18,13 @@ trustPolicy: no-downgrade
 trustPolicyExclude:
   - semver@6.3.1
 
+# seroval / seroval-plugins 1.7.2（2026-10-24 发布）改由维护者个人 npm 账号直发，
+# 丢失 GitHub Actions OIDC 可信发布 provenance（1.7.0/1.7.1 均有），疑似供应链风险。
+# 固定到最后可信版本 1.7.1；待上游恢复 provenance 发布后再解除。
+overrides:
+  seroval: 1.7.1
+  seroval-plugins: 1.7.1
+
 # 启用 shell 模拟，避免在 Windows 上使用 PowerShell 时的错误
 shellEmulator: true
 
@@ -58,6 +65,8 @@ catalog:
   # ── 0.4 测试 ──
   '@vitest/coverage-v8': ^4.1.2
   vitest: ^4.1.2
+  '@testing-library/react': ^16.3.2
+  '@testing-library/jest-dom': ^6.9.1
 
   # ── 0.5 通用工具库 ──
   es-toolkit: ^1.52.0
@@ -149,8 +158,10 @@ catalog:
   '@types/react-dom': ^19.3.0
   react: ^19.3.1
   react-dom: ^19.3.1
+  'react-error-boundary': ^6.1.6
 
-  # ── 3.2 样式框架（Tailwind CSS 4）──
+  # ── 3.2 样式框架与 UI 组件库（Tailwind CSS 4 / antd）──
+  antd: ^6.6.8
   tailwindcss: ^4.3.3
 
   # ── 3.3 HTTP 客户端（@fedstack/axios）──
@@ -180,6 +191,8 @@ catalog:
   '@rsbuild/plugin-react': ^2.1.1
   '@rsbuild/plugin-tailwindcss': ^2.0.3
   '@rslib/core': ^1.0.4
+  # TanStack Router 构建期插件（Rspack/Rsbuild 集成 + 路由树代码生成）
+  '@tanstack/router-plugin': ^1.168.48
 
   # ── 3.7 测试（msw v2+，与 fetch adapter 配合绕过 axios http adapter 兼容性问题）──
   msw: ^3.0.3

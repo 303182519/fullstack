@@ -11,7 +11,7 @@
     "paths": {
       "@/*": ["./src/*"],
       "~/*": ["./*"],
-      "@shell/*": ["../../packages/web/admin/*"]
+      "@shell/*": ["../../packages/web/admin/src/*"]
     },
     "resolveJsonModule": true,
     /* rsbuild 专属全局类型（defineConfig/env.d.ts 等） */
