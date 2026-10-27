@@ -17,9 +17,9 @@ async function setupApp() {
    *
    * 在任何组件读取主题 atom 之前完成： - 默认配置加载 - localStorage 缓存读取（生产环境） - 版本覆盖检测
    */
-  setupTheme({
-    buildTime: BUILD_TIME,
-  });
+  // setupTheme({
+  //   buildTime: BUILD_TIME,
+  // });
 
   const root = createRoot(container);
   root.render(
