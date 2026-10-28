@@ -15,6 +15,7 @@
     "typecheck": "tsc --noEmit --skipLibCheck -p tsconfig.json"
   },
   "dependencies": {
+    "@fedstack/web-utils": "workspace:*",
     "antd": "catalog:",
     "defu": "catalog:",
     "react-error-boundary": "catalog:"

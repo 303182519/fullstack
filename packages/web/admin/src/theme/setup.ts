@@ -1,4 +1,4 @@
-import { createStorage } from '@skyroc/utils/web';
+import { createStorage } from '@fedstack/web-utils';
 import { defaultThemeSettings } from './config/default';
 import { themeSettingsAtom } from './hooks';
 import { mergeThemeSettings } from './utils/settings';
@@ -62,10 +62,10 @@ export function getInternalStorage(): ThemeStorage | null {
 export function setupTheme(options: SetupThemeOptions = {}) {
   const {
     buildTime,
-    isProd = import.meta.env.PROD,
+    isProd = false,
     overrides,
     storage,
-    storagePrefix = DEFAULT_THEME_STORAGE_PREFIX
+    storagePrefix = DEFAULT_THEME_STORAGE_PREFIX,
   } = options;
   const themeStorage = storage ?? createDefaultStorage(storagePrefix);
 
@@ -82,6 +82,10 @@ export function setupTheme(options: SetupThemeOptions = {}) {
 
   let settings = mergeThemeSettings(cachedSettings, defaultThemeSettings);
 
+  // 判断本次构建的主题覆盖是否已经执行过：
+  // - 有 buildTime（生产构建）：比较缓存里记录的 overrideThemeFlag 是否等于当前 buildTime。
+  //   相等说明这一版构建的 overrides 已经应用过，用户之后的自定义改动不应被再次覆盖；不相等则执行覆盖并写入标记。
+  // - 无 buildTime：恒为 false，即每次都应用 overrides（无法判断版本，只能重复覆盖）。
   const isOverride = buildTime ? themeStorage.get('overrideThemeFlag') === buildTime : false;
 
   if (!isOverride) {

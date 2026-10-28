@@ -868,6 +868,9 @@ importers:
 
   packages/web/admin:
     dependencies:
+      '@fedstack/web-utils':
+        specifier: workspace:*
+        version: link:../utils
       antd:
         specifier: 'catalog:'
         version: 6.6.8(date-fns@4.4.0)(luxon@3.7.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)

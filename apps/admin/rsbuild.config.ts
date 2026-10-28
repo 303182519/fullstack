@@ -25,6 +25,10 @@ export default defineConfig({
   },
   source: {
     entry: pageConfig.entries,
+    // 构建期注入的构建时间戳，供运行时识别当前构建版本（如主题缓存的版本覆盖检测）
+    define: {
+      BUILD_TIME: JSON.stringify(new Date().toISOString()),
+    },
     // 在正则表达式的例子中，我们使用 [\\/] 来匹配路径分隔符，这是
     // 因为不同的操作系统使用了不同的路径分隔符，使用 [\\/] 可以保证 macOS、Linux 和 Windows 的路径都被匹配到。
     include: [
