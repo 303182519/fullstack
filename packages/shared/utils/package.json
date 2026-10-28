@@ -1,0 +1,94 @@
+{
+  "name": "@fedstack/utils",
+  "type": "module",
+  "version": "0.0.1",
+  "description": "平台无关工具函数集合：数组/对象/深路径/日期/校验/查询串/事件总线/优先级队列/并发调度/任务中枢；主入口零 DOM 依赖（ADR-015 shared 层）",
+  "license": "UNLICENSED",
+  "sideEffects": [
+    "./src/date/dayjs.ts"
+  ],
+  "exports": {
+    ".": "./src/index.ts",
+    "./crypto": "./src/crypto.ts",
+    "./date": "./src/date/index.ts"
+  },
+  "main": "./src/index.ts",
+  "module": "./src/index.ts",
+  "types": "./src/index.ts",
+  "typesVersions": {
+    "*": {
+      "crypto": [
+        "./src/crypto.ts"
+      ],
+      "date": [
+        "./src/date/index.ts"
+      ],
+      "*": [
+        "./src/*"
+      ]
+    }
+  },
+  "files": [
+    "README.md",
+    "dist"
+  ],
+  "publishConfig": {
+    "sideEffects": [
+      "./dist/date/dayjs.js"
+    ],
+    "main": "./dist/index.js",
+    "module": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+      ".": {
+        "import": {
+          "types": "./dist/index.d.ts",
+          "default": "./dist/index.js"
+        }
+      },
+      "./crypto": {
+        "import": {
+          "types": "./dist/crypto.d.ts",
+          "default": "./dist/crypto.js"
+        }
+      },
+      "./date": {
+        "import": {
+          "types": "./dist/date/index.d.ts",
+          "default": "./dist/date/index.js"
+        }
+      }
+    },
+    "access": "public"
+  },
+  "scripts": {
+    "build": "rslib build",
+    "dev": "rslib --watch",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.test.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "clean": "node -e \"fs.rmSync('dist', { recursive: true, force: true })\""
+  },
+  "dependencies": {
+    "clsx": "catalog:",
+    "crypto-js": "catalog:",
+    "dayjs": "catalog:",
+    "klona": "catalog:",
+    "nanoid": "catalog:",
+    "radash": "catalog:",
+    "tailwind-merge": "catalog:"
+  },
+  "devDependencies": {
+    "@fedstack/config": "workspace:*",
+    "@fedstack/eslint-config": "workspace:*",
+    "@fedstack/tsconfig": "workspace:*",
+    "@rslib/core": "catalog:",
+    "@types/crypto-js": "catalog:",
+    "@types/node": "catalog:",
+    "eslint": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

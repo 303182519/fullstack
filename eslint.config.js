@@ -56,8 +56,20 @@ export default base({
 })
   .append(
     {
+      // pnpm-workspace.yaml 的 catalog 按 ADR-015 运行时层分组（0 跨层 / 1 shared / 2 node / 3 web），
+      // 组内再按 @scope 前后 + 字母序排列，属于业务语义分组，与 yaml/sort-keys 的全局字母序冲突。
+      // 这里只关闭该文件的键排序，格式校验（yaml/plain-scalar、prettier）依然生效。
+      name: 'fedstack/pnpm-workspace-catalog-order',
+      files: ['pnpm-workspace.yaml'],
+      rules: {
+        'yaml/sort-keys': 'off',
+      },
+    },
+    {
       name: 'fedstack/boundary-shared',
-      files: ['packages/shared/**/*.ts'],
+      // 只约束运行时代码：__tests__（跑在 node 环境）与构建/测试配置（引用 tooling 层）不在打包产物内，
+      // 不应被运行时边界规则误伤。
+      files: ['packages/shared/**/src/**/*.ts'],
       rules: {
         'no-restricted-imports': ['error', {
           paths: nodeBuiltinNames.map(name => ({

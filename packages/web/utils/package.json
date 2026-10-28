@@ -1,0 +1,70 @@
+{
+  "name": "@fedstack/web-utils",
+  "type": "module",
+  "version": "0.0.1",
+  "description": "浏览器专用工具函数：localStorage / localforage 存储封装、文件下载、表单输入事件、窗口打开、DOM 环境判定、React props 合成（web 层，ADR-015）",
+  "license": "UNLICENSED",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "main": "./src/index.ts",
+  "module": "./src/index.ts",
+  "types": "./src/index.ts",
+  "typesVersions": {
+    "*": {
+      "*": [
+        "./src/*"
+      ]
+    }
+  },
+  "files": [
+    "README.md",
+    "dist"
+  ],
+  "publishConfig": {
+    "main": "./dist/index.js",
+    "module": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+      ".": {
+        "import": {
+          "types": "./dist/index.d.ts",
+          "default": "./dist/index.js"
+        }
+      }
+    },
+    "access": "public"
+  },
+  "scripts": {
+    "build": "rslib build",
+    "dev": "rslib --watch",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.test.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "clean": "node -e \"fs.rmSync('dist', { recursive: true, force: true })\""
+  },
+  "peerDependencies": {
+    "react": "catalog:"
+  },
+  "dependencies": {
+    "@fedstack/utils": "workspace:*",
+    "clsx": "catalog:",
+    "localforage": "catalog:"
+  },
+  "devDependencies": {
+    "@fedstack/config": "workspace:*",
+    "@fedstack/eslint-config": "workspace:*",
+    "@fedstack/tsconfig": "workspace:*",
+    "@rslib/core": "catalog:",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "eslint": "catalog:",
+    "happy-dom": "catalog:",
+    "react": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

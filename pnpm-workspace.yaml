@@ -71,9 +71,19 @@ catalog:
   # ── 0.5 通用工具库 ──
   defu: ^6.1.7
   es-toolkit: ^1.52.0
+  # shared 层 @fedstack/utils 使用；node/web 层同样可用，故归入跨层组
+  nanoid: ^6.0.2
 
   # ════════════════ 1. shared 层（packages/shared/*）════════════════
-  # 零环境依赖；当前 auth-core 无第三方运行时依赖，新增前先确认是否真属 shared 层。
+  # 零环境依赖；新增前先确认是否真属 shared 层。
+  # @fedstack/utils 的运行时依赖：全部为纯 JS 实现，无 Node 内置模块 / DOM 全局依赖
+  '@types/crypto-js': ^4.2.2
+  clsx: ^2.1.1
+  crypto-js: ^4.2.0
+  dayjs: ^1.11.19
+  klona: ^2.0.6
+  radash: ^12.1.1
+  tailwind-merge: ^3.4.0
 
   # ════════════════ 2. node 层（apps/api、apps/admin-api、packages/node/*）════════════════
 
@@ -169,7 +179,6 @@ catalog:
   '@types/qs': ^6.15.1
   axios: ^1.20.0
   axios-retry: ^4.5.0
-  nanoid: ^6.0.2
   qs: ^6.16.1
 
   # ── 3.4 请求基础设施（@fedstack/service）──
@@ -195,4 +204,9 @@ catalog:
   '@tanstack/router-plugin': ^1.168.48
 
   # ── 3.7 测试（msw v2+，与 fetch adapter 配合绕过 axios http adapter 兼容性问题）──
+  # happy-dom 仅测试使用：web-utils 用例直接操作 document / window / localStorage
+  happy-dom: ^21.0.4
   msw: ^3.0.3
+
+  # ── 3.8 浏览器工具（@fedstack/web-utils）──
+  localforage: ^1.10.0

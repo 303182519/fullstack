@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "//": "测试项目：仅用于 vitest typecheck 与 typecheck 脚本；测试允许使用 Node 内置模块（用例运行在 node 环境）",
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "lib": ["ES2023"],
+    "rootDir": ".",
+    "types": ["node"],
+    "noEmit": true
+  },
+  "include": ["src/**/*.ts", "types/**/*.d.ts", "__tests__/**/*.ts"],
+  "exclude": ["dist", "node_modules"]
+}

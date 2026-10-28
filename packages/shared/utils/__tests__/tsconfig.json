@@ -1,0 +1,5 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "//": "IDE 桥接：tsserver 只自动加载名为 tsconfig.json 的项目，而包根 tsconfig.json 排除了 __tests__；在此转发到测试项目，让编辑器内的测试文件获得 node 类型。CLI typecheck 仍走 ../tsconfig.test.json",
+  "extends": "../tsconfig.test.json"
+}
