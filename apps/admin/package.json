@@ -12,6 +12,7 @@
     "preview": "rsbuild preview"
   },
   "dependencies": {
+    "@fedstack/web-utils": "workspace:*",
     "antd": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
