@@ -9,14 +9,19 @@
     "dev": "rsbuild",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "preview": "rsbuild preview"
+    "preview": "rsbuild preview",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
+    "@fedstack/axios": "workspace:*",
+    "@fedstack/service": "workspace:*",
     "@fedstack/web-utils": "workspace:*",
+    "@tanstack/react-router": "catalog:",
     "antd": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
-    "react-error-boundary": "catalog:"
+    "react-error-boundary": "catalog:",
+    "zustand": "catalog:"
   },
   "devDependencies": {
     "@fedstack/eslint-config": "workspace:*",
@@ -27,6 +32,7 @@
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
+    "core-js": "catalog:",
     "eslint": "catalog:",
     "typescript": "catalog:"
   }

@@ -3,7 +3,7 @@ import localforage from 'localforage';
 /** The storage type */
 export type StorageType = 'local' | 'session';
 
-interface Storage<T extends object> {
+export interface Storage<T extends object> {
   set: <K extends keyof T>(key: K, value: T[K]) => void;
   get: <K extends keyof T>(key: K) => T[K] | null;
   remove: (key: keyof T) => void;

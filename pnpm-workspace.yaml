@@ -202,6 +202,8 @@ catalog:
   '@rslib/core': ^1.0.4
   # TanStack Router 构建期插件（Rspack/Rsbuild 集成 + 路由树代码生成）
   '@tanstack/router-plugin': ^1.168.48
+  # Rsbuild polyfill: 'usage' 注入时按需引入，需显式安装
+  'core-js': ^3.40.0
 
   # ── 3.7 测试（msw v2+，与 fetch adapter 配合绕过 axios http adapter 兼容性问题）──
   # happy-dom 仅测试使用：web-utils 用例直接操作 document / window / localStorage
@@ -210,3 +212,7 @@ catalog:
 
   # ── 3.8 浏览器工具（@fedstack/web-utils）──
   localforage: ^1.10.0
+
+  # ── 3.9 路由与客户端状态（TanStack Router / Zustand）──
+  '@tanstack/react-router': ^1.168.48
+  zustand: ^5.0.5
