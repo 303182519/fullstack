@@ -333,6 +333,10 @@ class TaskHub {
     if (!this.started || this.paused)
       return;
 
+    // 重入保护：execute 会同步调用用户代码 run()，run() 里可能再调 register/remove/trigger
+    // → 再次进入 pump。此时不能嵌套开扫 —— 内外两层循环同时迭代并 splice 同一个
+    // sortedTasks 会漏扫/重复启动。改为置 pumpAgain 标记，让外层循环扫完当前这趟后
+    // 再完整重扫一遍（经典 loop + dirty flag 模式）。
     if (this.pumping) {
       this.pumpAgain = true;
       return;
@@ -341,21 +345,28 @@ class TaskHub {
     this.pumping = true;
 
     try {
+      // 每趟扫描开头清掉标记；扫描期间若收到重入请求，就再扫一趟，直到没有新请求为止
       do {
         this.pumpAgain = false;
 
         for (const task of this.sortedTasks) {
+          // periodic 由 tick 心跳驱动，不走这条事件驱动通路（见类注释"两条互不干扰的调度通路"）
           if (task.def.type === 'periodic')
             continue;
+          // 只有 pending 有资格启动：running 已在途，blocked 等上游恢复，failed 等退避计时器
           if (task.status !== 'pending')
             continue;
           if (!this.depsResolved(task))
             continue;
+          // 不 await：execute 的同步前缀会把 status 置为 running，本趟扫描不会重复启动它；
+          // 任务并发执行，完成后由 execute 内部再调 pump() 推进下游
           this.execute(task);
         }
       } while (this.pumpAgain);
     }
     finally {
+      // 必须无条件释放重入锁：一旦 pumping 卡在 true，后续所有 pump 调用都会只置
+      // pumpAgain 而无人扫描，事件驱动通路彻底卡死
       this.pumping = false;
     }
   }
@@ -492,17 +503,24 @@ class TaskHub {
    * Blocked 是**可恢复**的：上游被移除或重新注册后，下游会自动回到 pending
    */
   private recomputeBlocked(): void {
+    // blocked 会沿依赖链连锁传播：A 被标记 blocked 后，依赖 A 的 B 也必须变成 blocked。
+    // 单趟 for 扫描只能处理"扫描到 B 时 A 已是 blocked"的情况，顺序不保证时可能漏掉，
+    // 因此用 changed 标志循环重扫，直到整趟没有任何状态变化（收敛到不动点）为止。
     let changed = true;
 
     while (changed) {
       changed = false;
 
       for (const task of this.sortedTasks) {
+        // blocked 只描述"还没开始跑"的任务；running/done 由执行流程自己管理，不参与推导
         if (task.status === 'running' || task.status === 'done')
           continue;
 
         const blocker = this.blockerOf(task);
 
+        // 有上游挡路且尚未标记 blocked：
+        // 1) 作废自己的退避重试计时器 —— 能否恢复由上游状态决定，不再由自己的 retry 驱动
+        // 2) 标记 blocked 并通知外部，置 changed 让外层再扫一趟传播连锁影响
         if (blocker && task.status !== 'blocked') {
           clearRetry(task);
           task.status = 'blocked';
@@ -511,6 +529,9 @@ class TaskHub {
           continue;
         }
 
+        // 上游已恢复（被移除或重新注册）而本任务还停留在 blocked：
+        // 放回 pending 重新参与调度，并清掉旧的失败痕迹（retryCount/error），
+        // 之前的失败已被"上游阻塞"取代，恢复后应当当作全新任务对待
         if (!blocker && task.status === 'blocked') {
           task.status = 'pending';
           task.retryCount = 0;
