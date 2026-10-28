@@ -18,6 +18,7 @@
     "@fedstack/web-utils": "workspace:*",
     "@tanstack/react-router": "catalog:",
     "antd": "catalog:",
+    "core-js": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
     "react-error-boundary": "catalog:",
@@ -32,7 +33,6 @@
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
-    "core-js": "catalog:",
     "eslint": "catalog:",
     "typescript": "catalog:"
   }
