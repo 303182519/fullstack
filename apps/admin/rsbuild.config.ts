@@ -1,5 +1,6 @@
 import { defineConfig } from '@rsbuild/core';
 import { pluginReact } from '@rsbuild/plugin-react';
+import { TanStackRouterRspack } from '@tanstack/router-plugin/rspack';
 
 // 页面名称数组
 const pages = [
@@ -57,4 +58,11 @@ export default defineConfig({
       reactCompiler: true,
     }),
   ],
+  tools: {
+    rspack: {
+      plugins: [
+        TanStackRouterRspack({ autoCodeSplitting: true }),
+      ],
+    },
+  },
 });

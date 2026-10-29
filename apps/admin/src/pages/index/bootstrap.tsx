@@ -1,14 +1,14 @@
-/* eslint-disable react-refresh/only-export-components */
 import type { FallbackProps } from 'react-error-boundary';
+import { RouterProvider } from '@tanstack/react-router';
 import { createRoot } from 'react-dom/client';
 import { ErrorBoundary } from 'react-error-boundary';
 
-import App from './App';
+import { router } from '../../router';
 import '../../plugins/assets';
 
 /**
- * 阶段 0 基线占位：错误降级 UI。
- * 阶段 3/4 将接入 @shell/ui/antd 的 ErrorBoundary 与主题系统。
+ * 阶段 1：TanStack Router 骨架接入。
+ * ErrorBoundary 暂时保留，阶段 3/4 将接入 antd 的 ErrorBoundary 与主题系统。
  */
 function ErrorFallback({ error, resetErrorBoundary }: FallbackProps) {
   const message = error instanceof Error ? error.message : String(error);
@@ -30,7 +30,7 @@ async function setupApp() {
   const root = createRoot(container);
   root.render(
     <ErrorBoundary FallbackComponent={ErrorFallback}>
-      <App />
+      <RouterProvider router={router} />
     </ErrorBoundary>,
   );
   return true;
