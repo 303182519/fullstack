@@ -109,11 +109,16 @@ apps/admin/src/
 export const router = createRouter({
   routeTree,
   context: {},                       // 阶段 2 RouterProvider 动态注入
+  // 自定义 query string 序列化（见下方知识点）
+  stringifySearch,
+  parseSearch,
   notFoundMode: 'root',              // 子路由 404 冒泡到根
   scrollRestoration: true,           // 列表返回位置恢复
-  defaultPreload: 'intent',          // 悬停预加载
+  defaultPreload: 'intent',          // 悬停预加载（只做代码 chunk，不缓存 loader 数据）
+  defaultPreloadStaleTime: 0,        // 预加载不缓存 loader 数据，后台数据变动频繁
   defaultPendingMs: 10,              // spinner 延迟出现
   defaultPendingMinMs: 1000,         // spinner 最短展示
+  defaultStructuralSharing: true,    // loader selector 结构共享，最小化重渲染
 });
 
 setRouter(router);  // 注册运行时引用
@@ -123,7 +128,12 @@ declare module '@tanstack/react-router' {
   interface StaticDataRouteOption {}
 }
 ```
-> 知识点：context 用 D2 动态 Provider 方案（对齐 Skyroc），而非静态 createRouter + 手动 `router.update()`。登录状态变化时 context 自动同步，无需在 authStore.subscribe 里维护两份状态。
+> 知识点 1：**context 用 D2 动态 Provider 方案**（对齐 Skyroc），而非静态 createRouter + 手动 `router.update()`。登录状态变化时 context 自动同步，无需在 authStore.subscribe 里维护两份状态。
+>
+> 知识点 2：**stringifySearch / parseSearch 适配层**（本模块内部实现，编码核心委托 `@fedstack/utils`）。对齐 Skyroc admin 的 URLSearchParams 格式（`tags=a&tags=b`），而非 TanStack 默认 JSON 格式（`?tags=%5B%22a%22%2C%22b%22%5D`）。三层适配：
+>   1. TanStack search object 可能含嵌套对象（`{ filters: { author: 'alice' } }`），shared stringifyQuery 只处理基本类型 → 先展开成点号 key（`filters.author=alice`）
+>   2. shared stringifyQuery 输出带 `?` 前缀，TanStack 要求不带 → `.slice(1)`
+>   3. shared parseQuery 返回 `string | null` 值，TanStack 期望 `Record<string, unknown>`（含 number / boolean） → autoConvert + 点号 key 合并嵌套
 
 ### 1.4 router-ref.ts 循环依赖切断
 ```

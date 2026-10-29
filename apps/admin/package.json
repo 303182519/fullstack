@@ -15,6 +15,7 @@
   "dependencies": {
     "@fedstack/axios": "workspace:*",
     "@fedstack/service": "workspace:*",
+    "@fedstack/utils": "workspace:*",
     "@fedstack/web-utils": "workspace:*",
     "@tanstack/react-router": "catalog:",
     "antd": "catalog:",

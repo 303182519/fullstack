@@ -66,7 +66,17 @@ export default defineConfig({
           target: 'react',
           routesDirectory: './src/pages',
           generatedRouteTree: './src/features/router/routeTree.gen.ts',
+          // routeToken：布局路由的文件标识符（默认是 'route'）。
+          // 目录下名为 `layout.tsx` 的文件会被识别为该目录的布局路由，
+          // 同级子路由嵌套渲染进该布局。当前生效的：
+          //   pages/(admin)/layout.tsx → adminLayoutRoute（包裹 home 等子路由）
+          //   pages/(auth)/layout.tsx  → authLayoutRoute（包裹 login 等子路由）
           routeToken: 'layout',
+          // routeFileIgnorePattern：命中该正则的文件不参与路由生成。
+          // 当前规则忽略两类：
+          //   1. 任意层级 components/ 与 modules/ 目录下的所有文件（业务组件，非页面路由）
+          //   2. 名为 loading / error / not-found 的 ts(x) 文件
+          //      （路由内引用的状态组件，如 pages/loading.tsx，不作为独立路由注册）
           routeFileIgnorePattern:
             '(?:^|/)(components|modules)(?:/|$)|(?:^|/)(loading|error|not-found)(?:.tsx?|$)',
         }),

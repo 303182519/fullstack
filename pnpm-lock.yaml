@@ -345,6 +345,9 @@ importers:
       '@fedstack/service':
         specifier: workspace:*
         version: link:../../packages/web/service
+      '@fedstack/utils':
+        specifier: workspace:*
+        version: link:../../packages/shared/utils
       '@fedstack/web-utils':
         specifier: workspace:*
         version: link:../../packages/web/utils
