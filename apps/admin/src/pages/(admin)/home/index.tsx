@@ -1,6 +1,9 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
 
-export const Route = createFileRoute('/_admin/home')({
+/**
+ * 后台首页占位。阶段 3 接入真实布局壳和仪表盘。
+ */
+export const Route = createFileRoute('/(admin)/home/')({
   component: HomePage,
 });
 

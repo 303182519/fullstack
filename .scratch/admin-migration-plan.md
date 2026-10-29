@@ -47,70 +47,99 @@ pnpm --filter @fedstack/admin build    # 应无报错
 
 ---
 
-## 阶段 1：路由骨架
+## 阶段 1：路由骨架 ✅ 已完成
+
+**完成日期**：2026-10-29
 
 **目标**：TanStack Router 跑通，有 `(auth)` / `(admin)` / `(errors)` 三个布局组和 404。先不接登录逻辑，用占位页。
 
-### 1.1 启用 TanStack Router 插件
+**路由范式**：Directory 约定（Skyroc admin-example 同款），而非 flat-file 约定。
+
+### 1.1 TanStack Router 插件配置
 `apps/admin/rsbuild.config.ts`：
 ```ts
-import { TanStackRouterRspack } from '@tanstack/router-plugin/rspack';
-// plugins 数组里加：
-TanStackRouterRspack({ autoCodeSplitting: true }),
+TanStackRouterRspack({
+  autoCodeSplitting: true,
+  target: 'react',
+  routesDirectory: './src/pages',
+  generatedRouteTree: './src/features/router/routeTree.gen.ts',
+  routeToken: 'layout',
+  routeFileIgnorePattern:
+    '(?:^|/)(components|modules)(?:/|$)|(?:^|/)(loading|error|not-found)(?:.tsx?|$)',
+}),
 ```
-> 知识点：`@tanstack/router-plugin` 提供 Rspack/Vite 插件，扫描 `src/routes/` 生成路由树（`routeTree.gen.ts`），实现类型安全的文件式路由。
+> 知识点 1：`routesDirectory` = 路由文件扫描目录。Skyroc 用 `./src/pages`，入口文件放 `src/` 根，二者分离。
+> 知识点 2：`routeToken: 'layout'` 启用 directory 布局约定——`(auth)/layout.tsx` 是 `(auth)` 分组的布局壳，而非 flat-file 模式下的 `_auth.tsx` pathless 路由。
+> 知识点 3：`routeFileIgnorePattern` 把 loading/error/not-found 约定文件从路由树排除，让 TanStack Router 运行时自动发现它们（不需要 `createFileRoute` export）。
+> 知识点 4：Rspack 插件和 Vite 插件共享同一个 `configSchema`（zod 校验），选项完全兼容。
 
-### 1.2 建路由目录结构
+### 1.2 最终目录结构
 ```
-apps/admin/src/routes/
-├── __root.tsx              # 根路由：挂 Provider（QueryClient / Theme / Router）
-├── (auth)/
-│   ├── layout.tsx          # 认证布局（居中卡片）
-│   └── login/
-│       └── index.tsx       # 登录页（占位，阶段 2 填）
-├── (admin)/
-│   ├── layout.tsx          # 后台布局壳（占位，阶段 3 填）
-│   └── home/
-│       └── index.tsx       # 首页占位
-└── (errors)/
-    ├── 403.tsx
-    ├── 404.tsx             # 捕获未匹配路由
-    └── 500.tsx
-```
-> 知识点：带括号的目录 `(auth)` 是「路径段分组」——不生成 URL 段，只用于组织布局。`__root.tsx` 是所有路由的根。
-
-### 1.3 根路由 `__root.tsx`
-```tsx
-import { Outlet, createRootRoute } from '@tanstack/react-router';
-
-export const Route = createRootRoute({
-  component: () => (
-    <>
-      <Outlet />
-      {/* TanStack Router DevTools 只在开发态挂 */}
-    </>
-  ),
-});
+apps/admin/src/
+├── main.tsx                          # 入口（rsbuild entry 指向这里）
+├── bootstrap.tsx                     # 应用启动壳（ErrorBoundary + RouterProvider）
+├── plugins/assets.ts                 # 保留原有
+├── features/
+│   └── router/
+│       ├── index.ts                  # createRouter（全选项）
+│       ├── router-ref.ts             # 运行时 router 引用，切断循环依赖
+│       ├── RouterProvider.tsx        # Provider 组件（阶段 2 注入 auth context）
+│       ├── guard.ts                  # 预留，阶段 2+ 接路由守卫
+│       └── routeTree.gen.ts          # 插件自动生成（勿手改）
+├── pages/                            # routesDirectory（纯路由）
+│   ├── __root.tsx                    # 根路由
+│   ├── loading.tsx                   # 全局 Suspense loading（约定文件，纯组件）
+│   ├── error.tsx                     # 全局错误边界（约定文件，纯组件）
+│   ├── not-found.tsx                 # 根级 404（约定文件，纯组件）
+│   ├── (auth)/
+│   │   ├── layout.tsx                # 认证布局（居中卡片）
+│   │   └── login/index.tsx           # 登录页占位
+│   ├── (admin)/
+│   │   ├── layout.tsx                # 后台布局壳占位
+│   │   └── home/index.tsx            # 首页占位
+│   └── (errors)/
+│       ├── 403.tsx
+│       ├── 404.tsx
+│       └── 500.tsx
+└── [assets/types/utils]
 ```
 
-### 1.4 改入口 bootstrap.tsx
-把当前直接 `<App />` 换成 `<RouterProvider>`。新建 `src/router.ts`：
+### 1.3 router 创建（features/router/index.ts）
 ```ts
-import { createRouter } from '@tanstack/react-router';
-import { routeTree } from './routeTree.gen';
+export const router = createRouter({
+  routeTree,
+  context: {},                       // 阶段 2 RouterProvider 动态注入
+  notFoundMode: 'root',              // 子路由 404 冒泡到根
+  scrollRestoration: true,           // 列表返回位置恢复
+  defaultPreload: 'intent',          // 悬停预加载
+  defaultPendingMs: 10,              // spinner 延迟出现
+  defaultPendingMinMs: 1000,         // spinner 最短展示
+});
 
-export const router = createRouter({ routeTree });
+setRouter(router);  // 注册运行时引用
+
 declare module '@tanstack/react-router' {
   interface Register { router: typeof router }
+  interface StaticDataRouteOption {}
 }
 ```
-`bootstrap.tsx` 用 `<RouterProvider router={router} />`。
-> 知识点：`declare module` 做模块增强，让 `useNavigate` / `Link` 的 `to` 参数获得全量类型推导。
+> 知识点：context 用 D2 动态 Provider 方案（对齐 Skyroc），而非静态 createRouter + 手动 `router.update()`。登录状态变化时 context 自动同步，无需在 authStore.subscribe 里维护两份状态。
 
-### 1.5 验证
-`dev` 后访问 `/login`、`/home`、`/not-exist`，分别落到对应占位页。
+### 1.4 router-ref.ts 循环依赖切断
+```
+adapter.ts → import { getRouter } from '@/features/router/router-ref'
+                                    ↑
+                           零依赖哑模块，不 import routeTree.gen
+```
+> 知识点：`router-ref.ts` 是环上的安全节点——只有一个变量 + 两个函数，不 import 任何路由/Store/Service。`setRouter()` 在 router 完整构建后调用，`getRouter()` 只在运行时事件中调用（如 401 响应）。
 
-**阶段 1 完成判定**：三个路由组 + 404 均可访问，无控制台报错。
+### 1.5 已删除的旧文件
+- `src/routes/_auth.tsx` / `_auth.login.tsx` / `_admin.tsx` / `_admin.home.tsx`（flat-file 约定废弃）
+- `src/routes/$.tsx` / `403.tsx` / `500.tsx`（挪到 `pages/(errors)/`）
+- `src/router.ts` / `src/routeTree.gen.ts`（被 features/router/ 替代）
+- `src/pages/index/`（main/bootstrap 挪到 `src/` 根）
+
+**阶段 1 完成判定**：typecheck ✅ / build ✅，autoCodeSplitting 生效（7 个 async chunk）。
 
 ---
 
@@ -217,7 +246,7 @@ admin-api dev CORS 只允许 `http://localhost:3003`，但 admin dev 跑在 3004
 信封统一为 `{ code, data, message }`（`ResponseInterceptor` 包装），`code` 即 HTTP 状态码回声。
 
 ### 2.9 登录页
-`src/routes/(auth)/login/index.tsx`：
+`src/pages/(auth)/login/index.tsx`：
 - antd Form（tenantCode / username / password / 可选验证码）
 - 调 `POST /auth/login`
 - 成功 → `setToken(accessToken)` → `router.navigate({ to: '/home' })`

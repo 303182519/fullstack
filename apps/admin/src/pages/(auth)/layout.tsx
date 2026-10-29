@@ -1,10 +1,10 @@
 import { createFileRoute, Outlet } from '@tanstack/react-router';
 
 /**
- * Pathless 布局（下划线前缀不产生 URL 段）。
- * 子路由通过 _auth.xxx.tsx 形式嵌套在此布局下。
+ * (auth) 分组布局：认证流程的统一外壳（居中卡片容器）。
+ * 带括号的目录不产生 URL 段，只用于组织布局嵌套。
  */
-export const Route = createFileRoute('/_auth')({
+export const Route = createFileRoute('/(auth)')({
   component: AuthLayout,
 });
 

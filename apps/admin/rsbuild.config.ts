@@ -13,7 +13,7 @@ console.log('PUBLIC_ENV', mode);
 
 // 预处理页面配置映射
 const pageConfig = pages.reduce((acc, page) => {
-  acc.entries[page.name] = `./src/pages/${page.name}/main.tsx`;
+  acc.entries[page.name] = './src/main.tsx';
   acc.templates[page.name] = page.template;
   acc.titles[page.name] = page.title;
   return acc;
@@ -61,7 +61,15 @@ export default defineConfig({
   tools: {
     rspack: {
       plugins: [
-        TanStackRouterRspack({ autoCodeSplitting: true }),
+        TanStackRouterRspack({
+          autoCodeSplitting: true,
+          target: 'react',
+          routesDirectory: './src/pages',
+          generatedRouteTree: './src/features/router/routeTree.gen.ts',
+          routeToken: 'layout',
+          routeFileIgnorePattern:
+            '(?:^|/)(components|modules)(?:/|$)|(?:^|/)(loading|error|not-found)(?:.tsx?|$)',
+        }),
       ],
     },
   },

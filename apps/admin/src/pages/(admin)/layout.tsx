@@ -1,9 +1,10 @@
 import { createFileRoute, Outlet } from '@tanstack/react-router';
 
 /**
- * Pathless 布局（下划线前缀不产生 URL 段）。
+ * (admin) 分组布局：后台管理壳。
+ * 阶段 3 接入真实的侧边栏 / 顶栏 / 标签页 Keep-Alive。
  */
-export const Route = createFileRoute('/_admin')({
+export const Route = createFileRoute('/(admin)')({
   component: AdminLayout,
 });
 
