@@ -2,8 +2,11 @@
 //
 // 职责（见迁移路线图 P2 章节 / ADR-009）：
 //   1. 平台级菜单树（含按钮级 permCode）幂等播种；
-//   2. 每个存量租户保证存在内置 admin 角色（isSystem=true, roleCode='admin'），
-//      并将其与平台全量启用菜单建立绑定。
+//   2. 保证默认租户（tenantCode='default'）存在，作为首次部署即可登录的入口；
+//   3. 每个存量租户保证存在内置 admin 角色（isSystem=true, roleCode='admin'），
+//      并将其与平台全量启用菜单建立绑定；
+//   4. 默认租户下保证存在内置管理员账号（username='admin'，isSuper=true），
+//      并绑定内置 admin 角色。
 //
 // 幂等性：全部按自然键 upsert —— 菜单按 routeName（目录/页面）或 permCode（按钮），
 // 角色按 (tenantId, roleCode)，角色-菜单按唯一键 (roleId, menuId) 跳过已存在绑定。
@@ -18,7 +21,16 @@ import type { PermissionCode } from '@fedstack/auth-core';
 import type { Prisma, SysMenu } from '../generated/prisma/client.js';
 import process from 'node:process';
 import { PERMISSIONS } from '@fedstack/auth-core';
-import { DataScope, MenuStatus, MenuType, PrismaClient, RoleStatus } from '../generated/prisma/client.js';
+import { hash as argon2Hash, argon2id } from 'argon2';
+import {
+  DataScope,
+  MenuStatus,
+  MenuType,
+  PrismaClient,
+  RoleStatus,
+  TenantStatus,
+  UserStatus,
+} from '../generated/prisma/client.js';
 import { createPrismaClientOptions } from './client.js';
 
 /**
@@ -243,6 +255,40 @@ const MENU_TREE: MenuSeedNode[] = [
 /** 内置租户管理员角色编码（与 PERMISSIONS 注释、ADR-009 保持一致） */
 const BUILTIN_ADMIN_ROLE_CODE = 'admin';
 
+/** 默认租户：首次部署即可登录的租户入口（前端登录页的租户编码默认值同为 'default'） */
+const DEFAULT_TENANT_CODE = 'default';
+const DEFAULT_TENANT_NAME = '默认租户';
+
+/** 内置管理员账号的用户名（密码由 SEED_ADMIN_PASSWORD 注入） */
+const BUILTIN_ADMIN_USERNAME = 'admin';
+
+/**
+ * 内置管理员的缺省初始密码：仅在未提供 SEED_ADMIN_PASSWORD 时使用。
+ * 该值是公开的，生产环境必须用环境变量注入随机密码，并在首次登录后立即修改。
+ */
+const FALLBACK_ADMIN_PASSWORD = 'Admin@123';
+
+/**
+ * argon2id 参数必须与 admin-api `PasswordService` 完全一致（ADR-007 D3），
+ * 否则同一密码在不同入口的校验口径会漂移。改这里必须同步改
+ * `apps/admin-api/src/shared/auth/password.service.ts`（依赖方向禁止 package 反向引用 app）。
+ */
+const ARGON2_OPTIONS = {
+  type: argon2id,
+  memoryCost: 65536,
+  timeCost: 3,
+  parallelism: 4,
+} as const;
+
+/**
+ * 密码策略：长度 8-64 且至少包含一位小写、一位大写、一位数字。
+ * 与 admin-api `auth.constants.ts` 的 PASSWORD_MIN_LENGTH / PASSWORD_COMPLEXITY 一致；
+ * 播种侧提前拦截，避免写进一个永远无法通过登录校验的哈希。
+ */
+const PASSWORD_MIN_LENGTH = 8;
+const PASSWORD_MAX_LENGTH = 64;
+const PASSWORD_COMPLEXITY = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/;
+
 /** 播种期间的轻量 ID 生成：时间戳×1000 + 递增序号，仅在单次进程内要求唯一 */
 let idSeq = 0;
 function nextId(): bigint {
@@ -315,6 +361,58 @@ async function seedMenuTree(prisma: PrismaClient): Promise<number> {
 }
 
 /**
+ * 幂等：确保默认租户存在。
+ * 按 tenantCode 唯一键查找（不过滤 deletedAt：软删行仍占用唯一键，重复 insert 会撞约束），
+ * 已存在则复用；若该行已软删或非 ACTIVE，播种不擅自恢复，只告警交给运维处理。
+ */
+async function ensureDefaultTenant(prisma: PrismaClient): Promise<{ id: bigint; created: boolean }> {
+  const existing = await prisma.sysTenant.findFirst({
+    where: { tenantCode: DEFAULT_TENANT_CODE },
+    select: { id: true, status: true, deletedAt: true },
+  });
+
+  if (existing) {
+    if (existing.deletedAt || existing.status !== TenantStatus.ACTIVE) {
+      console.warn(`[seed] 默认租户 ${DEFAULT_TENANT_CODE} 已存在但不可用（软删或非 ACTIVE），请人工处理后再登录`);
+    }
+    return { id: existing.id, created: false };
+  }
+
+  const tenant = await prisma.sysTenant.create({
+    data: {
+      id: nextId(),
+      tenantCode: DEFAULT_TENANT_CODE,
+      tenantName: DEFAULT_TENANT_NAME,
+      status: TenantStatus.ACTIVE,
+    },
+  });
+  return { id: tenant.id, created: true };
+}
+
+/** 幂等：确保租户内置 admin 角色存在，返回 roleId（供菜单绑定与用户绑定复用） */
+async function ensureTenantAdminRole(prisma: PrismaClient, tenantId: bigint): Promise<bigint> {
+  const role = await prisma.sysRole.findFirst({
+    where: { tenantId, roleCode: BUILTIN_ADMIN_ROLE_CODE, deletedAt: null },
+  });
+  if (role)
+    return role.id;
+
+  const created = await prisma.sysRole.create({
+    data: {
+      id: nextId(),
+      tenantId,
+      roleName: '系统管理员',
+      roleCode: BUILTIN_ADMIN_ROLE_CODE,
+      description: '初始化播种的内置管理员角色：全量绑定平台菜单',
+      dataScope: DataScope.ALL,
+      status: RoleStatus.ACTIVE,
+      isSystem: true,
+    },
+  });
+  return created.id;
+}
+
+/**
  * 每个存量租户：确保内置 admin 角色存在，并全量绑定平台级启用菜单。
  * 绑定用 createMany + skipDuplicates（命中 uniq_role_menu 唯一键即跳过），天然幂等。
  */
@@ -331,26 +429,7 @@ async function seedTenantAdminRoles(prisma: PrismaClient): Promise<{ tenants: nu
 
   let bindings = 0;
   for (const tenant of tenants) {
-    const role = await prisma.sysRole.findFirst({
-      where: { tenantId: tenant.id, roleCode: BUILTIN_ADMIN_ROLE_CODE, deletedAt: null },
-    });
-
-    const roleId
-      = role?.id
-        ?? (
-          await prisma.sysRole.create({
-            data: {
-              id: nextId(),
-              tenantId: tenant.id,
-              roleName: '系统管理员',
-              roleCode: BUILTIN_ADMIN_ROLE_CODE,
-              description: '初始化播种的内置管理员角色：全量绑定平台菜单',
-              dataScope: DataScope.ALL,
-              status: RoleStatus.ACTIVE,
-              isSystem: true,
-            },
-          })
-        ).id;
+    const roleId = await ensureTenantAdminRole(prisma, tenant.id);
 
     const result = await prisma.sysRoleMenu.createMany({
       data: menus.map(menu => ({ id: nextId(), roleId, menuId: menu.id })),
@@ -360,6 +439,73 @@ async function seedTenantAdminRoles(prisma: PrismaClient): Promise<{ tenants: nu
   }
 
   return { tenants: tenants.length, bindings };
+}
+
+/** 密码策略前置校验：不合规直接终止播种，避免落库一个永远无法通过登录校验的哈希 */
+function assertPasswordPolicy(plain: string): void {
+  const lengthOk = plain.length >= PASSWORD_MIN_LENGTH && plain.length <= PASSWORD_MAX_LENGTH;
+  if (!lengthOk || !PASSWORD_COMPLEXITY.test(plain)) {
+    throw new Error(
+      `[seed] SEED_ADMIN_PASSWORD 不符合密码策略：长度 ${PASSWORD_MIN_LENGTH}-${PASSWORD_MAX_LENGTH}，且需包含大写字母、小写字母和数字`,
+    );
+  }
+}
+
+/**
+ * 幂等：确保默认租户下存在内置管理员账号，并绑定内置 admin 角色。
+ *
+ * 密码来源：SEED_ADMIN_PASSWORD，缺省回落到 FALLBACK_ADMIN_PASSWORD（仅便于本地初始化）。
+ * 账号已存在时不重置密码（播种绝不覆盖人工改过的凭据），只补齐可能缺失的角色绑定。
+ * isSuper=true：平台级端点（菜单维护、租户管理）由 SuperAdminGuard 要求该标记，
+ * 否则空库首次部署将没有任何渠道创建租户。
+ */
+async function seedDefaultAdminUser(prisma: PrismaClient): Promise<'created' | 'exists' | 'skipped'> {
+  const tenant = await prisma.sysTenant.findFirst({
+    where: { tenantCode: DEFAULT_TENANT_CODE },
+    select: { id: true, status: true, deletedAt: true },
+  });
+  if (!tenant || tenant.deletedAt || tenant.status !== TenantStatus.ACTIVE)
+    return 'skipped';
+
+  // 不过滤 deletedAt：软删行仍占用 (tenantId, username) 唯一键，硬插会撞约束
+  const existing = await prisma.sysUser.findFirst({
+    where: { tenantId: tenant.id, username: BUILTIN_ADMIN_USERNAME },
+    select: { id: true, deletedAt: true },
+  });
+
+  const roleId = await ensureTenantAdminRole(prisma, tenant.id);
+
+  if (existing) {
+    if (existing.deletedAt) {
+      console.warn(`[seed] 内置管理员 ${BUILTIN_ADMIN_USERNAME} 已软删，未自动恢复，请人工处理`);
+    }
+    await prisma.sysUserRole.createMany({
+      data: [{ id: nextId(), userId: existing.id, roleId }],
+      skipDuplicates: true,
+    });
+    return 'exists';
+  }
+
+  const plain = process.env.SEED_ADMIN_PASSWORD || FALLBACK_ADMIN_PASSWORD;
+  assertPasswordPolicy(plain);
+
+  const userId = nextId();
+  await prisma.sysUser.create({
+    data: {
+      id: userId,
+      tenantId: tenant.id,
+      username: BUILTIN_ADMIN_USERNAME,
+      password: await argon2Hash(plain, ARGON2_OPTIONS),
+      nickname: '系统管理员',
+      status: UserStatus.ACTIVE,
+      isSuper: true,
+    },
+  });
+  await prisma.sysUserRole.createMany({
+    data: [{ id: nextId(), userId, roleId }],
+    skipDuplicates: true,
+  });
+  return 'created';
 }
 
 async function main(): Promise<void> {
@@ -377,9 +523,25 @@ async function main(): Promise<void> {
     // eslint-disable-next-line no-console
     console.log(`[seed] 平台菜单播种完成：${menuCount} 个节点`);
 
+    // 默认租户必须先于角色播种：角色/菜单绑定按存量租户遍历
+    const defaultTenant = await ensureDefaultTenant(prisma);
+    // eslint-disable-next-line no-console
+    console.log(`[seed] 默认租户 ${defaultTenant.created ? '已创建' : '已存在'}：${DEFAULT_TENANT_CODE}`);
+
     const { tenants, bindings } = await seedTenantAdminRoles(prisma);
     // eslint-disable-next-line no-console
     console.log(`[seed] 租户管理员角色播种完成：${tenants} 个租户，新增绑定 ${bindings} 条`);
+
+    const adminResult = await seedDefaultAdminUser(prisma);
+    if (adminResult === 'created') {
+      const passwordSource = process.env.SEED_ADMIN_PASSWORD ? 'SEED_ADMIN_PASSWORD' : `缺省值 ${FALLBACK_ADMIN_PASSWORD}（请立即修改）`;
+      // eslint-disable-next-line no-console
+      console.log(`[seed] 内置管理员账号已创建：${DEFAULT_TENANT_CODE} / ${BUILTIN_ADMIN_USERNAME}，密码来源：${passwordSource}`);
+    }
+    else {
+      // eslint-disable-next-line no-console
+      console.log(`[seed] 内置管理员账号未新建（${adminResult === 'exists' ? '已存在，保留原密码' : '默认租户不可用，跳过'}）`);
+    }
   }
   finally {
     await prisma.$disconnect();

@@ -25,7 +25,8 @@
   "dependencies": {
     "@fedstack/auth-core": "workspace:*",
     "@prisma/adapter-mariadb": "catalog:",
-    "@prisma/client": "catalog:"
+    "@prisma/client": "catalog:",
+    "argon2": "catalog:"
   },
   "devDependencies": {
     "@fedstack/tsconfig": "workspace:*",

@@ -695,6 +695,9 @@ importers:
       '@prisma/client':
         specifier: 'catalog:'
         version: 7.9.1(prisma@7.9.1(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(magicast@0.5.5)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(typescript@6.0.3))(typescript@6.0.3)
+      argon2:
+        specifier: 'catalog:'
+        version: 0.45.1
     devDependencies:
       '@fedstack/tsconfig':
         specifier: workspace:*
