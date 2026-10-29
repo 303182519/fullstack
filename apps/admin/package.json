@@ -29,6 +29,7 @@
     "@fedstack/tsconfig": "workspace:*",
     "@rsbuild/core": "catalog:",
     "@rsbuild/plugin-react": "catalog:",
+    "@tanstack/eslint-plugin-query": "catalog:",
     "@tanstack/router-plugin": "catalog:",
     "@types/node": "catalog:",
     "@types/react": "catalog:",

@@ -87,6 +87,9 @@ catalogs:
     '@rslib/core':
       specifier: ^1.0.4
       version: 1.0.4
+    '@tanstack/eslint-plugin-query':
+      specifier: ^5.105.0
+      version: 5.105.0
     '@tanstack/react-query':
       specifier: ^5.104.5
       version: 5.104.5
@@ -351,6 +354,9 @@ importers:
       antd:
         specifier: 'catalog:'
         version: 6.6.8(date-fns@4.4.0)(luxon@3.7.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+      core-js:
+        specifier: 'catalog:'
+        version: 3.51.0
       react:
         specifier: 'catalog:'
         version: 19.3.1
@@ -376,6 +382,9 @@ importers:
       '@rsbuild/plugin-react':
         specifier: 'catalog:'
         version: 2.1.1(@rsbuild/core@2.2.14(core-js@3.51.0))(@rspack/core@2.2.9(@swc/helpers@0.5.23))
+      '@tanstack/eslint-plugin-query':
+        specifier: 'catalog:'
+        version: 5.105.0(eslint@10.12.0(jiti@2.7.0))(typescript@6.0.3)
       '@tanstack/router-plugin':
         specifier: 'catalog:'
         version: 1.168.48(@rsbuild/core@2.2.14(core-js@3.51.0))(@rspack/core@2.2.9(@swc/helpers@0.5.23))(@tanstack/react-router@1.170.46(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(rolldown@1.2.13)(vite@8.3.4(@types/node@24.19.2)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1))
@@ -388,9 +397,6 @@ importers:
       '@types/react-dom':
         specifier: 'catalog:'
         version: 19.3.0(@types/react@19.3.0)
-      core-js:
-        specifier: 'catalog:'
-        version: 3.51.0
       eslint:
         specifier: 'catalog:'
         version: 10.12.0(jiti@2.7.0)
@@ -3427,6 +3433,15 @@ packages:
 
   '@swc/helpers@0.5.23':
     resolution: {integrity: sha512-5lSsMOTXURePglDfvuAQUqkGek9Hg2kksOYay2m0+XR++b2NWYL/4sWyuvVBIs8oKnJaxkdi9whaL/sqN13afw==}
+
+  '@tanstack/eslint-plugin-query@5.105.0':
+    resolution: {integrity: sha512-nQTKJa7RMzhHAl03fVchPDDgt341Onxj7MmZTNt754awyQzjCLKLM+Ki36Y6gwq8UBz8M/xDxEg8it/JOTWifQ==}
+    peerDependencies:
+      eslint: ^8.57.0 || ^9.0.0 || ^10.0.0
+      typescript: ^5.6.0 || ^6.0.0 || ^7.0.0
+    peerDependenciesMeta:
+      typescript:
+        optional: true
 
   '@tanstack/history@1.162.5':
     resolution: {integrity: sha512-w1+YvwmTkwt5n8yUqEH3IWZ9DsmorCZW/EQ3KYHnqEgIkOZpH54NvW6/Epq3Dzb8H0ifIeYX8PExvrNLIH5FIA==}
@@ -9601,6 +9616,15 @@ snapshots:
   '@swc/helpers@0.5.23':
     dependencies:
       tslib: 2.8.1
+
+  '@tanstack/eslint-plugin-query@5.105.0(eslint@10.12.0(jiti@2.7.0))(typescript@6.0.3)':
+    dependencies:
+      '@typescript-eslint/utils': 8.71.1(eslint@10.12.0(jiti@2.7.0))(typescript@6.0.3)
+      eslint: 10.12.0(jiti@2.7.0)
+    optionalDependencies:
+      typescript: 6.0.3
+    transitivePeerDependencies:
+      - supports-color
 
   '@tanstack/history@1.162.5': {}
 
