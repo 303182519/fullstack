@@ -22,6 +22,9 @@ const pageConfig = pages.reduce((acc, page) => {
 // Docs: https://rsbuild.rs/config/
 export default defineConfig({
   server: {
+    // admin-api dev CORS 白名单已放行 3003 / 3004（见 apps/admin-api/src/main.ts）。
+    // 3003 常被其它本地服务占用，admin 固定用 3004。
+    // refresh token 走 HttpOnly Cookie + withCredentials，origin 必须是白名单内的精确值。
     port: 3004,
   },
   source: {

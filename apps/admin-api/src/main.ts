@@ -18,9 +18,9 @@ async function bootstrap() {
   if (IsDev) {
     // 本地开发环境开启跨域，生产环境关闭，原因：生产环境需要在Nginx后开启跨域，Nginx会自动处理跨域问题
     app.enableCors({
-      origin: ['http://localhost:3003'],
+      origin: ['http://localhost:3003', 'http://localhost:3004'],
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
-      allowedHeaders: ['Content-Type', 'Authorization'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-Id'],
       credentials: true, // 允许携带cookie凭证
     });
   }

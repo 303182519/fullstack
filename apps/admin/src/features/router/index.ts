@@ -94,7 +94,7 @@ function autoConvert(value: string | null): unknown {
     return true;
   if (value === 'false')
     return false;
-  if (/^-?\d+(\.\d+)?$/.test(value)) {
+  if (/^-?\d+(?:\.\d+)?$/.test(value)) {
     const num = Number(value);
     if (!Number.isNaN(num))
       return num;
@@ -104,8 +104,10 @@ function autoConvert(value: string | null): unknown {
 
 /** TanStack Router 的 stringifySearch 签名适配。 */
 function stringifySearch(search: Record<string, unknown>): string {
-  const flat = flattenSearch(search);
-  return stringifyQuery(flat).slice(1); // 去掉 shared 生成的 `?` 前缀
+  // 必须带 `?` 前缀：TanStack 的 stringifySearch 契约是返回 `?a=1` 整串
+  // （router-core 的 stringifySearchWith 返回 `searchStr ? `?${searchStr}` : ''`）。
+  // 去掉前缀会让 href 拼成 `/loginredirect=/home` 这种畸形 URL。
+  return stringifyQuery(flattenSearch(search));
 }
 
 /** TanStack Router 的 parseSearch 签名适配。 */
@@ -157,7 +159,6 @@ declare module '@tanstack/react-router' {
     router: RouterConfig;
   }
 
-  // 扩展 route.staticData 的 Meta 类型（阶段 2+ 用于 RBAC / 菜单 / 图标等）
-  // eslint-disable-next-line @typescript-eslint/no-empty-object-type
+  // 扩展 route.staticData 的 Meta 类型（阶段 3+ 用于 RBAC / 菜单 / 图标等）
   interface StaticDataRouteOption {}
 }

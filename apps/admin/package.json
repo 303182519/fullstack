@@ -17,6 +17,7 @@
     "@fedstack/service": "workspace:*",
     "@fedstack/utils": "workspace:*",
     "@fedstack/web-utils": "workspace:*",
+    "@tanstack/react-query": "catalog:",
     "@tanstack/react-router": "catalog:",
     "antd": "catalog:",
     "core-js": "catalog:",

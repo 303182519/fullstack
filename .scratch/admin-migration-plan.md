@@ -155,16 +155,20 @@ adapter.ts → import { getRouter } from '@/features/router/router-ref'
 
 ## 阶段 2：登录闭环（service adapter + auth store + 登录页）
 
+**状态**：代码全部落地，`typecheck` / `lint` / `build` 三项绿；**真实账号登录待人工验证**（仓内无可用测试账号，需 seed 或运维脚本提供一个）。
+已交付文件：`src/store/auth.ts`、`src/service/{adapter,request,queryClient,antd-holder}.ts`、`src/service/api/auth.ts`、`src/pages/(auth)/login/index.tsx`、`src/pages/__root.tsx`、`src/pages/(admin)/layout.tsx`、`src/pages/(auth)/layout.tsx`、`src/bootstrap.tsx`。
+
 **目标**：能调用 admin-api 完成登录，accessToken 进内存，受保护路由能拿到用户态。
 
 ### 2.1 环境变量
-`apps/admin/.env.dev` 追加（所有客户端变量必须 `PUBLIC_` 前缀）：
-```env
-PUBLIC_API_BASE_URL = http://localhost:3003/api    # admin-api 地址（见 2.7 端口对齐）
-PUBLIC_SERVICE_SUCCESS_CODE = 200
-PUBLIC_SERVICE_EXPIRED_TOKEN = 401
-PUBLIC_SERVICE_LOGOUT = 401
-```
+**文件名必须是 Rsbuild 标准 mode 名**（`scripts` 里没有 `--env-mode`，`.env.dev` / `.env.prod` 不会被加载）：
+- `.env`（全环境共用）：`PUBLIC_MY_APP_NAME` + 业务码 `PUBLIC_SERVICE_SUCCESS_CODE=200`、`PUBLIC_SERVICE_EXPIRED_TOKEN=10A08`、`PUBLIC_SERVICE_LOGOUT=10A09`
+- `.env.development`：`PUBLIC_ENV=development`、`PUBLIC_API_BASE_URL=http://localhost:3001/api`
+- `.env.production`：`PUBLIC_API_BASE_URL=/api`（同源反代）
+- `.env.test`：同上，需显式 `rsbuild build --env-mode test` 才生效
+
+> 知识点 1：`expiredToken` **不能配 HTTP 401**。admin-api 的 bizCode 优先匹配（`shared.ts` 的 `String(bizCode ?? code)`），密码错误 10A02 / 租户不可用 10A07 也都是 401，配 401 会让「密码输错」误入续签分支。用 `10A08`（INVALID_ACCESS_TOKEN）、登出用 `10A09`（SESSION_REVOKED）。
+> 知识点 2：admin-api 地址是 **3001**（`config.default.ts` 的 PORT=3001 + 全局前缀 `api`），不是前端的 3003。
 
 ### 2.2 service 层目录
 ```
@@ -236,12 +240,11 @@ export const useAuthStore = create<AuthState>((set) => ({
 ```
 > 知识点：不持久化 = 刷新后丢失。根路由的 `beforeLoad` 里调一次 `/auth/refresh`（Cookie 自动带）把 accessToken 换回来，用户无感。
 
-### 2.7 端口 / CORS 对齐（必须处理）
-admin-api dev CORS 只允许 `http://localhost:3003`，但 admin dev 跑在 3004。二选一：
-- **方案 A（推荐）**：把 admin 的 `rsbuild.config.ts` `server.port` 改成 `3003`
-- 方案 B：改 admin-api `main.ts` 的 `origin` 加 `3004`
-
-> 知识点：refresh token 走 Cookie，`withCredentials: true` 要求服务端 `Access-Control-Allow-Origin` 不能是 `*`，必须是具体 origin 且 `credentials: true`。
+### 2.7 端口 / CORS 对齐（已落地）
+admin-api dev CORS 现放行 **3003 与 3004** 两个 origin，并补了 `X-Request-Id` 到 `allowedHeaders`；
+admin 固定跑 **3004**（3003 常被其它本地服务占用）。
+> 知识点 1：refresh token 走 Cookie，`withCredentials: true` 要求服务端 `Access-Control-Allow-Origin` 不能是 `*`，必须是具体 origin 且 `credentials: true`。
+> 知识点 2：`@fedstack/axios` 默认给每个请求加 `X-Request-Id` 头 → 触发预检，服务端 `allowedHeaders` 漏配这个头会让请求变成 `net::ERR_FAILED`（不是 401，极难从错误文案定位）。
 
 ### 2.8 API 对接契约（对照 admin-api）
 | 接口 | 方法 | 入参 | 返回（信封 data） |
@@ -265,7 +268,10 @@ admin-api dev CORS 只允许 `http://localhost:3003`，但 admin dev 跑在 3004
 
 ### 2.10 根路由 beforeLoad 续期
 `__root.tsx` 的 `beforeLoad`：若 `authStore.accessToken` 为空，调 `/auth/refresh` 拿 token；失败跳登录。
-> 知识点：页面刷新 → 内存 token 丢失 → 用 Cookie 静默续签，用户体验无损。
+> 知识点 1：页面刷新 → 内存 token 丢失 → 用 Cookie 静默续签，用户体验无损。
+> 知识点 2（阶段 1 遗留 bug，已修）：`stringifySearch` **必须返回带 `?` 的整串**（router-core 的 `stringifySearchWith` 就是 `searchStr ? '?${searchStr}' : ''`）。阶段 1 代码多做了一次 `.slice(1)`，导致守卫重定向拼成 `/loginredirect=/home`。
+> 知识点 3：`ParsedLocation.search` 是**已解析对象**，拼回跳地址必须用 `location.href`，否则得到 `[object Object]`。
+> 知识点 4：guard 的重定向要放 `throw redirect()`，不要放 `router.navigate()` —— 后者在 beforeLoad 里不阻断本次导航。
 
 **阶段 2 完成判定**：用真实账号（查 admin-api seed 或数据库）能登录进 `/home`，刷新页面不丢登录态，token 过期自动续签。
 
