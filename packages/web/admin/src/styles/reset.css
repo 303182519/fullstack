@@ -4,6 +4,13 @@
 2. [UnoCSS]: allow to override the default border color with css var `--un-default-border-color`
 */
 
+/*
+ * 全部规则收进 Tailwind 的 base 层：本文件等价于 preflight，
+ * 若留在无层样式里，会压过 @layer utilities 中的工具类（如 h1 的 text-xl / font-bold）。
+ * 无层样式（antd 的 CSS-in-JS）依旧优先级最高，组件库外观不受影响。
+ */
+@layer base {
+
 *,
 ::before,
 ::after {
@@ -375,4 +382,6 @@ video {
 /* Make elements with the HTML hidden attribute stay hidden by default */
 [hidden] {
   display: none;
+}
+
 }

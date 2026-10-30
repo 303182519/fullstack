@@ -68,3 +68,6 @@ export const GLOBAL_SIDER_MENU_ID = '__GLOBAL_SIDER_MENU__';
 
 /** 顶栏菜单的 portal 挂载点 DOM id，语义同 {@link GLOBAL_SIDER_MENU_ID} */
 export const GLOBAL_HEADER_MENU_ID = '__GLOBAL_HEADER_MENU__';
+
+/** vertical-mix 模式侧栏左栏（一级菜单）的 portal 挂载点 DOM id */
+export const GLOBAL_SIDER_FIRST_LEVEL_ID = '__GLOBAL_SIDER_FIRST_LEVEL__';

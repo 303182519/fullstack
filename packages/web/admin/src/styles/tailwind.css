@@ -1,0 +1,20 @@
+/**
+ * Tailwind CSS 4 入口（壳包统一样式入口）。
+ *
+ * CSS-first 配置：没有 tailwind.config.js，令牌写在 @theme 里。
+ * 类名扫描：自动内容检测只覆盖应用构建目录（apps/admin），壳包目录靠下面的 @source 补齐。
+ */
+@import 'tailwindcss';
+
+/**
+ * 壳包源码不在应用的构建工作目录（apps/admin）之下，Tailwind 的自动内容检测覆盖不到，
+ * 必须显式声明扫描范围，否则 layouts / ui 里的工具类不会被生成。
+ */
+@source '../**/*.ts';
+@source '../**/*.tsx';
+
+@theme {
+  /* 布局配色令牌：与 layouts 的 --layout-* 尺寸 / 配色变量同义，全局默认值见 styles/global.css */
+  --color-layout: var(--layout-content-bg, #f5f7fa);
+  --color-surface: var(--layout-surface-bg, #fff);
+}

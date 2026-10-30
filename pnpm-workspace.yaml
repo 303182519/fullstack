@@ -172,7 +172,11 @@ catalog:
   react-dom: ^19.3.1
   'react-error-boundary': ^6.1.6
 
-  # ── 3.2 样式框架与 UI 组件库（Tailwind CSS 4 / antd）──
+  # ── 3.2 样式框架与 UI 组件库（Tailwind CSS 4 / antd / ahooks / iconify）──
+  '@ant-design/icons': ^6.3.4
+  '@iconify-json/mdi': ^1.2.3
+  '@iconify/react': ^6.0.3
+  ahooks: ^3.11.0
   antd: ^6.6.8
   tailwindcss: ^4.3.3
 
@@ -200,6 +204,8 @@ catalog:
   # ── 3.6 构建（rslib + rsbuild，web 层专用）──
   '@rsbuild/core': ^2.2.14
   '@rsbuild/plugin-react': ^2.1.1
+  # Tailwind CSS 4 官方 Rsbuild 接入（@tailwindcss/webpack 通道，不经 postcss-loader）
+  '@rsbuild/plugin-tailwindcss': ^2.0.3
   '@rslib/core': ^1.0.4
   # TanStack Router 构建期插件（Rspack/Rsbuild 集成 + 路由树代码生成）
   '@tanstack/router-plugin': ^1.168.48

@@ -1,5 +1,22 @@
+@import './tailwind.css';
 @import './reset.css';
 @import './nprogress.css';
+
+/*
+ * 布局全局默认尺寸 / 配色（SK-3.2）。
+ * 与 `layouts/config/layout-settings.ts` 同名同义：这里是渲染层兜底值，
+ * 单实例覆盖由 materials 的 `createLayoutCssVars` 以内联样式挂在布局根节点（优先级天然更高）。
+ * `tailwind.css` 的 `@theme` 里 `--color-layout` / `--color-surface` 也回落到这两个背景变量。
+ */
+:root {
+  --layout-header-height: 56px;
+  --layout-tab-height: 40px;
+  --layout-footer-height: 48px;
+  --layout-sider-width: 240px;
+  --layout-sider-collapsed-width: 64px;
+  --layout-content-bg: #f5f7fa;
+  --layout-surface-bg: #fff;
+}
 
 html,
 body,

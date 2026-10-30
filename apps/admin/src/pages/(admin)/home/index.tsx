@@ -5,6 +5,7 @@ import { createFileRoute, Link } from '@tanstack/react-router';
  */
 export const Route = createFileRoute('/(admin)/home/')({
   component: HomePage,
+  staticData: { title: '首页' },
 });
 
 function HomePage() {

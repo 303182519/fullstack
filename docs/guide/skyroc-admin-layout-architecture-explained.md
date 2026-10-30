@@ -393,6 +393,7 @@ const { fixedHeaderAndTab, footer: themeFooter, header, layout, sider, tab } = u
 ## 9. 未能从源码确认的事项（诚实清单）
 
 1. **tabs 的缓存实现**：`state/tabs/use-admin-tab.ts` 两次抓取均返回空，未读到。SK-3.5 开工前必须 clone 源码核实，**不能推断**。
+   > **落地结论（2026-10-30，SK-3.5）**：本仓裁决为 **B 方案**——不做组件级 Keep-Alive，标签条只做路由历史可视化 + 快捷切换，数据层由 React Query 缓存兜底；「刷新当前页」用 `store/layout.ts` 的 `reloadKey` 重挂载。原因是 TanStack Router 的 `<Outlet />` 在路由切换时卸载子树，真缓存需自建「按 pathname 保留 React 树 → LRU → 滚动位置单独存」的容器。skyroc 源码仍未读到，因此本仓**不宣称**「与 skyroc 缓存机制一致」，只记录自建取舍。实现见 `packages/web/admin/src/layouts/store/tabs.ts` 与 `modules/admin-tab/AdminTab.tsx`。
 2. **`materials/AdminLayoutComponent` 的 DOM 结构**：仅知导出 `LAYOUT_SCROLL_EL_ID`，未读到其内部 grid/flex 布局细节。SK-3.1 需补。
 3. **`modules/admin-menu/` 的菜单数据结构**：`childLevelMenus` / `secondLevelMenus` 的派生规则未读到（`use-admin-menus.ts` 未抓取）。
 4. **`features/` 子目录内容**：`layouts/features/` 目录存在但未展开，职责未知。

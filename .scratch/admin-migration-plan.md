@@ -277,11 +277,19 @@ admin 固定跑 **3004**（3003 常被其它本地服务占用）。
 
 ---
 
-## 阶段 3：布局壳（已排期，独立清单）
+## 阶段 3：布局壳（已完成，2026-10-30）
 
-**状态**：已裁决方案，未开工。详细施工清单见 **`.scratch/admin-phase3-layout-checklist.md`**（SK-3.0 ~ SK-3.7，每个子阶段可独立开会话执行）。
+**状态**：**已完成**（SK-3.0 ~ SK-3.7 全部落地）。详细施工清单与逐阶段验收记录见 **`.scratch/admin-phase3-layout-checklist.md`**。
 **架构调研**：`docs/guide/skyroc-admin-layout-architecture-explained.md`。
 **关键裁决（2026-10-30）**：文件式静态路由 + 菜单树只做导航 UI（不跟 skyroc 的动态路由注册）；六种布局模式全做；布局壳放 `packages/web/admin/src/layouts/`；主题只预留 CSS 变量。详见 `ADR-018`。
+
+**实际交付**（与清单的差异见清单各章「偏差」表）：
+
+- 壳包 `layouts/`：`materials/` 受控骨架、`utils/{sider-width,menu-mapper,menu-icons,menu-levels}.ts`、`store/{layout,menus,tabs}.ts`、`modules/{admin-header,admin-menu,admin-tab}/`，壳包 `test` 52/52。
+- 六模式（vertical / horizontal / 3×hybrid / vertical-mix）由 `layout-settings.ts` 的 `layout.mode` 单点切换，已浏览器实测；本轮修复 3 个真实缺陷（`isMixMode` 漏模式、hybrid 折叠按钮缺失、portal 容器只解析一次）。
+- 标签页按 **B 方案**（不做组件级 Keep-Alive，标签条 = 路由历史可视化 + React Query 数据缓存兜底）。
+- 装配全部留在 `apps/admin/src/pages/(admin)/layout.tsx`，壳包不含装配层、不请求业务接口。
+- **遗留**：① 移动端 `<sm` 断点回归未实测；② 标签条首帧不建立标签（`useUpdateEffect` 跳过首帧）。
 
 ---
 

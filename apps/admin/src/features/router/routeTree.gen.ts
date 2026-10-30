@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './../../pages/__root'
 import { Route as adminLayoutRouteImport } from './../../pages/(admin)/layout'
 import { Route as authLayoutRouteImport } from './../../pages/(auth)/layout'
+import { Route as adminSplatRouteImport } from './../../pages/(admin)/$'
 import { Route as errors403RouteImport } from './../../pages/(errors)/403'
 import { Route as errors404RouteImport } from './../../pages/(errors)/404'
 import { Route as errors500RouteImport } from './../../pages/(errors)/500'
@@ -24,6 +25,11 @@ const adminLayoutRoute = adminLayoutRouteImport.update({
 const authLayoutRoute = authLayoutRouteImport.update({
   id: '/(auth)',
   getParentRoute: () => rootRouteImport,
+} as any)
+const adminSplatRoute = adminSplatRouteImport.update({
+  id: '/$',
+  path: '/$',
+  getParentRoute: () => adminLayoutRoute,
 } as any)
 const errors403Route = errors403RouteImport.update({
   id: '/(errors)/403',
@@ -52,6 +58,7 @@ const authLoginIndexRoute = authLoginIndexRouteImport.update({
 } as any)
 
 export interface FileRoutesByFullPath {
+  '/$': typeof adminSplatRoute
   '/403': typeof errors403Route
   '/404': typeof errors404Route
   '/500': typeof errors500Route
@@ -59,6 +66,7 @@ export interface FileRoutesByFullPath {
   '/login/': typeof authLoginIndexRoute
 }
 export interface FileRoutesByTo {
+  '/$': typeof adminSplatRoute
   '/403': typeof errors403Route
   '/404': typeof errors404Route
   '/500': typeof errors500Route
@@ -69,6 +77,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/(admin)': typeof adminLayoutRouteWithChildren
   '/(auth)': typeof authLayoutRouteWithChildren
+  '/(admin)/$': typeof adminSplatRoute
   '/(errors)/403': typeof errors403Route
   '/(errors)/404': typeof errors404Route
   '/(errors)/500': typeof errors500Route
@@ -77,13 +86,14 @@ export interface FileRoutesById {
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/403' | '/404' | '/500' | '/home/' | '/login/'
+  fullPaths: '/$' | '/403' | '/404' | '/500' | '/home/' | '/login/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/403' | '/404' | '/500' | '/home' | '/login'
+  to: '/$' | '/403' | '/404' | '/500' | '/home' | '/login'
   id:
     | '__root__'
     | '/(admin)'
     | '/(auth)'
+    | '/(admin)/$'
     | '/(errors)/403'
     | '/(errors)/404'
     | '/(errors)/500'
@@ -114,6 +124,13 @@ declare module '@tanstack/react-router' {
       fullPath: ''
       preLoaderRoute: typeof authLayoutRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/(admin)/$': {
+      id: '/(admin)/$'
+      path: '/$'
+      fullPath: '/$'
+      preLoaderRoute: typeof adminSplatRouteImport
+      parentRoute: typeof adminLayoutRoute
     }
     '/(errors)/403': {
       id: '/(errors)/403'
@@ -154,10 +171,12 @@ declare module '@tanstack/react-router' {
 }
 
 interface adminLayoutRouteChildren {
+  adminSplatRoute: typeof adminSplatRoute
   adminHomeIndexRoute: typeof adminHomeIndexRoute
 }
 
 const adminLayoutRouteChildren: adminLayoutRouteChildren = {
+  adminSplatRoute: adminSplatRoute,
   adminHomeIndexRoute: adminHomeIndexRoute,
 }
 

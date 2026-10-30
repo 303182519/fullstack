@@ -160,5 +160,8 @@ declare module '@tanstack/react-router' {
   }
 
   // 扩展 route.staticData 的 Meta 类型（阶段 3+ 用于 RBAC / 菜单 / 图标等）
-  interface StaticDataRouteOption {}
+  interface StaticDataRouteOption {
+    /** 页面标题，顶栏面包屑直接消费；缺省时回退到路由 pathname */
+    title?: string;
+  }
 }
