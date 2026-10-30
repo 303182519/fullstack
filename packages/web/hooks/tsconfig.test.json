@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "//": "测试项目：仅用于 vitest typecheck 与 typecheck 脚本",
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "types": ["node"],
+    "noEmit": true
+  },
+  "include": ["src/**/*.ts", "__tests__/**/*.ts"],
+  "exclude": ["dist", "node_modules"]
+}
