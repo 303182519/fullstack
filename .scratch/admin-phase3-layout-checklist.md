@@ -68,54 +68,65 @@ pnpm --filter @fedstack/web-admin-shell test
 
 ## SK-3.0 基建对齐：建 layouts 域 + 接线
 
-**目标**：让 `apps/admin` 能 `import { AdminLayout } from '@fedstack/web-admin-shell/layouts'`，且构建通过。**不写任何布局业务代码。**
+**目标**：让 `apps/admin` 能 `import { AdminLayout } from '@shell/layouts'`，且构建通过。**不写任何布局业务代码。**
 
-### 事实基线（已核实）
+### 事实基线（已核实，2026-10-30 复核）
 
 | 项 | 现状 |
 |---|---|
 | 壳包名 | `@fedstack/web-admin-shell`（`packages/web/admin/package.json:2`） |
-| 壳包现有域 | `src/theme`、`src/ui`、`src/styles`（**无 layouts**） |
+| 壳包现有域 | `src/theme`、`src/ui`、`src/styles`（SK-3.0 后新增 `src/layouts`） |
 | 壳包 exports | **无 `exports` 字段**，无打包脚本，只有 lint/test/typecheck |
-| apps/admin 依赖 | **未依赖** `@fedstack/web-admin-shell`（`apps/admin/package.json:15-28`） |
-| 路径别名 | 未确认，需读 `tsconfig` 与 `eslint.config.js` |
+| apps/admin 依赖 | **未依赖** `@fedstack/web-admin-shell`——**也不需要**，见下 |
+| 路径别名 | **已存在**：`apps/admin/tsconfig.json` 已有 `"@shell/*": ["../../packages/web/admin/src/*"]`，`apps/admin/src/plugins/assets.ts` 已在用 `@shell/styles/global.css` |
+| 构建期别名解析 | rsbuild 2.2.14 默认 `resolve.aliasStrategy: 'prefer-tsconfig'`，直接读 tsconfig `paths`，无需 `source.alias` |
+| 壳包 typecheck 基线 | **红**：`theme/setup.ts` 缺 `./hooks`、`ui/compose` 缺 `@iconify/react`（2 个历史错误，非本阶段引入） |
+| 壳包 lint 基线 | **红**：`theme/config/default.ts` 26 个 trailing-comma / quote-props 历史错误 |
 
 ### 任务
 
-1. **读现状**：`packages/web/admin/tsconfig.json`、`eslint.config.js`、`src/theme/index.ts`、`src/ui/index.ts`，确认现有导出风格（barrel export？子路径导出？）。
-2. **决定引用方式**（二选一，需在会话内给出证据后再定）：
-   - **A. 子路径 + tsconfig paths**：`paths: { "@fedstack/web-admin-shell/layouts": ["../../packages/web/admin/src/layouts/index.ts"] }`。因为壳包无 `exports` 字段、无构建产物，**这是当前唯一可行方式**（源码直引）。
-   - **B. 加 `exports` + 构建**：给壳包加 tsup/rslib 构建。**不建议**——阶段 3 没必要引入壳包构建链，会让 dev 变慢。
-3. 在 `packages/web/admin/src/layouts/` 建空骨架：
-   ```
-   layouts/
-   ├── index.ts          # barrel，先只导出 AdminLayout 占位
-   ├── constant.ts       # 六模式常量 + portal DOM id（照抄 skyroc 值）
-   ├── context.tsx       # 插槽 Context（照抄 skyroc 契约）
-   └── README.md         # 域说明：本目录是 admin 专属壳，不对外发布
-   ```
-4. `apps/admin/package.json` 加 `"@fedstack/web-admin-shell": "workspace:*"`。
-5. 在 `apps/admin` 的 tsconfig 里配 paths（或确认已由 base tsconfig 覆盖）。
+1. **读现状**：`packages/web/admin/tsconfig.json`、`eslint.config.js`、`src/theme/index.ts`、`src/ui/*/index.ts`，确认现有导出风格（barrel export？子路径导出？）。
+   → 结论：每个域一个 `index.ts` barrel（`theme/index.ts`、`ui/compose/index.ts`、`ui/antd/index.ts`），`layouts` 沿用。
+2. **决定引用方式**：**用已有 `@shell/*` 源码直引**，不新增 `exports`、不引入壳包构建链。
+   - 包名子路径（`@fedstack/web-admin-shell/layouts`）在无 `exports` 且源码在 `src/` 下时**不可解析**，故不采用。
+   - 因此 `apps/admin/package.json` **不需要**加 `@fedstack/web-admin-shell` 依赖（别名是相对路径，不经过包解析）。
+3. 在 `packages/web/admin/src/layouts/` 建骨架（见「产出」）。
+4. `packages/web/admin/package.json` 加 `"react": "catalog:"` 到 `dependencies`：`context.tsx` 运行时需要 `createContext`，且壳包 `node_modules` 里没有 react 就属于幽灵依赖（与既有 `antd` 用 catalog 直依赖的做法一致）。
+5. 在 `packages/web/admin/eslint.config.js` 追加 `no-restricted-imports`：禁止 `@/*`、`~/*`（应用侧别名），已实测拦得住。
+
+### 关键坑（实测）
+
+- **禁止在 `layouts` 里 import 主题域类型**。`import type { ThemeLayoutMode } from '@shell/theme/types'` 会把 `theme/types/index.ts` 拉进 `apps/admin` 的编译程序，而 `theme.d.ts`（全局 `Theme` 命名空间）不在 app 的 `include` 内 → 全部 `TS2503 Cannot find namespace 'Theme'`。
+  - 结论：`LayoutMode` 联合类型在 `layouts/constant.ts` 内本地声明（附注释：与 `Theme.ThemeLayoutMode` 保持同步直到阶段 4 收敛）。
+- `verbatimModuleSyntax: true` 在 app 侧生效，壳包源码被 app 一起编译，类型导入必须写 `import type`。
+
 
 ### 知识点
 
 - **为什么源码直引而不构建**：skyroc 的零包化 commit 明确说这套壳「消费者必然要修改」，源码直引让改壳包时热更新即时生效，无构建中间层。
 - **壳包不能反向依赖 app**：`layouts/` 里禁止 `import '@/...'`（app 的别名）。壳包只能依赖 `@fedstack/*` 公共包与 peer 依赖。这条要在 `eslint.config.js` 加 `no-restricted-imports` 守卫。
-- **peer 依赖**：`antd` / `react` / `@tanstack/react-router` / `zustand` 在壳包里应是 peerDependencies 或由 app 提供，避免双份 React。
+- **peer 依赖**：`antd` / `react` / `@tanstack/react-router` / `zustand` 在壳包里用 **catalog 直依赖**（本仓既有做法，catalog 保证同一版本、同一物理副本），避免双份 React。
 
 ### 产出
 
-- `packages/web/admin/src/layouts/{index.ts, constant.ts, context.tsx, README.md}`
-- `apps/admin/package.json`（+1 依赖）
-- tsconfig paths（若需要）
-- eslint 反向依赖守卫
+- `packages/web/admin/src/layouts/{index.ts, constant.ts, context.tsx, README.md}` ✅
+- `packages/web/admin/package.json`：`react: catalog:` ✅
+- `packages/web/admin/eslint.config.js`：`no-restricted-imports` 反向依赖守卫 ✅
+- ~~`apps/admin/package.json` 加依赖~~（不需要，见任务 2）
+- ~~tsconfig paths~~（已存在，无需改动）
 
 ### 完成判定
 
-- `pnpm --filter @fedstack/admin typecheck` 绿
-- `pnpm --filter @fedstack/web-admin-shell typecheck` 绿
-- 在 `apps/admin` 里临时 `import { LAYOUT_MODE } from '@fedstack/web-admin-shell/layouts'` 能编译（验证后移除）
-- `pnpm install` 无警告
+- `pnpm --filter @fedstack/admin typecheck` 绿 ✅
+- `pnpm --filter @fedstack/admin lint` 绿 ✅
+- `pnpm --filter @fedstack/admin build` 绿 ✅（用临时 import 验证过 `@shell/layouts` 能被 rsbuild 解析，验证后已移除）
+- `pnpm --filter @fedstack/web-admin-shell exec eslint src/layouts` 绿 ✅
+- `pnpm --filter @fedstack/web-admin-shell typecheck`：**仍红，但与基线完全一致**（只有 `theme/setup.ts` 与 `SvgIcon.tsx` 两个历史错误）。新增文件零错误。
+- `pnpm install --no-frozen-lockfile` 通过 ✅（仅新增 1 条 react 依赖，其余 peer 警告为历史遗留）
+
+### 状态（2026-10-30）
+
+**已完成**。遗留：壳包整包 lint / typecheck 的历史红由阶段 4 主题重写一并清理，本阶段不动。
 
 ### 会话启动提示语
 

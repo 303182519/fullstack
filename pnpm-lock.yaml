@@ -919,6 +919,9 @@ importers:
       defu:
         specifier: 'catalog:'
         version: 6.1.7
+      react:
+        specifier: 'catalog:'
+        version: 19.3.1
       react-error-boundary:
         specifier: 'catalog:'
         version: 6.1.6(@types/react@19.3.0)(react@19.3.1)

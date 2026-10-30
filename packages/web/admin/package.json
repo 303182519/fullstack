@@ -18,6 +18,7 @@
     "@fedstack/web-utils": "workspace:*",
     "antd": "catalog:",
     "defu": "catalog:",
+    "react": "catalog:",
     "react-error-boundary": "catalog:"
   },
   "devDependencies": {
