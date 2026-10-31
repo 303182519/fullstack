@@ -320,6 +320,45 @@ DOM 结构（vertical + wrapper 滚动）：
 
 ---
 
+## SK-3.1.6 样式体系：Tailwind 4 → UnoCSS（含 theme/antd 对齐）
+
+> 决策：推倒 Tailwind CSS 4，改用 UnoCSS，以 skyroc `internal/uno-config` 的预设为真源；
+> 构建接入按 Rsbuild 官方方式（`@unocss/postcss`，非 webpack 插件）。
+
+### 实施
+
+| 文件 | 改动 |
+| --- | --- |
+| `apps/admin/uno-preset.ts` | 迁移 skyroc `presetSoybeanAdmin`（色板 / 字号 / 圆角 / 间距 / 阴影 / shortcuts / preflights），补 `layout` / `surface` / `foreground` 等本仓语义别名 |
+| `apps/admin/uno.config.ts` | `presetWind3({ dark: 'class', important: '.root', preflight: 'on-demand', variablePrefix: '' })` + `presetAdminTheme()`；`content.filesystem` 覆盖 app 与壳包 |
+| `apps/admin/postcss.config.mjs` | `plugins: [UnoCSS()]`（`@unocss/postcss`） |
+| `packages/web/admin/src/styles/global.css` | 删除 `@import './tailwind.css'`，改为 `@unocss;`（输出全部层，shortcuts 在 `shortcuts` 层） |
+| `packages/web/admin/src/styles/tailwind.css` | 删除 |
+| `apps/admin/static/index.html` | `<body class="root">`：`important: '.root'` 的作用域根 |
+| `apps/admin/rsbuild.config.ts` | 移除 `pluginTailwindcss` 与 UnoCSS webpack 插件，样式走内置 PostCSS 管线 |
+
+### 迁移中发现的规则差异（改动源码写法而非改配置）
+
+1. **快捷类遮蔽**：上游 `'flex-col': 'flex flex-col'` 会遮蔽 presetWind3 的 `flex-col` 工具类并自循环，本仓不迁移该条（`i-flex-col` 改为 `flex flex-col inline-flex`）。
+2. **任意值属性**：presetWind3 不支持 `transition-[padding-left]`（连字符属性），调用点改为 `transition-[padding]`。
+3. **基色透明度**：色值为 `var(--primary)` 时 `bg-primary/10` 会丢失 alpha，改用 `bg-primary-lightest` / `bg-surface-hover` / `text-secondary`。
+4. **`text-base` 语义变化**：上游把 `text-base` 定义为文字颜色，字号改用 `text-md`。
+
+### 主题接入（theme/antd）
+
+- `theme/hooks`：`useTheme` 全量对齐 skyroc（jotai atom → Zustand store），`setupTheme` 在 render 前播种 store。
+- `theme/antd`：`getAntdTheme` + `AntdProvider` + `ui.ts` 20 个 façade（未初始化时抛错）；删除 app 侧 `service/antd-holder.ts`，adapter 改调 façade。
+- 水印暂不渲染，props 保留 `userName` 以便后续接 `Watermark`。
+
+### 验收
+
+- `pnpm --filter @fedstack/admin` 的 `typecheck` / `lint` / `build` 全绿
+- `pnpm --filter @fedstack/web-admin-shell` 的 `typecheck` / `lint` 绿
+- 产物 CSS 13.2 kB；全部在用 token 均生成（`missing: []`），含 shortcuts 与 `html.size-*` preflights
+- 浏览器实测：登录页卡片 / 主按钮正常，`--primary` 等 antd CSS 变量已注入，无 CSS 报错
+
+---
+
 ## SK-3.2 布局状态 + 尺寸纯函数 + CSS 变量
 
 **目标**：`store/layout.ts`（Zustand）+ `layout-settings.ts`（静态配置）+ `sider-width` 纯函数 + CSS 变量体系。

@@ -32,14 +32,14 @@
     "@fedstack/tsconfig": "workspace:*",
     "@rsbuild/core": "catalog:",
     "@rsbuild/plugin-react": "catalog:",
-    "@rsbuild/plugin-tailwindcss": "catalog:",
     "@tanstack/eslint-plugin-query": "catalog:",
     "@tanstack/router-plugin": "catalog:",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
+    "@unocss/postcss": "catalog:",
     "eslint": "catalog:",
-    "tailwindcss": "catalog:",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "unocss": "catalog:"
   }
 }

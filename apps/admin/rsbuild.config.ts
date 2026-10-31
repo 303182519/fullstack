@@ -1,6 +1,5 @@
 import { defineConfig } from '@rsbuild/core';
 import { pluginReact } from '@rsbuild/plugin-react';
-import { pluginTailwindcss } from '@rsbuild/plugin-tailwindcss';
 import { TanStackRouterRspack } from '@tanstack/router-plugin/rspack';
 
 // 页面名称数组
@@ -61,9 +60,8 @@ export default defineConfig({
     pluginReact({
       reactCompiler: true,
     }),
-    // Tailwind CSS 4：CSS-first 配置（无 tailwind.config.js），入口在壳包 styles/global.css。
-    // 走 @rsbuild/plugin-tailwindcss（@tailwindcss/webpack 通道），不经 postcss-loader。
-    pluginTailwindcss(),
+    // UnoCSS 不在此注册：走 Rsbuild 内置 PostCSS 管线（apps/admin/postcss.config.mjs），
+    // 配置真源 apps/admin/uno.config.ts。
   ],
   tools: {
     rspack: {
