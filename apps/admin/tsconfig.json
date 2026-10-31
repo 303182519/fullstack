@@ -29,7 +29,7 @@
     "env.d.ts",
     "rsbuild.config.ts",
     "uno.config.ts",
-    "uno-preset.ts"
-    // "../../packages/web/admin/src/theme/types/theme.d.ts"
+    "uno-preset.ts",
+    "../../packages/web/admin/**/*.d.ts"
   ]
 }
