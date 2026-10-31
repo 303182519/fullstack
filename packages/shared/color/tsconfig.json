@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "//": "shared 层中立项目：lib 无 DOM、types 为空，编译期强制源码不引用任何宿主全局（ADR-015）",
+  "extends": "@fedstack/tsconfig/base.json",
+  "compilerOptions": {
+    "lib": ["ES2023"],
+    "rootDir": "./src",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "types": [],
+    "declaration": true,
+    "outDir": "./dist"
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["dist", "node_modules", "__tests__/**"]
+}
