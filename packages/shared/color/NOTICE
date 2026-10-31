@@ -1,0 +1,42 @@
+@fedstack/color
+================
+
+本包源码迁移自 @skyroc/color v2.6.1：
+https://github.com/Ohh-889/skyroc/tree/master/packages/%40core/color
+
+上游快照 commit：10ddd27a650f5625ef09409deee112416d4ec2d6（2026-09-01）
+
+Copyright (c) 2026 Ohh
+
+本包相对上游的修改：
+- 包名由 @skyroc/color 改为 @fedstack/color，归入 packages/shared/color（shared 层）；
+- 构建由 tsdown 改为 tsc（产出 dist），导出入口合并为单入口；
+- 依赖版本改由本仓 pnpm catalog 统一声明；
+- tsconfig / eslint / vitest / 测试目录接入本仓库约定；
+- 按本仓 TS 严格规则（noUncheckedIndexedAccess）补充非空断言，按 eslint 规则补充显式返回类型并统一格式（均无行为变化）；
+- 源码内相对导入补充 `.js` 扩展名（目录导入写全 `./x/index.js`），以适配 Node ESM 对 dist 的解析（无行为变化）；
+- 对外 API、行为与 src 目录结构保持与上游一致（含 @deprecated 的 generateOklchPaletteEx 别名）。
+
+上游与本包均以 MIT 许可证授权，许可证全文如下：
+
+MIT License
+
+Copyright (c) 2026 Ohh
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

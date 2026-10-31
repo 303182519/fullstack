@@ -1,0 +1,42 @@
+{
+  "name": "@fedstack/color",
+  "type": "module",
+  "version": "0.0.1",
+  "private": true,
+  "description": "平台无关色彩工具：Ant Design / 推荐 / OKLCH 三套色板算法、颜色格式转换、WCAG 对比度与暗色模式（shared 层，ADR-020）",
+  "license": "UNLICENSED",
+  "sideEffects": [
+    "./dist/shared/colord.js"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.test.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
+  },
+  "dependencies": {
+    "colord": "catalog:",
+    "culori": "catalog:"
+  },
+  "devDependencies": {
+    "@fedstack/config": "workspace:*",
+    "@fedstack/eslint-config": "workspace:*",
+    "@fedstack/tsconfig": "workspace:*",
+    "@types/culori": "catalog:",
+    "@types/node": "catalog:",
+    "eslint": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

@@ -79,8 +79,11 @@ catalog:
   # 零环境依赖；新增前先确认是否真属 shared 层。
   # @fedstack/utils 的运行时依赖：全部为纯 JS 实现，无 Node 内置模块 / DOM 全局依赖
   '@types/crypto-js': ^4.2.2
+  '@types/culori': ^4.0.1
   clsx: ^2.1.1
+  colord: ^2.9.3
   crypto-js: ^4.2.0
+  culori: ^4.0.2
   dayjs: ^1.11.19
   klona: ^2.0.6
   radash: ^12.1.1
