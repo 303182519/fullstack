@@ -9,7 +9,26 @@
 export * from './config/layout-settings';
 export * from './constant';
 export * from './context';
-export * from './materials';
+export {
+  AdminLayout,
+  LAYOUT_MAX_Z_INDEX,
+  LAYOUT_SCROLL_EL_ID,
+  PageTab,
+} from './materials';
+export type {
+  AdminLayoutContentConfig,
+  AdminLayoutFooterConfig,
+  AdminLayoutProps,
+  ButtonTabProps,
+  LayoutCssVars,
+  LayoutCssVarsProps,
+  LayoutScrollMode,
+  PageTabCssVars,
+  PageTabCssVarsProps,
+  PageTabMode,
+  PageTabProps,
+  Slots,
+} from './materials';
 export * from './modules/admin-header';
 export * from './modules/admin-menu';
 export * from './modules/admin-tab';

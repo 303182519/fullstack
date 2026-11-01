@@ -1,6 +1,6 @@
+import { AntdProvider } from '@shell/theme';
 import { QueryClientProvider } from '@tanstack/react-query';
 
-import AntdProvider from '@/features/antd/AntdProvider';
 import RouterProvider from '@/features/router/RouterProvider';
 import { queryClient } from '@/service/queryClient';
 

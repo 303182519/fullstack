@@ -19,30 +19,45 @@ import { LAYOUT_MODE } from '@shell/layouts';
 | 路径                                                    | 阶段                     |
 | ------------------------------------------------------- | ------------------------ |
 | `index.ts` / `constant.ts` / `context.tsx`              | SK-3.0 已完成            |
-| `materials/` 纯 UI 骨架（只认 vertical / horizontal）   | SK-3.1 / SK-3.1.5 已完成 |
+| `materials/` 纯 UI 骨架（目录与文件结构对齐 skyroc）  | SK-3.1 / SK-3.1.5 / 全量对齐已完成 |
 | `config/`、`utils/sider-width.ts`、`store/`、CSS 变量   | SK-3.2 已完成            |
 | `modules/admin-menu/`、`utils/menu-*`、`store/menus.ts` | SK-3.3 已完成            |
 | `modules/admin-header/`                                 | SK-3.4 已完成            |
 | `modules/admin-tab/`、`store/tabs.ts`                   | SK-3.5 已完成            |
-| `utils/menu-levels.ts`、`VerticalMixSider`、六模式分发   | SK-3.6 / SK-3.7 已完成   |
+| `utils/menu-levels.ts`、`VerticalMixSider`、六模式分发  | SK-3.6 / SK-3.7 已完成   |
 
 ## materials 约定
 
+- `materials/` 按上游 `packages/web/admin/layouts/materials/` 的**目录结构与公共 API**逐文件对齐：
+  `index.ts`、`types/index.ts`、`libs/admin-layout/{index.tsx, shared.ts, index.module.css}`、`libs/page-tab/`。
+  改骨架前先对比上游，保持可机械 diff；差异只允许出现在下文「与上游的差异」清单里。
 - 骨架是**纯受控 UI**：尺寸、可见性、折叠态全部由调用方算好传入，不读 store、不读主题。
 - 六种布局模式在骨架层收敛为 `vertical` / `horizontal`；模式差异由 `siderWidth` 与菜单挂载位置表达。
 - 菜单的 portal 挂载点（`GLOBAL_SIDER_MENU_ID` / `GLOBAL_HEADER_MENU_ID`）由 `modules/` 层渲染，不在骨架里。
 - 滚动容器 id 由 `LAYOUT_SCROLL_EL_ID` 导出：`wrapper` 模式挂外层容器，`content` 模式挂内容区，交给 router 的 `scrollRestoration`。
-- 样式用 **Tailwind 工具类**（SK-3.1.5 起），尺寸只消费根节点上的 `--layout-*` 变量（`h-[var(--layout-header-height)]` 这类任意值）。
-  入口在壳包 `styles/tailwind.css`，其中 `@source` 显式声明扫描壳包源码——Tailwind 的自动内容检测只覆盖应用构建目录。
-- 壳包的 `reset.css` 整体收进 `@layer base`：留在无层样式里会压过 `@layer utilities`（例如 `h1` 上的 `text-xl` / `font-bold`）。
-  antd 的 CSS-in-JS 是无层样式，仍然优先级最高，组件外观不受 Tailwind 影响。
+- 样式与上游一致：**CSS Modules**（`*.module.css` + 同名 `.d.ts`）承载骨架/标签条的结构样式，UnoCSS 工具类承载间距与配色。
+  尺寸只消费根节点上的 `--soy-*` CSS 变量（由 `createLayoutCssVars` 内联注入），仓库不再维护 `:root` 兜底变量。
+  UnoCSS 内容扫描由 `apps/admin/uno.config.ts` 的 `content.filesystem` 显式覆盖应用与壳包源码；`@unocss` 指令写在壳包 `styles/global.css`。
+- 壳包的 `reset.css` 整体收进 `@layer base`：留在无层样式里会压过工具类（例如 `h1` 上的 `text-xl` / `font-bold`）。
+  antd 的 CSS-in-JS 是无层样式，仍然优先级最高，组件外观不受 UnoCSS 影响。
+- `PageTab`（chrome / button / slider 三态）已随 materials 落地，但 `modules/admin-tab/AdminTab` 仍是应用侧自写标签条，
+  **未切换到 `PageTab`**；切换属下一次视觉变更，不在对齐范围内。
+
+### 与上游的差异（仅此四处，其他一律以 skyroc 为准）
+
+1. `bg-white` → `bg-container`：上游移动端侧栏硬编码白色，本仓有暗色主题，照搬会造成白底回归。
+2. `fixedFooter` 类型注释改为 `@default false`：上游注释写 `true` 但实现无默认值，注释与实现不一致。
+3. 去掉 `:soy:` 前缀 token 与 `transition-all-300`（上游 UnoCSS 预设里两者均未定义，属无效类名），
+   `commonClass` 默认值改为等价的 `transition-all duration-300`。
+4. （非样式差异）`clsx` 类名拼接统一用本仓 `@fedstack/utils` 的 `cn`（底层 `clsx + twMerge`），不新增 `clsx` 直接依赖。
 
 ## 状态与配置约定（SK-3.2）
 
 - `config/layout-settings.ts` 是布局静态配置的唯一事实源（阶段 4 换主题 store 时形状保持 `LayoutSettings`）。
 - `utils/sider-width.ts` 是六模式宽度计算的唯一入口：纯函数，单测在壳包根 `__tests__/layouts/`（沿用仓库 `TEST_PATTERNS` 约定，不与源码同目录）。
 - `store/layout.ts` 用 Zustand + `persist`，白名单只落 `siderCollapse` / `mixSiderFixed`（纯 UI 偏好）；`reloadKey` 自增触发内容区重挂载，不持久化。
-- 尺寸默认值同时存在于 `layout-settings.ts`（装配层输入）与 `styles/global.css` 的 `:root --layout-*`（渲染层兜底），二者同名同义，不允许各自演化。
+- 尺寸默认值的唯一来源是 `layout-settings.ts`（装配层输入）；materials 组件内默认值（220 / 44 / 48 / 56 / 64）只在上游 API 需要时兜底，
+  实际渲染尺寸由装配层传入，`global.css` 不再维护 `:root` 副本。
 
 ## 菜单约定（SK-3.3）
 

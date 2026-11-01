@@ -36,10 +36,10 @@ function Breadcrumb({ items }: AdminBreadcrumbProps) {
     const isLast = index === items.length - 1;
 
     const node = isLast || !item.path
-      ? <span className="text-foreground">{item.title}</span>
+      ? <span className="text-base-text">{item.title}</span>
       : (
           <Link
-            className="text-foreground/70 hover:text-foreground"
+            className="text-secondary hover:text-base-text"
             to={item.path as never}
           >
             {item.title}

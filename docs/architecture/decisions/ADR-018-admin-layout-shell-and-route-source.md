@@ -67,10 +67,13 @@
 ### D5 主题只预留 CSS 变量 + 静态配置，不做主题切换
 
 - 天空布局尺寸/颜色收敛为 `layouts/config/layout-settings.ts` 静态对象；
-- 组件内用 CSS 变量（`var(--layout-sider-width)` 等），**不写死数字**；
+- `materials/` 骨架与上游 `skyroc` 的 `packages/web/admin/layouts/materials/` 目录结构、公共 API、CSS Modules 与 `var(--soy-*)` 变量逐文件对齐，
+  组件内不写死数字（差异清单见 `packages/web/admin/src/layouts/README.md`）；
 - 不引入主题 Provider、不做暗黑模式、不做主题色选择器（阶段 4）。
 
 **取舍**：主题耦合字段有 11 项（sider 五档宽度、header/tab/footer 高度、scrollMode、fixedHeaderAndTab、page.animate）。若阶段 3 硬编码，阶段 4 要改遍所有组件；用 CSS 变量 + 静态对象做缝，阶段 4 只换注入源，壳组件零改动。
+**修订**：本条曾记录「用 UnoCSS 工具类 + `--layout-*`」，后按用户裁决改为全量对齐上游（CSS Modules + `--soy-*`），
+以换取与 `skyroc` 的可机械 diff；`--layout-*` 的 `:root` 兜底随之删除。
 
 ## 4. 备选方案与取舍
 

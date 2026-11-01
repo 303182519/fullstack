@@ -23,7 +23,7 @@ function Fullscreen() {
     <Tooltip title={label}>
       <button
         aria-label={label}
-        className="mx-2 inline-flex h-8 w-8 items-center justify-center rounded text-foreground/70 hover:bg-surface-hover hover:text-foreground disabled:opacity-50"
+        className="mx-2 inline-flex h-8 w-8 items-center justify-center rounded text-secondary hover:bg-[var(--color-bg-text-hover)] hover:text-base-text disabled:opacity-50"
         disabled={!isEnabled}
         type="button"
         onClick={toggleFullscreen}

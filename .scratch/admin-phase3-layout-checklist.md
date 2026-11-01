@@ -1035,3 +1035,18 @@ apps/admin/src/
 | 阶段 3 顺手做主题切换 | Q7 已裁决只预留 CSS 变量，主题是阶段 4 |
 | 把 `accessToken` 或任何凭据写 localStorage | D1/D5；只有布局偏好可落地 |
 | 在 `beforeLoad` 里写 tabs / 改布局态 | 导航可能被取消，副作用要放路由完成后 |
+
+## 附录 C：materials 全量对齐 skyroc（反转 SK-3.1.5）
+
+SK-3.1.5 曾删除 `admin-layout.module.css` 与 `src/env.d.ts`，改为 UnoCSS + `--layout-*`。经核对上游
+`packages/web/admin/layouts/materials/` 后，该结论被推翻，现按用户裁决全量对齐：
+
+- 结构恢复为 `materials/{index.ts, types/index.ts, libs/admin-layout/, libs/page-tab/}`；
+- 样式恢复 CSS Modules（每份 `*.module.css` 旁挂手写 `.d.ts`，不重建全局 `env.d.ts`）；
+- CSS 变量统一为 `--soy-*`，`:root --layout-*` 兜底删除；
+- 补齐 `PageTab`（chrome / button / slider），但 `modules/admin-tab/AdminTab` 不切换；
+- 默认值取上游 220 / 44 / 48 / 56 / 64，`layoutSettings.tab.height` 同步为 44；
+- 差异清单（仅 `bg-container`、`fixedFooter` 注释、去除 inert `:soy:`/`transition-all-300`、`cn` 取代 `clsx`）
+  记录在 `packages/web/admin/src/layouts/README.md`。
+
+> 本节是对历史条目的反转记录，不修改上文 SK-3.1 / SK-3.1.5 的原文。

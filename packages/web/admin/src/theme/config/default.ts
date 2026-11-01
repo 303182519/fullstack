@@ -2,7 +2,7 @@
 export const themeSchemeIcons: Record<'auto' | 'dark' | 'light', string> = {
   dark: 'material-symbols:nightlight-rounded',
   light: 'material-symbols:sunny',
-  auto: 'material-symbols:hdr-auto'
+  auto: 'material-symbols:hdr-auto',
 };
 
 /**
@@ -35,7 +35,7 @@ export const defaultThemeSettings: Theme.ThemeSetting = {
     /** 警告色 */
     warning: '#F59E0B',
     /** 错误色 */
-    error: '#F43F5E'
+    error: '#F43F5E',
   },
   /** info 色是否跟随主色：开启后 `info` 直接取 `themeColor`，忽略 `otherColor.info` */
   isInfoFollowPrimary: false,
@@ -58,7 +58,7 @@ export const defaultThemeSettings: Theme.ThemeSetting = {
      * - wrapper：外层容器滚动（整页滚动）
      * - content：仅内容区滚动（顶栏、侧栏保持固定）
      */
-    scrollMode: 'content'
+    scrollMode: 'content',
   },
   /** 页面切换效果 */
   page: {
@@ -68,7 +68,7 @@ export const defaultThemeSettings: Theme.ThemeSetting = {
      * 动画类型：
      * fade / fade-bottom / fade-scale / fade-slide / zoom-fade / zoom-out / none（关闭动画）
      */
-    animateMode: 'fade-slide'
+    animateMode: 'fade-slide',
   },
   /** 顶栏配置 */
   header: {
@@ -79,18 +79,18 @@ export const defaultThemeSettings: Theme.ThemeSetting = {
       /** 是否显示面包屑 */
       visible: true,
       /** 是否显示面包屑前的图标 */
-      showIcon: true
+      showIcon: true,
     },
     /** 多语言切换入口 */
     multilingual: {
       /** 是否在顶栏显示多语言切换 */
-      visible: true
+      visible: true,
     },
     /** 全局搜索入口 */
     globalSearch: {
       /** 是否在顶栏显示全局搜索 */
-      visible: true
-    }
+      visible: true,
+    },
   },
   /** 多页签（Tab）配置 */
   tab: {
@@ -108,7 +108,7 @@ export const defaultThemeSettings: Theme.ThemeSetting = {
      */
     mode: 'chrome',
     /** 是否允许鼠标中键关闭页签 */
-    closeTabByMiddleClick: false
+    closeTabByMiddleClick: false,
   },
   /** 顶栏与页签栏是否吸顶固定（内容滚动时保持可见） */
   fixedHeaderAndTab: true,
@@ -127,7 +127,7 @@ export const defaultThemeSettings: Theme.ThemeSetting = {
     /** mix 类布局中固定子菜单栏时追加的子栏宽度 */
     mixChildMenuWidth: 200,
     /** 进入带子菜单的一级菜单时，是否自动选中其第一个子菜单 */
-    autoSelectFirstMenu: false
+    autoSelectFirstMenu: false,
   },
   /** 页脚配置 */
   footer: {
@@ -138,7 +138,7 @@ export const defaultThemeSettings: Theme.ThemeSetting = {
     /** 页脚高度（px） */
     height: 48,
     /** 顶栏混合布局下页脚是否靠右对齐（不占用侧栏宽度） */
-    right: true
+    right: true,
   },
   /** 水印配置（基于 Ant Design Watermark） */
   watermark: {
@@ -159,7 +159,7 @@ export const defaultThemeSettings: Theme.ThemeSetting = {
       /** 字体设置 */
       font: {
         /** 字号（px） */
-        fontSize: 16
+        fontSize: 16,
       },
       /** 单个水印的高度 */
       height: 64,
@@ -170,8 +170,8 @@ export const defaultThemeSettings: Theme.ThemeSetting = {
       /** 单个水印的宽度 */
       width: 344,
       /** 水印层级 */
-      zIndex: 9999
-    }
+      zIndex: 9999,
+    },
   },
   /**
    * 主题 token：最终会转换为 CSS 变量。
@@ -185,13 +185,13 @@ export const defaultThemeSettings: Theme.ThemeSetting = {
     light: {
       colors: {
         /** 容器类表面背景色（卡片、面板等） */
-        container: 'rgb(255, 255, 255)',
+        'container': 'rgb(255, 255, 255)',
         /** 页面整体布局背景色 */
-        layout: 'rgb(247, 250, 252)',
+        'layout': 'rgb(247, 250, 252)',
         /** 反色区域背景色（如深色侧栏、反色面板） */
-        inverted: 'rgb(0, 20, 40)',
+        'inverted': 'rgb(0, 20, 40)',
         /** 基础文字颜色 */
-        'base-text': 'rgb(31, 31, 31)'
+        'base-text': 'rgb(31, 31, 31)',
       },
       boxShadow: {
         /** 顶栏投影 */
@@ -199,19 +199,19 @@ export const defaultThemeSettings: Theme.ThemeSetting = {
         /** 侧栏投影 */
         sider: '2px 0 8px 0 rgb(29, 35, 41, 0.05)',
         /** 页签栏投影 */
-        tab: '0 1px 2px rgb(0, 21, 41, 0.08)'
-      }
+        tab: '0 1px 2px rgb(0, 21, 41, 0.08)',
+      },
     },
     /** 深色模式 token（仅列出需要覆盖的项） */
     dark: {
       colors: {
         /** 容器类表面背景色 */
-        container: 'rgb(28, 28, 28)',
+        'container': 'rgb(28, 28, 28)',
         /** 页面整体布局背景色 */
-        layout: 'rgb(18, 18, 18)',
+        'layout': 'rgb(18, 18, 18)',
         /** 基础文字颜色 */
-        'base-text': 'rgb(224, 224, 224)'
-      }
-    }
-  }
+        'base-text': 'rgb(224, 224, 224)',
+      },
+    },
+  },
 };

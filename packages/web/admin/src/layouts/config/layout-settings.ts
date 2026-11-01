@@ -1,5 +1,5 @@
 import type { LayoutMode } from '../constant';
-import type { AdminLayoutScrollMode } from '../materials/types';
+import type { LayoutScrollMode } from '../materials/types';
 
 /**
  * 侧栏尺寸配置。
@@ -32,7 +32,7 @@ export interface LayoutSettings {
     /** 六种布局模式之一，见 `../constant` 的 `LAYOUT_MODE` */
     mode: LayoutMode;
     /** 内容区滚动方式，透传给 materials 骨架 */
-    scrollMode: AdminLayoutScrollMode;
+    scrollMode: LayoutScrollMode;
   };
   sider: LayoutSiderConfig;
   header: {
@@ -57,14 +57,14 @@ export interface LayoutSettings {
 /**
  * 布局静态配置（阶段 3 的唯一事实源）。
  *
- * 默认值与 `styles/global.css` 的 `:root --layout-*` 变量同名同义：
- * 这里是装配层（modules/）的输入，CSS 变量是渲染层的兜底，二者不各自演化。
+ * 尺寸值经装配层透传给 materials 骨架，由其以 `--soy-*` 内联 CSS 变量挂到布局根节点；
+ * 仓库不再维护 `:root` 兜底变量，避免出现第二份默认值。
  */
 export const layoutSettings: LayoutSettings = {
   layout: { mode: 'vertical', scrollMode: 'wrapper' },
   sider: { width: 240, collapsedWidth: 64, mixWidth: 80, mixCollapsedWidth: 48, mixChildMenuWidth: 160 },
   header: { height: 56 },
-  tab: { height: 40, visible: true },
+  tab: { height: 44, visible: true },
   footer: { height: 48, visible: false, fixed: false, right: false },
   fixedHeaderAndTab: true,
 };

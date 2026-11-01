@@ -21,6 +21,7 @@
   "dependencies": {
     "@ant-design/icons": "catalog:",
     "@fedstack/color": "workspace:*",
+    "@fedstack/hooks": "workspace:*",
     "@fedstack/utils": "workspace:*",
     "@fedstack/web-utils": "workspace:*",
     "@iconify-json/mdi": "catalog:",

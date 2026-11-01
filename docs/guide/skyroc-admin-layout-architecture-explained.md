@@ -322,7 +322,7 @@ const { fixedHeaderAndTab, footer: themeFooter, header, layout, sider, tab } = u
 
 **fedstack 阶段 3 的取舍（Q7 已裁决）**：不接主题系统，改为：
 1. 上述字段收敛成**一个静态配置对象**（如 `layouts/config/layout-settings.ts`），带默认值；
-2. 尺寸/颜色全部写成 **CSS 变量**（Tailwind 4 的 `@theme` 块 + `var(--xxx, fallback)`）；
+2. 尺寸/颜色全部写成 **CSS 变量**（UnoCSS 令牌 + `var(--xxx, fallback)`）；
 3. 阶段 4 只需把静态对象换成响应式 theme store + 把 CSS 变量换成动态注入值，**布局组件零改动**。
 
 > 📌 这是本阶段最重要的「为未来留缝」设计。若阶段 3 把 `headerHeight: 56` 硬编码进组件，阶段 4 要改遍所有组件。
@@ -342,7 +342,8 @@ const { fixedHeaderAndTab, footer: themeFooter, header, layout, sider, tab } = u
 | 状态库 | jotai `atomWithPartial` | **Zustand**（D1） | 必须改写 |
 | 布局态范围 | 6 个字段 + menus + tabs | `store/layout.ts` + `store/menus.ts`（Q6） | 简化（去掉 themeDrawer 等阶段 4 项） |
 | 持久化 | `mixSiderFixed` 落 localStorage | 仅布局偏好可落地 | 需明确边界 |
-| 主题 | `@shell/theme` 全套 | **CSS 变量 + 静态配置**（Q7） | 必须改写（但留缝） |
+| 主题 | `@shell/theme` 全套 | `@shell/theme`（`theme/antd` + Zustand `useTheme`，SK-3.1.6 已对齐） | ✅ 直接对齐 |
+| 样式体系 | UnoCSS（`@skyroc/uno-config`） | UnoCSS（`apps/admin/uno-preset.ts` 迁移同一预设，SK-3.1.6） | ✅ 直接对齐 |
 | 标签页缓存 | 未确认（见 §0.3） | 对齐 skyroc | ⚠️ 待核实后定 |
 | 国际化 | `@shell/i18n` | 阶段 7 | 不迁移 |
 | 通知中心 | `notification/` | 阶段 7 | 不迁移 |

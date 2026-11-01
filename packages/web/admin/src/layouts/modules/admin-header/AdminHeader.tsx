@@ -32,7 +32,7 @@ const AdminHeader: FC<AdminHeaderProps> = ({ center, headerMode = 'vertical', sh
   const shouldShowSiderToggle = showSiderToggle ?? !isHorizontal;
 
   return (
-    <div className="flex h-full items-center gap-0 bg-surface px-4 text-foreground shadow-sm">
+    <div className="flex h-full items-center gap-0 bg-container px-4 text-base-text shadow-sm">
       <Logo />
       {shouldShowSiderToggle && <SiderToggle />}
 

@@ -1,4 +1,5 @@
 import type { FallbackProps } from 'react-error-boundary';
+import { setupTheme } from '@shell/theme';
 import { createRoot } from 'react-dom/client';
 import { ErrorBoundary } from 'react-error-boundary';
 
@@ -24,6 +25,9 @@ function ErrorFallback({ error, resetErrorBoundary }: FallbackProps) {
 }
 
 async function setupApp() {
+  // React 渲染前播种主题 store：读取缓存 / 应用版本覆盖，避免首帧用默认值闪变。
+  setupTheme({ buildTime: BUILD_TIME, isProd: import.meta.env.PROD });
+
   const container = document.getElementById('root');
   if (!container)
     return false;

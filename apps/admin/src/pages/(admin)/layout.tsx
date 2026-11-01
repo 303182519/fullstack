@@ -1,7 +1,7 @@
 import type { AdminBreadcrumbItem } from '@shell/layouts';
 import {
   AdminHeader,
-  AdminLayoutComponent,
+  AdminLayout as AdminLayoutComponent,
   AdminLayoutProvider,
   AdminMenu,
   AdminTab,

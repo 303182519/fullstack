@@ -31,7 +31,7 @@ const VerticalMixSider: FC<VerticalMixSiderProps> = ({ hasChildren = false }) =>
   const rightBarWidth = showRightBar ? mixChildMenuWidth : 0;
 
   return (
-    <div className="flex h-full w-full overflow-hidden bg-surface">
+    <div className="flex h-full w-full overflow-hidden bg-container">
       {/* 左栏：一级菜单（窄栏，只够放图标） */}
       <div
         className="h-full shrink-0 overflow-x-hidden overflow-y-auto"

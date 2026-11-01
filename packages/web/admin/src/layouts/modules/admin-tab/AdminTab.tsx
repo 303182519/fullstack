@@ -105,7 +105,7 @@ const AdminTab: React.FC<AdminTabProps> = ({ homePath = '/home' }) => {
   }, [activeKey, closeAll, closeOthers, handleClose, reloadPage, switchRoute, tabs]);
 
   return (
-    <div className="flex h-full items-center gap-1 border-b border-border bg-surface px-2">
+    <div className="flex h-full items-center gap-1 border-b border-border bg-container px-2">
       <div className="flex h-full min-w-0 flex-1 items-center gap-1 overflow-x-auto">
         {tabs.map((tab) => {
           const isActive = tab.key === activeKey;
@@ -121,14 +121,14 @@ const AdminTab: React.FC<AdminTabProps> = ({ homePath = '/home' }) => {
                 className={[
                   'group flex h-8 shrink-0 items-center gap-1.5 rounded-md px-3 text-sm transition-colors',
                   isActive
-                    ? 'bg-primary/10 text-primary'
-                    : 'text-foreground/70 hover:bg-surface-hover hover:text-foreground',
+                    ? 'bg-primary-lightest text-primary'
+                    : 'text-secondary hover:bg-[var(--color-bg-text-hover)] hover:text-base-text',
                 ].join(' ')}
               >
                 <span className="max-w-[160px] truncate">{tab.title}</span>
                 {tab.closable && (
                   <CloseOutlined
-                    className="h-3.5 w-3.5 rounded-sm opacity-50 transition-opacity hover:bg-foreground/10 hover:opacity-100"
+                    className="h-3.5 w-3.5 rounded-sm opacity-50 transition-opacity hover:bg-[var(--color-bg-text-hover)] hover:opacity-100"
                     onClick={(e) => {
                       e.stopPropagation();
                       handleClose(tab.key);

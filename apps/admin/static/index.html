@@ -12,19 +12,10 @@
     <meta http-equiv="Cache-Control" content="no-cache, must-revalidate" />
     <meta http-equiv="Window-target" content="_top" />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
-    <style>
-      body::-webkit-scrollbar {
-        width: 5px;
-        height: 5px;
-      }
-      body::-webkit-scrollbar-thumb {
-        background-color: #c1c1c1;
-        border-radius: 3px;
-      }
-    </style>
   </head>
 
-  <body>
+  <!-- class="root"：UnoCSS important 作用域（生成 `.root :is(.utility)`），见 apps/admin/uno.config.ts -->
+  <body class="root">
     <noscript>禁用javascript会导致部分功能不可用</noscript>
     <div id="root">
       <div class="page-loading-wrapper"></div>

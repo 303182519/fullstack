@@ -1,10 +1,9 @@
 import type { BackendEnvelope, RequestAdapter } from '@fedstack/service';
 import { createRequest } from '@fedstack/axios';
+import { showErrorMessage as showAntdErrorMessage, showErrorModal as showAntdErrorModal } from '@shell/theme';
 
 import { getRouter } from '@/features/router/router-ref';
 import { useAuthStore } from '@/store/auth';
-
-import { getMessageApi, getModalApi } from './antd-holder';
 
 /**
  * 续签专用请求实例，独立于主 request。
@@ -70,11 +69,23 @@ export const adapter: RequestAdapter = {
   getCurrentPath: () => window.location.pathname + window.location.search,
 
   showErrorMessage: (msg, onClose) => {
-    getMessageApi()?.open({ content: msg, onClose, type: 'error' });
+    // AntdProvider 挂载前的调用（只有启动早期请求错误才可能撞上）静默丢弃——
+    // 那时页面还没有可交互 UI，丢弃比 crash 合理（与旧 antd-holder 的 `?.` 语义一致）。
+    try {
+      showAntdErrorMessage({ content: msg, onClose, type: 'error' });
+    }
+    catch {
+      // ui.ts 在未初始化时抛错，这里仅做边界兜底
+    }
   },
 
   showErrorModal: ({ content, maskClosable, onConfirm, title }) => {
-    getModalApi()?.error({ content, maskClosable, onOk: onConfirm, title });
+    try {
+      showAntdErrorModal({ content, maskClosable, onOk: onConfirm, title });
+    }
+    catch {
+      // 同上：Provider 未挂载时丢弃
+    }
   },
 
   t: key => zhCN[key] ?? key,

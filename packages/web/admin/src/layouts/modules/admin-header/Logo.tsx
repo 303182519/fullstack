@@ -48,14 +48,14 @@ const Logo: FC<LogoProps> = ({ width }) => {
       >
         <span
           aria-hidden
-          className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-primary text-surface"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-primary text-container"
         >
           <SvgIcon
             icon="mdi:shield-account"
             className="text-lg"
           />
         </span>
-        <span className="text-base font-semibold text-foreground">
+        <span className="text-md font-semibold text-base-text">
           {logoTitle ?? 'Fedstack Admin'}
         </span>
       </button>

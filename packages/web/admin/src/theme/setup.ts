@@ -1,6 +1,6 @@
 import { createStorage } from '@fedstack/web-utils';
 import { defaultThemeSettings } from './config/default';
-import { themeSettingsAtom } from './hooks';
+import { useThemeSettingsStore } from './hooks';
 import { mergeThemeSettings } from './utils/settings';
 
 const DEFAULT_THEME_STORAGE_PREFIX = 'SR_';
@@ -48,7 +48,7 @@ export function getInternalStorage(): ThemeStorage | null {
 /**
  * 一次调用完成主题初始化
  *
- * 在 app 入口或 AntdProvider 之前调用，自动处理： - 默认配置加载 - localStorage 缓存读取（生产环境） - 版本覆盖检测 - Jotai atom 初始化
+ * 在 app 入口或 AntdProvider 之前调用，自动处理： - 默认配置加载 - localStorage 缓存读取（生产环境） - 版本覆盖检测 - Zustand store 初始化
  *
  * @example
  *   ```ts
@@ -73,7 +73,7 @@ export function setupTheme(options: SetupThemeOptions = {}) {
 
   // 开发环境：直接使用默认配置
   if (!isProd) {
-    themeSettingsAtom.init = defaultThemeSettings;
+    useThemeSettingsStore.setState(defaultThemeSettings, true);
     return;
   }
 
@@ -96,7 +96,7 @@ export function setupTheme(options: SetupThemeOptions = {}) {
     }
   }
 
-  themeSettingsAtom.init = settings;
+  useThemeSettingsStore.setState(settings, true);
 }
 
 function createDefaultStorage(storagePrefix: string) {
