@@ -91,7 +91,6 @@ function NumberTicker({
       });
     }
     return () => animation?.cancel();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [motionValue, springValue, endValue, duration]);
 
   return (
