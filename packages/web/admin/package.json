@@ -20,6 +20,7 @@
   },
   "dependencies": {
     "@ant-design/icons": "catalog:",
+    "@better-scroll/core": "catalog:",
     "@fedstack/color": "workspace:*",
     "@fedstack/hooks": "workspace:*",
     "@fedstack/utils": "workspace:*",

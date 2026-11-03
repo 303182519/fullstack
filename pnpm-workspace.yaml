@@ -177,6 +177,8 @@ catalog:
 
   # ── 3.2 样式框架与 UI 组件库（UnoCSS / antd / ahooks / iconify）──
   '@ant-design/icons': ^6.3.4
+  # 滚动容器内核（admin 壳包 BetterScroll 组件使用；纯 JS、无原生依赖）
+  '@better-scroll/core': ^2.5.1
   '@iconify-json/mdi': ^1.2.3
   '@iconify/react': ^6.0.3
   ahooks: ^3.11.0
