@@ -174,6 +174,9 @@ catalog:
   react: ^19.3.1
   react-dom: ^19.3.1
   'react-error-boundary': ^6.1.6
+  # i18n 运行时（admin 壳包 I18nLabel 组件使用）
+  i18next: ^26.7.1
+  'react-i18next': ^17.1.11
 
   # ── 3.2 样式框架与 UI 组件库（UnoCSS / antd / ahooks / iconify）──
   '@ant-design/icons': ^6.3.4

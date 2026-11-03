@@ -30,10 +30,12 @@
     "ahooks": "catalog:",
     "antd": "catalog:",
     "defu": "catalog:",
+    "i18next": "catalog:",
     "motion": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
-    "react-error-boundary": "catalog:"
+    "react-error-boundary": "catalog:",
+    "react-i18next": "catalog:"
   },
   "devDependencies": {
     "@fedstack/config": "workspace:*",
