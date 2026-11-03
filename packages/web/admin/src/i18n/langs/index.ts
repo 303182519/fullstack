@@ -1,5 +1,6 @@
 import type { ResourceLanguage } from 'i18next';
 
+import type { LangType } from '../types';
 import enUSCommon from './en-us/common.json';
 import enUSDatatable from './en-us/datatable.json';
 import enUSDropdown from './en-us/dropdown.json';
@@ -21,9 +22,8 @@ import zhCNPage from './zh-cn/page.json';
 import zhCNRequest from './zh-cn/request.json';
 import zhCNRoute from './zh-cn/route.json';
 import zhCNSystem from './zh-cn/system.json';
-import zhCNTheme from './zh-cn/theme.json';
 
-import type { LangType } from '../types';
+import zhCNTheme from './zh-cn/theme.json';
 
 const enUS = {
   common: enUSCommon,
@@ -36,7 +36,7 @@ const enUS = {
   request: enUSRequest,
   route: enUSRoute,
   system: enUSSystem,
-  theme: enUSTheme
+  theme: enUSTheme,
 } satisfies ResourceLanguage;
 
 const zhCN = {
@@ -50,14 +50,14 @@ const zhCN = {
   request: zhCNRequest,
   route: zhCNRoute,
   system: zhCNSystem,
-  theme: zhCNTheme
+  theme: zhCNTheme,
 } satisfies ResourceLanguage;
 
 export type AdminLocaleMessages = typeof zhCN;
 
 export const localeResources: Record<LangType, ResourceLanguage> = {
   'en-US': enUS,
-  'zh-CN': zhCN
+  'zh-CN': zhCN,
 };
 
 export default localeResources;
