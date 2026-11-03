@@ -7,3 +7,4 @@ export { default as NumberTicker } from './NumberTicker';
 export { default as Portal } from './Portal';
 export { default as SvgIcon } from './SvgIcon';
 export { default as TypingAnimation } from './TypingAnimation';
+export { default as WaveBg } from './WaveBg';
