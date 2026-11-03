@@ -30,6 +30,7 @@
     "ahooks": "catalog:",
     "antd": "catalog:",
     "defu": "catalog:",
+    "motion": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
     "react-error-boundary": "catalog:"

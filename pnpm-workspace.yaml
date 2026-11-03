@@ -183,6 +183,8 @@ catalog:
   '@iconify/react': ^6.0.3
   ahooks: ^3.11.0
   antd: ^6.6.8
+  # Framer Motion 新一代包：动画库，LazyAnimate 按需加载 domMax 特性
+  motion: ^14.9.0
 
   # ── 3.3 HTTP 客户端（@fedstack/axios）──
   '@types/qs': ^6.15.1
