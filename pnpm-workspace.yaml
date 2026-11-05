@@ -188,6 +188,9 @@ catalog:
   antd: ^6.6.8
   # Framer Motion 新一代包：动画库，LazyAnimate 按需加载 domMax 特性
   motion: ^14.9.0
+  # 顶部加载进度条（admin 壳包 runtime 使用；配套 types 见下方 @types/nprogress）
+  nprogress: ^0.2.0
+  '@types/nprogress': ^0.2.3
 
   # 拖拽排序（table 列设置 DragContent 组件使用；纯 JS，无原生依赖）
   '@dnd-kit/core': ^6.3.1
