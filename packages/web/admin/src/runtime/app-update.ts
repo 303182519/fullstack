@@ -1,42 +1,45 @@
 import { TaskHub } from '@fedstack/utils';
 
+/** 默认每 3 分钟查一次更新 */
 const DEFAULT_UPDATE_CHECK_INTERVAL = 3 * 60 * 1000;
+
 /** 心跳粒度的上下限，见 resolveTickInterval */
 const MIN_TICK_INTERVAL = 1_000;
 const MAX_TICK_INTERVAL = 30_000;
+
 const CHECK_TASK = 'check-update';
 const VISIBILITY_TASK = 'visibility';
 
 interface GetHtmlBuildTimeOptions {
-  /** HTML entry base URL, usually Vite's base URL. */
+  /** HTML 入口 base URL，通常是 Vite 的 base */
   baseUrl?: string;
-  /** Fetch implementation used to read the current index.html. */
+  /** 用于请求 index.html 的 fetch 实现，默认用全局 fetch */
   fetcher?: typeof fetch;
-  /** Aborts the in-flight request when the caller tears down. */
+  /** 外部取消请求的信号 */
   signal?: AbortSignal;
 }
 
 export interface AppUpdateAvailableContext {
-  /** Build time bundled in the running application. */
+  /** 当前运行应用打包时的构建时间 */
   currentBuildTime: string;
-  /** Build time read from the latest index.html. */
+  /** 从最新 index.html 读到的构建时间 */
   latestBuildTime: string;
-  /** Allows the next update check after the host notification closes. */
+  /** 用户关闭更新提示后调用，允许下一轮检查 */
   markPromptClosed: () => void;
 }
 
 export interface SetupAppVersionNotificationOptions {
-  /** HTML entry base URL, usually Vite's base URL. */
+  /** HTML 入口 base URL，通常是 Vite 的 base */
   baseUrl?: string;
-  /** Build time bundled in the running application. */
+  /** 当前运行应用打包时的构建时间（构建注入） */
   currentBuildTime: string;
-  /** Whether update checks should be started. */
+  /** 是否启用更新检查 */
   enabled: boolean;
-  /** Check interval in milliseconds. */
+  /** 检查间隔（毫秒），默认 3 分钟 */
   interval?: number;
-  /** Receives fetch errors from update checking. */
+  /** 轮询过程中的 fetch 错误回调 */
   onError?: (error: unknown) => void;
-  /** Called when a newer build is detected. */
+  /** 检测到新版本时触发 */
   onUpdateAvailable: (context: AppUpdateAvailableContext) => void;
 }
 
@@ -54,10 +57,14 @@ export async function getHtmlBuildTime(options: GetHtmlBuildTimeOptions = {}): P
 }
 
 /**
- * 由检查间隔推导心跳粒度
+ * 为 TaskHub 推导合适的心跳粒度
  *
- * 周期任务的实际触发时刻落在 `[interval, interval + tickInterval)` 内。取 interval 的一半 是为了让抖动不超过 50%（3 分钟的检查不会拖成 6 分钟），封顶 30s
- * 是为了不给一个低频任务 每秒空转的心跳。
+ * TaskHub 不是精确定时器：周期任务实际触发窗口是 `[interval, interval + tickInterval)`，
+ * 心跳越小越准但越费 CPU。
+ *
+ * 策略：取 interval 的一半 → 抖动不超过 50%（3 min 检查最坏拖到 3.5 min）；
+ *       封顶 30 s → 别给低频任务每秒空转的心跳；
+ *       兜底 1 s → 别让高频检查把 CPU 烧起来。
  */
 function resolveTickInterval(interval: number): number {
   return Math.max(MIN_TICK_INTERVAL, Math.min(Math.floor(interval / 2), MAX_TICK_INTERVAL));
@@ -72,10 +79,11 @@ export function setupAppVersionNotification(options: SetupAppVersionNotification
     onError,
     onUpdateAvailable,
   } = options;
+
   if (!enabled || typeof document === 'undefined')
     return;
 
-  /** 更新提示还开着的时候不再重复检查，等用户处理完再说 */
+  // 提示弹窗打开期间不再轮询，避免多个 onUpdateAvailable 并发触发
   let isPromptOpen = false;
 
   const hub = new TaskHub({
@@ -106,12 +114,12 @@ export function setupAppVersionNotification(options: SetupAppVersionNotification
       return;
     }
     hub.resume();
-    // 回到前台立刻查一次，并把周期计时从此刻重新起算
+    // 回到前台立刻查一次，cycle 计时也从此刻重新起算
     hub.trigger(CHECK_TASK);
   }
 
   hub.register({
-    // 启动那一刻检查没有意义：比对的正是刚加载进来的这份构建
+    // 启动那一刻查没有意义：比对的正是刚加载进来的这份构建
     immediate: false,
     interval,
     name: CHECK_TASK,
@@ -122,7 +130,7 @@ export function setupAppVersionNotification(options: SetupAppVersionNotification
   hub.register({
     cleanup: () => document.removeEventListener('visibilitychange', handleVisibilityChange),
     name: VISIBILITY_TASK,
-    // 监听器的注册与「此刻是否可见」无关：在后台加载的页面切到前台时同样要能恢复轮询
+    // 监听器注册与"此刻页面是否可见"无关：后台加载的页面切到前台时也得能恢复轮询
     run: () => document.addEventListener('visibilitychange', handleVisibilityChange),
     type: 'listener',
   });
